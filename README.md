@@ -1,6 +1,9 @@
 # 数字孪生工具前端项目
 数字孪生工具的前端界面，技术栈包括：Vue + Threejs + Electron
 
+## 平台文档
+1. [Git使用配置指南](https://p605z95310.zicp.fun/SCUTCaiHu/DT-FrontEnd/src/branch/main/docs/Git%E4%BD%BF%E7%94%A8%E9%85%8D%E7%BD%AE%E6%8C%87%E5%8D%97.md)
+
 ## Features
 
 📦 Out of the box  
