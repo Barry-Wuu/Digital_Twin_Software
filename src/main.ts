@@ -2,9 +2,8 @@ import { createApp } from 'vue'
 import "./style.css"
 import App from './App.vue'
 import './samples/node-api'
+import ant from 'ant-design-vue'
 
-createApp(App)
-  .mount('#app')
-  .$nextTick(() => {
-    postMessage({ payload: 'removeLoading' }, '*')
-  })
+const app = createApp(App);
+app.use(ant);
+app.mount("#app");

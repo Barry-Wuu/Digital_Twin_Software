@@ -1,4 +1,5 @@
 # Logs
+*.bat
 logs
 *.log
 npm-debug.log*
@@ -28,3 +29,4 @@ release
 package-lock.json
 pnpm-lock.yaml
 yarn.lock
+out/
