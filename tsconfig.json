@@ -4,11 +4,7 @@
     "useDefineForClassFields": true,
     "module": "ESNext",
     "moduleResolution": "Node",
-<<<<<<< HEAD
     "strict": false,
-=======
-    "strict": true,
->>>>>>> 0f2e3a320f3eaa672ce2b6dddf77bfe6ca56dec9
     "jsx": "preserve",
     "resolveJsonModule": true,
     "isolatedModules": true,
