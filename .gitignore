@@ -1,4 +1,8 @@
 # Logs
+<<<<<<< HEAD
+*.bat
+=======
+>>>>>>> 0f2e3a320f3eaa672ce2b6dddf77bfe6ca56dec9
 logs
 *.log
 npm-debug.log*
@@ -27,4 +31,9 @@ release
 # lockfile
 package-lock.json
 pnpm-lock.yaml
+<<<<<<< HEAD
 yarn.lock
+out/
+=======
+yarn.lock
+>>>>>>> 0f2e3a320f3eaa672ce2b6dddf77bfe6ca56dec9
