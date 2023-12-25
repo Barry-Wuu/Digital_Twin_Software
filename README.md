@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # electron-vite-vue
 
 🥳 Really simple `Electron` + `Vue` + `Vite` boilerplate.
@@ -9,6 +10,13 @@
 <!-- [![GitHub forks](https://img.shields.io/github/forks/caoxiemeihao/electron-vite-vue)](https://github.com/electron-vite/electron-vite-vue) -->
 [![GitHub Build](https://github.com/electron-vite/electron-vite-vue/actions/workflows/build.yml/badge.svg)](https://github.com/electron-vite/electron-vite-vue/actions/workflows/build.yml)
 [![GitHub Discord](https://img.shields.io/badge/chat-discord-blue?logo=discord)](https://discord.gg/sRqjYpEAUK)
+=======
+# 数字孪生工具前端项目
+数字孪生工具的前端界面，技术栈包括：Vue + Threejs + Electron
+
+## 平台文档
+1. [Git使用配置指南](https://p605z95310.zicp.fun/SCUTCaiHu/DT-FrontEnd/src/branch/main/docs/Git%E4%BD%BF%E7%94%A8%E9%85%8D%E7%BD%AE%E6%8C%87%E5%8D%97.md)
+>>>>>>> 0f2e3a320f3eaa672ce2b6dddf77bfe6ca56dec9
 
 ## Features
 
@@ -76,4 +84,8 @@ export default {
 ## FAQ
 
 - [C/C++ addons, Node.js modules - Pre-Bundling](https://github.com/electron-vite/vite-plugin-electron-renderer#dependency-pre-bundling)
+<<<<<<< HEAD
 - [dependencies vs devDependencies](https://github.com/electron-vite/vite-plugin-electron-renderer#dependencies-vs-devdependencies)
+=======
+- [dependencies vs devDependencies](https://github.com/electron-vite/vite-plugin-electron-renderer#dependencies-vs-devdependencies)
+>>>>>>> 0f2e3a320f3eaa672ce2b6dddf77bfe6ca56dec9
