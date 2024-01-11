@@ -1,12 +1,3 @@
-<template>
-  <a-cascader
-    v-model:value="value"
-    :options="options"
-    :display-render="displayRender"
-    expand-trigger="hover"
-    placeholder="选项1"
-  />
-</template>
 <script lang="ts">
   import { defineComponent, ref } from 'vue';
   interface Option {
@@ -44,3 +35,13 @@
     },
   });
 </script>
+
+<template>
+  <a-cascader
+    v-model:value="value"
+    :options="options"
+    :display-render="displayRender"
+    expand-trigger="hover"
+    placeholder="选项1"
+  />
+</template>
