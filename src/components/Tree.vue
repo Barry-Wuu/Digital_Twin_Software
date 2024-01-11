@@ -34,8 +34,10 @@
           let tree = []
           for(let item of node){
             tree.push({
-              key: item.id,
               item: item,
+              key: item.id,
+              name: item.name,
+              title: '1',
               type: item.type,
               children: this.expand(item.children)
             })
@@ -44,8 +46,9 @@
         },
       },
       setup() {
-        function onSelect(selectedKeys, info){
-          BUS.emit("chooseModel", info.selectedNodes[0].model);
+        function onSelect(selectedKeys, data){
+          console.log(data)
+          BUS.emit("chooseModel", data.selectedNodes[0].item);
         };
         return {onSelect, searchValue, TREE};
       },
@@ -55,19 +58,20 @@
     <a-input-search v-model:value="searchValue" enter-button placeholder="搜索" style="margin-bottom: 8px" />
     <br/>
     <a-tree :tree-data="expand(TREE)" @select="onSelect" show-line>
-      <template #title="type">
-        <DragOutlined v-if="type.type=='AxesHelper'"/>
-        <BorderlessTableOutlined v-if="type.type=='GridHelper'"/>
-        <BulbOutlined v-if="type.type.includes('Light')"/>
-        <CodepenOutlined v-if="type.type=='Mesh'"/>
-        <DropboxOutlined v-if="type.type=='Scene'"/>
-        <span v-if="type.type.indexOf(searchValue) > -1">
-          {{ type.type.substr(0, type.type.indexOf(searchValue)) }}
+      <template #title="item">
+        <DragOutlined v-if="item.type=='AxesHelper'"/>
+        <BorderlessTableOutlined v-if="item.type=='GridHelper'"/>
+        <BulbOutlined v-if="item.type.includes('Light')"/>
+        <CodepenOutlined v-if="item.type=='Mesh'"/>
+        <DropboxOutlined v-if="item.type=='Scene'"/>
+        <span v-if="item.type.indexOf(searchValue) > -1">
+          {{ item.type.substr(0, item.type.indexOf(searchValue)) }}
           <span style="color: #f50">{{ searchValue }}</span>
-          {{ type.type.substr(type.type.indexOf(searchValue) + searchValue.length) }}
+          {{ item.type.substr(item.type.indexOf(searchValue) + searchValue.length) }}
         </span>
-        <span v-else>{{ type.type }}</span>
-        {{ item }}
+        <span v-else>{{ item.type }}</span>
+        <span v-if="item.name">:&nbsp{{ item.name }}</span>
+        {{ item.key }}
       </template> 
     </a-tree>  
 </template>

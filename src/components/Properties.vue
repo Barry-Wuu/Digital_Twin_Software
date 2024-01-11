@@ -4,13 +4,12 @@
 
   const angle = Math.PI / 180;
   const IN = ref({});
-  BUS.on('chooseModel', (data)=>{IN.value = data})
+  BUS.on('chooseModel', (data)=>{
+    IN.value = data
+    console.log(data)
+  })
   
   export default{
-    inject:['model'],
-    methods:{
-      abc(){alert(IN)}
-    },
     setup(){
       return {angle, IN}
     },
