@@ -1,4 +1,5 @@
 import { collapseMotion } from 'ant-design-vue/es/_util/transition';
+import { access } from 'original-fs';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { ref, toRaw } from 'vue';
@@ -58,7 +59,7 @@ export default class SceneBuilder{
         // LINE
         this.material = new THREE.LineBasicMaterial( { color: 0xffffff } );
         // GRID
-        const gridHelper = new THREE.GridHelper();
+        const gridHelper = new THREE.GridHelper(50,50);
         this.scene.add( gridHelper );
         this.ground = gridHelper;
         //AXES
@@ -66,10 +67,16 @@ export default class SceneBuilder{
         this.scene.add( axesHelper );
         //LIGHTS
         var light = new THREE.Light(0xFFFFFF, 10, 100);
-        light.position.set( 10, 10, 10 );
+        light.position.set( 5, 5, 5 );
         this.scene.add( light );
-        this.light = new THREE.AmbientLight(0xaaaaaa)
-        this.scene.add( this.light );
+        this.scene.add( new THREE.AmbientLight(0xaaaaaa) );
+        let geom = new THREE.Mesh( 
+            new THREE.PlaneGeometry(50, 50), 
+            new THREE.MeshBasicMaterial({ color: "darkblue" })
+        );
+        geom.rotation.name = "地面"
+        geom.rotation.x = -Math.PI / 2
+        this.scene.add( geom );
     }
     render = () => {
         requestAnimationFrame( this.render );
