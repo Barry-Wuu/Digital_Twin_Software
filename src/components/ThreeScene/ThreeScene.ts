@@ -35,17 +35,19 @@ export default defineComponent({
         },
         event2ground(e){
           const mouse = new THREE.Vector2(e.offsetX*2/e.target.width-1, 1-e.offsetY*2/e.target.height)
-          const ray = new THREE.Raycaster();
+          const ray = new THREE.Raycaster();  // 射线
           ray.setFromCamera(mouse, this.scene.camera);
-          const P0 = ray.ray.origin;
-          const P = ray.ray.direction;
-          const k = -P0.y/P.y
-          return {x:P0.x+k*P.x, z:P0.z+k*P.z}
+          for(let intersect of ray.intersectObject(this.scene.scene)){
+            if(intersect.object.type == "Mesh" 
+            && intersect.object != dragModel && intersect.object != tempModel){
+              return intersect.point;
+            }
+          }
+          return new THREE.Vector3( 999, 999, 999 )  // 若无交点
         },
         hover(e){
           e.preventDefault();
-          const xz = this.event2ground(e);
-          this.set3(tempModel.position, [xz.x, 0, xz.z])
+          this.set3(tempModel.position, this.event2ground(e))
           this.scene.scene.traverse(
             (obj)=>{
               let box = new THREE.Box3().setFromObject(tempModel);  // 包围盒
@@ -57,7 +59,7 @@ export default defineComponent({
               }  
             }
           )
-          this.set3(dragModel.position, [xz.x, tempModel.position.y, xz.z])
+          this.set3(dragModel.position, tempModel.position)
         },
         leave(){
           dragModel.parent.remove(dragModel);
@@ -65,11 +67,10 @@ export default defineComponent({
         preview(e){
           let data = dragName.data;
           if(dragName.type != "modelName")return;
-          const xz = this.event2ground(e);
-          dragModel = this.scene.createGeometry(data, [xz.x, 0.0, xz.z])
+          dragModel = this.scene.createGeometry(data, this.event2ground(e))
           dragModel.material.transparent = true;
           dragModel.material.opacity = 0.5;
-          tempModel = this.scene.createGeometry(data, [xz.x, 0.0, xz.z])
+          tempModel = this.scene.createGeometry(data, dragModel.position)
           tempModel.visible = false;
           boundingBox = new THREE.Box3().setFromObject(dragModel);  // 包围盒
         },
@@ -82,8 +83,8 @@ export default defineComponent({
         },
         redirectToDetailed(){},
         remove(){this.scene.scene.remove(dragModel)},
-        set3(vector3, x){
-          vector3.x = x[0]; vector3.y = x[1]; vector3.z = x[2]; 
+        set3(vector3, p){
+          vector3.x = p.x; vector3.y = p.y; vector3.z = p.z; 
         },
         updateTree(){
           BUS.emit("updateModel", this.scene.Scene())

@@ -66,20 +66,38 @@ export default class SceneBuilder{
         const axesHelper = new THREE.AxesHelper( 50 );
         this.scene.add( axesHelper );
         //LIGHTS
-        var light = new THREE.Light(0xFFFFFF, 10, 100);
-        light.position.set( 5, 5, 5 );
+        this.scene.add( new THREE.AmbientLight(0xffffff) );
+        var light = new THREE.DirectionalLight( 0xffffff, 0.5 );
+        light.castShadow = true
+        light.position.set(0, 10, 0);
+        light.shadow.mapSize.set(2048, 2048);
+
+        // 设置阴影贴图模糊度
+
+        light.shadow.radius = 20;
+
+        // 设置平行光投射相机的属性
+
+        light.shadow.camera.near = 0.5; //产生阴影的最近距离
+        light.shadow.camera.far = 500; //产生阴影的最远距离
+        light.shadow.camera.left = -5; //产生阴影距离位置的最左边位置
+        light.shadow.camera.right = 5; //最右边
+        light.shadow.camera.top = 5; //最上边
+        light.shadow.camera.bottom = -5; //最下面
         this.scene.add( light );
-        this.scene.add( new THREE.AmbientLight(0xaaaaaa) );
+        
         let geom = new THREE.Mesh( 
             new THREE.PlaneGeometry(50, 50), 
-            new THREE.MeshBasicMaterial({ color: "darkblue" })
+            new THREE.MeshStandardMaterial({ color: "darkblue" })
         );
-        geom.rotation.name = "地面"
+        geom.receiveShadow = true
+        geom.name = "地面"
         geom.rotation.x = -Math.PI / 2
         this.scene.add( geom );
     }
     render = () => {
         requestAnimationFrame( this.render );
+        this.renderer.shadowMap.enabled = true
         this.renderer.render(toRaw(this.scene), this.camera)
         this.controls.update();
     }
