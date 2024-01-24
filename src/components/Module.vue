@@ -5,10 +5,10 @@
     import Menu from './Menu.vue'
     import Models from './Models.vue'
     import Properties from './Properties.vue'
-    import Three from './ThreeScene/ThreeScene.vue'
+    import Screen from './ThreeScene/Screen.vue'
     import Tree from './Tree.vue'
     export default defineComponent({
-        components:{Container, Menu, Models, Properties, Three, Tree},
+        components:{Container, Menu, Models, Properties, Screen, Tree},
         props:{modules:[], row:Number, tabs:[]}, 
         setup(props) {
             const getIMG = path => {  // src为预览时的图片根目录，public/assets为打包后对应的图片根目录
@@ -99,7 +99,7 @@
                     </div>  
                     <div v-if="pane=='场景'" style="display:block">  
                         <Menu style="width:100%"/>  
-                        <Three style="border:1px solid black"/>
+                        <Screen style="border:1px solid black"/>
                     </div>  
                     <div v-if="pane=='资源'">  
                         <Container/>
