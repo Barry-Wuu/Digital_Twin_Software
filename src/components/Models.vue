@@ -10,23 +10,23 @@
 
 <script lang="ts">
   var models = {
+    "传送带": [
+      ["直道",'../assets/electron.svg'],
+      ["弯道",'../assets/logo.svg'],
+      ["护栏",'../assets/vue.svg'],
+      ["模型2d",'../assets/vite.svg'],
+    ],
+    "货物": [
+      ["发生器",'../assets/vite.svg'],
+      ["回收器",'../assets/electron.svg'],
+      ["货物",'../assets/logo.svg'],
+      ["模型3d",'../assets/vue.svg'],
+    ],
     "基本几何体":[
       ["正方体",'../assets/cube.jpg'],
       ["球",'../assets/sphere.jpg'],
       ["锥体",'../assets/pyramid.jpg'],
       ["圆柱",'../assets/cone.jpg'],
-    ],
-    "类别2": [
-      ["模型2a",'../assets/electron.svg'],
-      ["模型2b",'../assets/logo.svg'],
-      ["模型2c",'../assets/vue.svg'],
-      ["模型2d",'../assets/vite.svg'],
-    ],
-    "类别3": [
-      ["模型3a",'../assets/vite.svg'],
-      ["模型3b",'../assets/electron.svg'],
-      ["模型3c",'../assets/logo.svg'],
-      ["模型3d",'../assets/vue.svg'],
     ],
   }
   //let active0 = []
@@ -55,9 +55,10 @@
         activeKeys,
         models,
       }
+    },
+    mounted(){
     }
   }
-
 </script>
 
 <template>
@@ -72,7 +73,8 @@
     <a-collapse v-model:activeKey="activeKeys" :default-active-key="activeAll" id="collapse">
       <a-collapse-panel v-for="(value, key, index) in models" :header="key" :key="index" style="text-align: left;">
         <div style = "display: flex; flex-wrap: wrap;">
-          <a-card v-for="item in value" hoverable draggable="true" @dragstart="transfer($event, item[0])" 
+          <a-card v-for="item in value" hoverable draggable="true" 
+          @dragstart="transfer($event, {modeltype:key, modelname:item[0]})" 
            style="width:100px; height:120px; text-align: center;">
             <img :src="getIMG(item[1])" draggable="false" style="width:100%; height:100%"/>
             {{item[0]}}
