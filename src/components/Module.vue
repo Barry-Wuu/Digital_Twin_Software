@@ -2,10 +2,12 @@
 <script lang="ts">
     import { defineComponent, ref } from 'vue'
     import Container from './Container.vue'
+    
     import Menu from './Menu.vue'
     import Models from './Models.vue'
     import Properties from './Properties.vue'
     import Screen from './ThreeScene/Screen.vue'
+    import Demo from './Demo.vue'
     import Tree from './Tree.vue'
     export default defineComponent({
         components:{Container, Menu, Models, Properties, Screen, Tree},
@@ -66,6 +68,7 @@
         </div>      
         <Module v-else :row="2" :tabs="item.split('+')"/>  
     </div>
+
     <div v-else-if="row==0" v-for="(item, i) in tabs" 
     style="display:block; width:100%; display:inline; overflow:hidden" 
     ><!--列模块-->
@@ -79,6 +82,7 @@
         </div>
         <Module v-else :row="2" :tabs="item.split('+')"/>
     </div>
+
     <div v-else style="
         border:1px solid black; 
         display:flex;
@@ -87,25 +91,28 @@
         overflow: scroll scroll;
     "><!--模块-->
         <a-tabs v-model:activeKey="activeKey" :hideAdd="true" type="editable-card" @edit="onEdit">
-            <a-tab-pane v-for="pane in tabs" :key="pane" :tab="pane" :closable="true">
+            <a-tab-pane v-for="tab in tabs" :key="tab" :tab="tab" :closable="true">
                 <div>
-                    <div v-if="pane=='模型'" style="display:flex">
-                        <div v-if="pane=='模型'" style="display:inline">
+                    <div v-if="tab=='模型'" style="height:100%; ">
+                        <div v-if="tab=='模型'" style="display:inline">
                         <Models :getIMG="getIMG"/>
                     </div>
                     </div>
-                    <div v-if="pane=='层级'" style="display:block;">  
+                    <div v-if="tab=='层级'" style="display:block;">  
                         <Tree/>
                     </div>  
-                    <div v-if="pane=='场景'" style="display:block">  
+                    <div v-if="tab=='场景'" style="display:block">  
                         <Menu style="width:100%"/>  
                         <Screen style="border:1px solid black"/>
                     </div>  
-                    <div v-if="pane=='资源'">  
+                    <div v-if="tab=='演示场景'" style="display:block">  
+                        <Demo style="border:1px solid black"/>
+                    </div>  
+                    <div v-if="tab=='资源'">  
                         <Container/>
                     </div> 
-                    <p v-if="pane=='控制台'" id="log" style="text-align:left"/> 
-                    <div v-if="pane=='属性'" style="display:flex">  
+                    <p v-if="tab=='控制台'" id="log" style="text-align:left"/> 
+                    <div v-if="tab=='属性'" style="display:flex">  
                         <Properties/>
                     </div>
                 </div>  

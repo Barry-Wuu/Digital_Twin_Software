@@ -1,7 +1,4 @@
-<style lang="scss">@import "./ThreeScene.scss"</style>
-
-<script lang="ts" src="./ThreeScene.ts">
-</script>
+<script lang="ts" src="./ThreeScene.ts"></script>
 
 <template>
     <div 
