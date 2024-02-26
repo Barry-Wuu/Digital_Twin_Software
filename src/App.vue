@@ -133,6 +133,8 @@
             divContent.appendChild(document.getElementById("page2"))
           }else if(ID == "场景"){
             divContent.appendChild(document.getElementById("page3"))
+          }else if(ID == "演示场景"){
+            divContent.appendChild(document.getElementById("pagedemo"))
           }else if(ID == "资源"){
             divContent.appendChild(document.getElementById("page4"))
           }else if(ID == "控制台"){
@@ -236,7 +238,7 @@
     <div style = "height: calc(100vh - 100px);">
       <Module :modules="{'Module': Module}" :row="1" :tabs='[
         [25,[50,"模型"],[50,"层级"]],
-        [50,[67,"场景"],[33,"资源+控制台"]],
+        [50,[67,"场景+演示场景"],[33,"资源+控制台"]],
         [25,"属性"]
       ]'/>
     </div>

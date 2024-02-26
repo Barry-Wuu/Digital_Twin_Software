@@ -6,12 +6,14 @@ import BUS from "../EventBus"
 var cameraPosition;
 var cameraRotation;
 var dragModel;
+var dragMovable = true;  // 拖动刚体
 var dragName;
 var move = false;  // 用鼠标移动模型
-var moveStart;  // 用左键移动镜头之前，射线检测器与地面的交点
+var moveStart = null;  // 用左键移动镜头之前，射线检测器与地面的交点
 var mouseType;  // 判断鼠标按键类型
 const ray = new THREE.Raycaster();  // 从鼠标发出的射线检测器
 var tempModel;
+var tempOpacity;
 var tempPosition = null;
 
 export default defineComponent({
@@ -36,13 +38,14 @@ export default defineComponent({
           if(dragName.type != "modelName")return;
           dragModel = this.scene.createGeometry(modelName, this.event2face(e)[1]);console.log(dragModel)
           dragModel.material.transparent = true;
-          dragModel.material.opacity = 0.5;
+          tempOpacity = dragModel.material.opacity;
+          dragModel.material.opacity = tempOpacity/2;
           tempModel = dragModel.clone();
           tempModel.visible = false;
         },
         dragover(e){
           e.preventDefault();
-          if(tempModel){
+          if(tempModel && dragModel){
             tempModel.position.set(0, 0, 0)
             let box = new THREE.Box3().setFromObject(tempModel);
             let int = this.event2face(e)
@@ -60,9 +63,11 @@ export default defineComponent({
           tempModel.parent.remove(tempModel);
         },
         drop(){
-          dragModel.material.opacity = 1;
+          dragModel.material.opacity = tempOpacity;
+          if(dragModel.movable){this.scene.createRigidBody(dragModel)}
           dragModel = null;
           dragName.data.modeltype = null;
+          dragMovable = false;
           tempModel.clear();
           this.updateTree();
         },
@@ -88,37 +93,48 @@ export default defineComponent({
           return new THREE.Vector3( 999, 999, 999 )  // 若无交点
         },
         mousedown(e){
-          let choice = this.event2face(e)[0];
-          if(choice != this.scene.ground){
-            if(choice) BUS.emit("clickModel", choice);
-            dragModel = choice;
-            tempModel = dragModel.clone();
-            //tempModel.visible = false;
-            move = true;
+          mouseType = e.button;
+          if(mouseType == 0){  // 左键点击
+            let choice = this.event2face(e)[0];console.log(choice.movable)
+            if(choice != this.scene.ground){
+              if(choice.movable){
+                this.scene.removeRigidBody(choice);
+                dragMovable = true;
+              }
+              if(choice) BUS.emit("clickModel", choice);
+              dragModel = choice;
+              tempModel = dragModel.clone();
+              tempOpacity = dragModel.material.opacity;
+              move = true;
+            }
+            else{
+              BUS.emit("deselect")
+            }
           }
-          else{
-            BUS.emit("deselect")
+          else{  // 中键或右键点击
             tempPosition = new THREE.Vector2(e.offsetX*2/e.target.width-1, 1-e.offsetY*2/e.target.height);
             ray.setFromCamera(tempPosition, this.scene.camera);  // 射线检测
             moveStart = ray.intersectObject(this.scene.ground)[0].point;
             cameraPosition = this.scene.camera.position;
             cameraRotation = this.scene.camera.rotation;
-            mouseType = e.button;
           };
         },
         mousemove(e){
           if(moveStart){
             const mouse = new THREE.Vector2(e.offsetX*2/e.target.width-1, 1-e.offsetY*2/e.target.height);
             ray.setFromCamera(mouse, this.scene.camera);  // 射线检测
-            let move = ray.intersectObject(this.scene.ground)[0].point;
-            if(mouseType == 1){  // 中键移动镜头
-              this.scene.camera.position.x = cameraPosition.x - move.x + moveStart.x;
-              this.scene.camera.position.y = cameraPosition.y - move.y + moveStart.y;
+            try{
+              let move = ray.intersectObject(this.scene.ground)[0].point;
+              if(mouseType == 1){  // 中键移动镜头
+                this.scene.camera.position.x = cameraPosition.x - move.x + moveStart.x;
+                this.scene.camera.position.y = cameraPosition.y - move.y + moveStart.y;
+              }
+              else if (mouseType == 2){  // 右键旋转镜头
+                this.scene.camera.rotation.y = cameraRotation.y + (tempPosition.x - mouse.x)/10;
+                this.scene.camera.rotation.x = cameraRotation.x + (mouse.y - tempPosition.y)/10;
+              }
             }
-            else if (mouseType == 2){  // 右键旋转镜头
-              this.scene.camera.rotation.y = cameraRotation.y + (tempPosition.x - mouse.x)/10;
-              this.scene.camera.rotation.x = cameraRotation.x + (mouse.y - tempPosition.y)/10;
-            }
+            catch (e) {} 
           }
         },
         print(x){
@@ -153,14 +169,14 @@ export default defineComponent({
     },
     mounted(){
         this.scene = new SceneBuilder(this.$refs.sketch)
-        this.scene.render()
+        this.scene.init()
         window.addEventListener('keydown', (e)=>{if(e.key == "Delete"){
           BUS.emit("deleteChoice");
         }});
         window.addEventListener('mousedown', this.mousedown, false);
         window.addEventListener('mousemove', (e)=>{move ? this.dragover(e) : this.mousemove(e)}, false);
         window.addEventListener('mouseup', (e)=>{
-          if(move){this.drop(e); move=false}
+          if(move){this.drop(e); move = false}
           else{ moveStart = null;}
         }, false);
         window.addEventListener('resize', this.updateWindowWidth);

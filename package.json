@@ -50,6 +50,7 @@
   },
   "dependencies": {
     "@vueuse/core": "^10.6.1",
+    "ammo.js": "^0.0.10",
     "ant-design-vue": "^4.0.0-rc.6",
     "antd": "^4.24.15",
     "cross-env": "^7.0.3",
