@@ -39,7 +39,7 @@
           else  // 再次点击模型则取消选择
             choices.value = choices.value.filter(x => x!=model.id);
         });
-        BUS.on("deleteChoice", ()=>{
+        BUS.on("deleteChoices", ()=>{
           for(let id of choices.value)  // 删除项不在选项中，则只删除“删除项”
             SCENE.getObjectById(id).removeFromParent();
           choices.value = [];

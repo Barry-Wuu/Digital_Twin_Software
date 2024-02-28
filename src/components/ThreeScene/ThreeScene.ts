@@ -40,11 +40,13 @@ export default defineComponent({
           dragModel.material.transparent = true;
           tempOpacity = dragModel.material.opacity;
           dragModel.material.opacity = tempOpacity/2;
+          dragModel.isDrag = true;
           tempModel = dragModel.clone();
           tempModel.visible = false;
         },
         dragover(e){
           e.preventDefault();
+          dragModel.isDrag = true;
           if(tempModel && dragModel){
             tempModel.position.set(0, 0, 0)
             let box = new THREE.Box3().setFromObject(tempModel);
@@ -63,8 +65,9 @@ export default defineComponent({
           tempModel.parent.remove(tempModel);
         },
         drop(){
+          dragModel.isDrag = false;
           dragModel.material.opacity = tempOpacity;
-          if(dragModel.movable){this.scene.createRigidBody(dragModel)}
+          if(dragModel.rigid){this.scene.createRigidBody(dragModel)}
           dragModel = null;
           dragName.data.modeltype = null;
           dragMovable = false;
@@ -95,9 +98,9 @@ export default defineComponent({
         mousedown(e){
           mouseType = e.button;
           if(mouseType == 0){  // 左键点击
-            let choice = this.event2face(e)[0];console.log(choice.movable)
+            let choice = this.event2face(e)[0];
             if(choice != this.scene.ground){
-              if(choice.movable){
+              if(choice.rigid){
                 this.scene.removeRigidBody(choice);
                 dragMovable = true;
               }
@@ -171,7 +174,7 @@ export default defineComponent({
         this.scene = new SceneBuilder(this.$refs.sketch)
         this.scene.init()
         window.addEventListener('keydown', (e)=>{if(e.key == "Delete"){
-          BUS.emit("deleteChoice");
+          BUS.emit("deleteChoices");
         }});
         window.addEventListener('mousedown', this.mousedown, false);
         window.addEventListener('mousemove', (e)=>{move ? this.dragover(e) : this.mousemove(e)}, false);
