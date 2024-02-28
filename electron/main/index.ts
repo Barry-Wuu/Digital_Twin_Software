@@ -53,6 +53,7 @@ async function createWindow() {
       contextIsolation: false,
     },
   })
+  win.setMenuBarVisibility(false)  // 隐藏窗口顶部工具栏，刷新按Ctrl+R，控制台按Ctrl+Shift+I
 
   if (process.env.VITE_DEV_SERVER_URL) { // electron-vite-vue#298
     win.loadURL(url)

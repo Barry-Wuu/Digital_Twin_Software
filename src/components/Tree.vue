@@ -164,7 +164,9 @@
     v-model:selectedKeys = "choices"><!--搜索树-->
       <template #title="obj">
         <a-dropdown :trigger="['contextmenu']">
-          <span v-if="obj.type != 'BoxHelper' && title(obj).indexOf(searchValue) > -1">
+          <span v-if="obj.type != 'BoxHelper' && 
+                      obj.mesh.geometry.type != 'ShapeGeometry'
+                      && title(obj).indexOf(searchValue) > -1">
             <DragOutlined v-if="obj.type=='AxesHelper'"/>
             <BorderlessTableOutlined v-if="obj.type=='GridHelper'"/>
             <BulbOutlined v-if="obj.type && obj.type.includes('Light')"/>

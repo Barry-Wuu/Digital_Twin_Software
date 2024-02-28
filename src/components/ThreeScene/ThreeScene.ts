@@ -99,6 +99,7 @@ export default defineComponent({
           mouseType = e.button;
           if(mouseType == 0){  // 左键点击
             let choice = this.event2face(e)[0];
+            if(choice.geometry.type == "ShapeGeometry") choice = choice.parent;
             if(choice != this.scene.ground){
               if(choice.rigid){
                 this.scene.removeRigidBody(choice);
@@ -160,10 +161,10 @@ export default defineComponent({
           this.updateWindowWidth()
         },
         wheel(e){
-          const target = this.event2face(e)[1];
           if(dragModel){  // 拖动物体+滚轮=旋转物体
             dragModel.rotateZ(e.deltaY*Math.PI/1200);
           }else{  // 滚轮放缩镜头
+            const target = this.event2face(e)[1];
             const k = 0.4;
             this.scene.camera.position = this.scene.camera.position.multiplyScalar(1+k*e.deltaY/100)
             .addScaledVector(target.position, -k*e.deltaY/100);

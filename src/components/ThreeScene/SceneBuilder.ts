@@ -7,6 +7,26 @@ import { ref, toRaw } from 'vue';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import BUS from "../EventBus"
 
+var DTObjects = [];  // 用DTObject类包裹场景中的对象
+class DTObject {  
+    obj: Object;
+    type: string;
+    constructor(obj) {  
+        this.obj = obj;  
+        this.type = "DTObject";
+        obj.DT = this;
+        DTObjects.push(this);
+    }  
+    destroy() {  
+        let rb = this.obj.userData.physicsBody;
+        rb_mesh.delete(rb.ptr);
+        physicsWorld.removeRigidBody( rb );
+        this.obj.removeFromParent();
+        this.obj.remove();
+        DTObjects = DTObjects.filter(x => x != this);  
+    }  
+}  
+
 var loader = new STLLoader();
 window.SCENE = {}
 window.wireframes = {}
@@ -110,6 +130,18 @@ export default class SceneBuilder{
             console.log(this.controls, this.camera.rotation);
         });
     }
+    createArrow(x, y, theta){  // 指示箭头(横坐标，纵坐标，旋转角)
+        let theta0 = theta * Math.PI / 180;
+        let theta1 = (theta+90) * Math.PI / 180;
+        let theta2 = (theta-90) * Math.PI / 180;
+        const triangle = new THREE.Shape();
+        triangle.moveTo(x + 2*Math.cos(theta0), y + 2*Math.sin(theta0));
+        triangle.lineTo(x + 0.5*Math.cos(theta1), y + 0.5*Math.sin(theta1));
+        triangle.lineTo(x + 0.5*Math.cos(theta2), y + 0.5*Math.sin(theta2));
+        const geom = new THREE.ShapeGeometry(triangle);
+        const material = new THREE.MeshBasicMaterial( { color: "white" } );
+        return new THREE.Mesh( geom, material ) ;
+    }
     createRigidBody( mesh ) {  // 添加刚体
         let pos = mesh.position;
         let quat = mesh.quaternion;
@@ -133,58 +165,76 @@ export default class SceneBuilder{
         rb.setFriction(0.5);
     }
     createGeometry(data, position: Object){
-        let material = null, scene = this.scene;
+        let indicators = [];  // 传送带的指示箭头
         let name = data.modeltype + '-' + data.modelname;
-        let mass, shape, rigid = false, scale = 1;
+        let mass, material, shape, rigid = false, scale = 1;
         console.log(name)
         if(data.modeltype == "传送带"){  
-            loader.load(`src/assets/models/传送带-${data.modelname}.stl`, function(geom){
-                window.geom = geom;
-            });
-            this.material = { color: "lightgray" };
+            if(data.modelname == "护栏"){
+                window.geom = new THREE.BoxGeometry( 2, 0.5, 1 );
+                shape = new Ammo.btBoxShape( new Ammo.btVector3( 1, 0.25, 0.5 ) );
+            }
+            else{
+                loader.load(`src/assets/models/传送带-${data.modelname}.stl`, function(geom){
+                    window.geom = geom;
+                });
+                scale = 0.05;
+                shape = this.geom2Shape(geom, scale);
+            }
+            material = { color: "lightgray" };
+            if(data.modelname == "直道") indicators = [this.createArrow(0.5, 0, 0)]
+            if(data.modelname == "弯道") indicators = [this.createArrow(-5, 0, 90)]
+            mass = 0;
+            rigid = true;     
+        }
+        else if(name == "货物-发生器"){  
+            window.geom = new THREE.BoxGeometry( 1, 1, 1 );
+            material = { color: "lime", opacity: 0.5, transparent: true };
+        }
+        else if(name == "货物-回收器"){  
+            window.geom = new THREE.BoxGeometry( 1, 1, 1 );
+            material = { color: "red", opacity: 0.5, transparent: true };
             mass = 0;
             rigid = true;
-            scale = 0.05;
-            shape = this.geom2Shape(geom, scale);
+            shape = new Ammo.btBoxShape( new Ammo.btVector3( 0.5, 0.5, 0.5 ) ); 
         }
-        if(name == "货物-发生器"){  
-            window.geom = new THREE.BoxGeometry( 1, 1, 1 );
-            this.material = { color: "lime", opacity: 0.5, transparent: true };
-        }
-        if(name == "货物-回收器"){  
-            window.geom = new THREE.BoxGeometry( 1, 1, 1 );
-            this.material = { color: "red", opacity: 0.5, transparent: true };
-        }
-        if(name == "货物-货物"){  
-            window.geom = new THREE.BoxGeometry( 1, 1, 1 );
-            this.material = { color: "blue" };
+        else if(name == "货物-货物"){  
+            geom = new THREE.BoxGeometry( 1, 1, 1 );
+            material = { color: "blue" };
             mass = 1;
             rigid = true;
             shape = new Ammo.btBoxShape( new Ammo.btVector3( 0.5, 0.5, 0.5 ) ); 
         }
-        if(name == "基本几何体-正方体"){
+        else if(name == "基本几何体-正方体"){
             window.geom = new THREE.BoxGeometry( 1, 1, 1 );
-            this.material = { color: "lime" };
-        };
-        if(name == "基本几何体-球"){
+            material = { color: "lime" };
+        }
+        else if(name == "基本几何体-球"){
             window.geom = new THREE.SphereGeometry( 0.5 );
-            this.material = { color: "red" };
+            material = { color: "red" };
         }
-        if(name == "基本几何体-锥体"){
+        else if(name == "基本几何体-锥体"){
             window.geom = new THREE.ConeGeometry( 0.5, 1, 12 );
-            this.material = { color: "yellow" };
+            material = { color: "yellow" };
         }
-        if(name == "基本几何体-圆柱"){
+        else if(name == "基本几何体-圆柱"){
             window.geom = new THREE.CylinderGeometry(0.5, 0.5);
-            this.material = { color: "blue" };
+            material = { color: "blue" };
         }
-        material = new THREE.MeshPhongMaterial(this.material);
+
+        material = new THREE.MeshPhongMaterial(material);
         let mesh = new THREE.Mesh( window.geom, material );
         if(data.modeltype == "基本几何体"){
             mesh.rotateX(Math.PI/2);
         }
         mesh.name = data.modelname;
-        let wireframe = new THREE.BoxHelper(mesh, "white");
+        let wireframe = new THREE.BoxHelper(mesh, "white");  // 线框
+        if(indicators.length){
+            for(let i of indicators){
+                i.scale.set(1/scale, 1/scale, 1/scale);
+                mesh.add(i);
+            }
+        }
         wireframe.visible = false;
         mesh.castShadow = true;
         mesh.rigid = rigid;
@@ -200,6 +250,7 @@ export default class SceneBuilder{
             mesh.shape = shape;
         }
         this.scene.add(mesh);
+        new DTObject(mesh);
         return(mesh);
     }  
     geom2Shape(geom, scale){  // 从几何形状建立刚体形状
@@ -232,7 +283,7 @@ export default class SceneBuilder{
     }
     removeRigidBody( mesh ){  // 移除刚体
         let rb = mesh.userData.physicsBody;
-        rb_mesh.delete(rb);
+        rb_mesh.delete(rb.ptr);
         physicsWorld.removeRigidBody( rb );
         mesh.userData = {};
     }
@@ -256,7 +307,7 @@ export default class SceneBuilder{
             if(mesh0.name == "货物"){
                 // 摩擦力 F = kmg(v0-v)/||v0-v||，v和v0为向量
                 // 设置动摩擦系数k、质量m、货物速度v、传送带速度v0、传送带旋转角θ 
-                let k = 1, m = mesh0.mass, v, v0, theta=mesh1.rotation.z;
+                let k = 2, m = mesh0.mass, v, v0, theta=mesh1.rotation.z;
                 if(mesh1.name == "直道"){
                     v0 = new Ammo.btVector3(Math.cos(theta), Math.sin(theta), 0);
                     v = rb0.getLinearVelocity();
@@ -270,8 +321,8 @@ export default class SceneBuilder{
                     let r = new THREE.Vector3();
                     r.add(mesh0.position).sub(mesh1.position)
                     r.setZ(0);
-                    let R = r.length();  // 当货物到弯道的半径为3.8≤R≤6.4时施力
-                    if(R>=3.8 && R<=6.4){
+                    let R = r.length();  // 当货物到弯道的半径为3.2≤R≤6.4时施力
+                    if(R>=3.2 && R<=6.4){
                         v0 = new Ammo.btVector3(r.y, -r.x, 0);
                         v0.normalize();
                         v0.op_mul(1);
@@ -282,6 +333,7 @@ export default class SceneBuilder{
                         rb0.applyCentralForce(force);
                     }  
                 }
+                else if(mesh1.name == "回收器"){mesh0.DT.destroy();}
             }
         }
     }
@@ -296,9 +348,6 @@ export default class SceneBuilder{
                     motionState.getWorldTransform( transformAux1 );
                     const p = transformAux1.getOrigin();
                     const q = transformAux1.getRotation();
-                    const dispatcher = physicsWorld.getDispatcher();
-
-                    // 货物在弯道上时需修正网格位置
                     mesh.position.set( p.x(), p.y(), p.z() );
                     mesh.quaternion.set( q.x(), q.y(), q.z(), q.w() );
                 }

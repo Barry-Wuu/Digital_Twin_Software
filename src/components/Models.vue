@@ -70,19 +70,21 @@
   />
   <a-dropdown :trigger="['contextmenu']">
     <div id="main">
-    <a-collapse v-model:activeKey="activeKeys" :default-active-key="activeAll" id="collapse">
-      <a-collapse-panel v-for="(value, key, index) in models" :header="key" :key="index" style="text-align: left;">
-        <div style = "display: flex; flex-wrap: wrap;">
-          <a-card v-for="item in value" hoverable draggable="true" 
-          @dragstart="transfer($event, {modeltype:key, modelname:item[0]})" 
-           style="width:100px; height:120px; text-align: center;">
-            <img :src="getIMG(item[1])" draggable="false" style="width:100%; height:100%"/>
-            {{item[0]}}
-          </a-card>
-        </div>
-      </a-collapse-panel>
-    </a-collapse>
-  </div>
+      <a-collapse v-model:activeKey="activeKeys" :default-active-key="activeAll" id="collapse">
+        <a-collapse-panel v-for="(value, key, index) in models" :header="key" :key="index" style="text-align: left;">
+          <div style = "flex-wrap: wrap;">
+            <a-card v-for="item in value" hoverable draggable="true" 
+            @dragstart="transfer($event, {modeltype:key, modelname:item[0]})" 
+            style="display:flex; width:100%; height:50px; text-align: center;">
+              <template #cover>
+                  <img :src="getIMG(item[1])" draggable="false" style="display:flex; width:100%; height:100%"/>
+              </template>
+              <p style="display:flex; margin-top: -10px;">{{item[0]}}</p>
+            </a-card>
+          </div>
+        </a-collapse-panel>
+      </a-collapse>
+    </div>
     <template #overlay>
       <a-menu @click="(x)=>{
         if(x.key == 'A'){
