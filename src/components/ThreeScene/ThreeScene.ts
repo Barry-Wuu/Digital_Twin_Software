@@ -5,6 +5,7 @@ import BUS from "../EventBus"
 
 var cameraPosition;
 var cameraRotation;
+var canvas;
 var dragModel;
 var dragMovable = true;  // 拖动刚体
 var dragName;
@@ -24,11 +25,11 @@ export default defineComponent({
     data(){
       BUS.on('dragstart', (data)=>{dragName = data;});
       BUS.on('dropout', ()=>dragModel.remove());
+      BUS.on('resize', ()=>this.resize());
       BUS.on('updateTree0', ()=>this.updateTree());
       return{
           sketch:null,
           description:null,
-          width: 540,
           rendered:false,
       }
     },
@@ -150,16 +151,19 @@ export default defineComponent({
         },
         redirectToDetailed(){},
         remove(){this.scene.scene.remove(dragModel)},
+        resize() {  //让画布大小和父组件大小相适应
+          let tab = canvas;
+          for(let i=0; i<4; i++){tab = tab.parentElement;}
+          const width = canvas.clientWidth;  
+          const height = tab.clientHeight - tab.children[0].clientHeight;  
+          this.scene.renderer.setSize(width, height);
+          this.scene.camera.aspect = width / height;
+          this.scene.camera.updateProjectionMatrix();
+        },
         Scene(){
           return this.scene ? this.scene.scene : null ;
         },
         updateTree(){BUS.emit('updateTree', this.scene.scene)},
-        updateWindowWidth() {
-          this.scene.camera.aspect = window.innerWidth / window.innerHeight;
-          this.scene.camera.updateProjectionMatrix();
-          this.scene.renderer.setSize( window.innerWidth, window.innerHeight );
-          this.updateWindowWidth()
-        },
         wheel(e){
           if(dragModel){  // 拖动物体+滚轮=旋转物体
             dragModel.rotateZ(e.deltaY*Math.PI/1200);
@@ -183,13 +187,12 @@ export default defineComponent({
           if(move){this.drop(e); move = false}
           else{ moveStart = null;}
         }, false);
-        window.addEventListener('resize', this.updateWindowWidth);
+        canvas = document.getElementById('canvas');  
         this.rendered = true;
+        this.resize();
         this.updateTree();
     },
-    beforeDestroy() {
-        window.removeEventListener('resize', this.updateWindowWidth);
-    },
+    beforeDestroy() {},
     computed:{}
   }
 );

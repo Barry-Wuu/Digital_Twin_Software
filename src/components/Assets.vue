@@ -25,7 +25,7 @@
 <template><!--index暂时没用上-->
   <div style="margin-left: 1em">
     <a-breadcrumb>
-      <a-breadcrumb-item>路径</a-breadcrumb-item>
+      <a-breadcrumb-item>场景</a-breadcrumb-item>
       <a-breadcrumb-item>路径1</a-breadcrumb-item>
     </a-breadcrumb>
   </div>
