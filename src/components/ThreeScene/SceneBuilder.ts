@@ -18,6 +18,7 @@ class DTObject {
         DTObjects.push(this);
     }  
     destroy() {  
+        console.log(this);
         let rb = this.obj.userData.physicsBody;
         rb_mesh.delete(rb.ptr);
         physicsWorld.removeRigidBody( rb );
@@ -64,14 +65,12 @@ export default class SceneBuilder{
         window.SCENE = this.scene;
         // 渲染器
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
-        this.renderer.setSize( 540, 540 );
         this.renderer.shadowMap.enabled = true;
         this.root.appendChild( this.renderer.domElement );
         // 天空
         this.scene.background = new THREE.Color("dodgerblue");
+        // 相机
         this.cameraSetup();
-        // 相机控制器
-        //this.group.add(this.camera);
         //this.controls = new OrbitControls( this.camera, this.renderer.domElement );
         //this.controls.mouseButtons = {LEFT: -1,MIDDLE: -1,RIGHT: THREE.MOUSE.ROTATE};
         // 网格
@@ -310,6 +309,7 @@ export default class SceneBuilder{
                 let k = 2, m = mesh0.mass, v, v0, theta=mesh1.rotation.z;
                 if(mesh1.name == "直道"){
                     v0 = new Ammo.btVector3(Math.cos(theta), Math.sin(theta), 0);
+                    v0.op_mul(2);
                     v = rb0.getLinearVelocity();
                     let force = new Ammo.btVector3();
                     force.op_add(v0).op_sub(v).normalize();
@@ -325,7 +325,7 @@ export default class SceneBuilder{
                     if(R>=3.2 && R<=6.4){
                         v0 = new Ammo.btVector3(r.y, -r.x, 0);
                         v0.normalize();
-                        v0.op_mul(1);
+                        v0.op_mul(2);
                         v = rb0.getLinearVelocity();
                         let force = new Ammo.btVector3();
                         force.op_add(v0).op_sub(v).normalize();
