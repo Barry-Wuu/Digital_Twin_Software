@@ -1,4 +1,4 @@
-import { defineComponent, onMounted, ref, watch } from "vue";
+import { defineComponent, ref, watch } from "vue";
 import * as THREE from 'three';
 import SceneBuilder from './SceneBuilder';
 import BUS from "../EventBus"
@@ -21,23 +21,22 @@ export default defineComponent({
     name:"ThreeScene",
     props:{},
     components:{},
-    setup(){},
     data(){
       BUS.on('dragstart', (data)=>{dragName = data;});
       BUS.on('dropout', ()=>dragModel.remove());
       BUS.on('resize', ()=>this.resize());
-      BUS.on('updateTree0', ()=>this.updateTree());
       return{
-          sketch:null,
-          description:null,
-          rendered:false,
+        sketch: null,
+        description: null,
+        rendered: false,
       }
     },
     methods:{
         dragenter(e){
           let modelName = dragName.data;
           if(dragName.type != "modelName")return;
-          dragModel = this.scene.createGeometry(modelName, this.event2face(e)[1]);console.log(dragModel)
+          dragModel = this.scene.createGeometry(modelName, this.event2face(e)[1]);
+          console.log(dragModel);
           dragModel.material.transparent = true;
           tempOpacity = dragModel.material.opacity;
           dragModel.material.opacity = tempOpacity/2;
@@ -73,7 +72,6 @@ export default defineComponent({
           dragName.data.modeltype = null;
           dragMovable = false;
           tempModel.clear();
-          this.updateTree();
         },
         event2face(e){
           if(dragName.data.modeltype == "传送带") return this.event2ground(e);
@@ -155,7 +153,7 @@ export default defineComponent({
           let tab = canvas;
           for(let i=0; i<4; i++){tab = tab.parentElement;}
           const width = canvas.clientWidth;  
-          const height = tab.clientHeight - tab.children[0].clientHeight;  
+          const height = tab.clientHeight - tab.children[0].clientHeight - 4;  
           this.scene.renderer.setSize(width, height);
           this.scene.camera.aspect = width / height;
           this.scene.camera.updateProjectionMatrix();
@@ -163,7 +161,6 @@ export default defineComponent({
         Scene(){
           return this.scene ? this.scene.scene : null ;
         },
-        updateTree(){BUS.emit('updateTree', this.scene.scene)},
         wheel(e){
           if(dragModel){  // 拖动物体+滚轮=旋转物体
             dragModel.rotateZ(e.deltaY*Math.PI/1200);
@@ -178,21 +175,18 @@ export default defineComponent({
     mounted(){
         this.scene = new SceneBuilder(this.$refs.sketch)
         this.scene.init()
-        window.addEventListener('keydown', (e)=>{if(e.key == "Delete"){
+        this.$refs.sketch.addEventListener('keydown', (e)=>{if(e.key == "Delete"){
           BUS.emit("deleteChoices");
         }});
-        window.addEventListener('mousedown', this.mousedown, false);
-        window.addEventListener('mousemove', (e)=>{move ? this.dragover(e) : this.mousemove(e)}, false);
-        window.addEventListener('mouseup', (e)=>{
+        this.$refs.sketch.addEventListener('mousedown', this.mousedown, false);
+        this.$refs.sketch.addEventListener('mousemove', (e)=>{move ? this.dragover(e) : this.mousemove(e)}, false);
+        this.$refs.sketch.addEventListener('mouseup', (e)=>{
           if(move){this.drop(e); move = false}
           else{ moveStart = null;}
         }, false);
         canvas = document.getElementById('canvas');  
         this.rendered = true;
         this.resize();
-        this.updateTree();
     },
-    beforeDestroy() {},
-    computed:{}
   }
 );

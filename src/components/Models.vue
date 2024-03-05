@@ -70,7 +70,7 @@
   />
   <a-dropdown :trigger="['contextmenu']">
     <div id="main">
-      <a-collapse v-model:activeKey="activeKeys" :default-active-key="activeAll" id="collapse">
+      <a-collapse accordion v-model:activeKey="activeKeys" :default-active-key="activeAll" id="collapse">
         <a-collapse-panel v-for="(value, key, index) in models" :header="key" :key="index" style="text-align: left;">
           <div style = "flex-wrap: wrap;">
             <a-card v-for="item in value" hoverable draggable="true" 

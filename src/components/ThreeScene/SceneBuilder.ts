@@ -3,31 +3,54 @@ import * as THREE from 'three';
 import * as Ammo from 'ammo.js';  
 import { ColladaLoader } from 'three/examples/jsm/loaders/COLLADALoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { ref, toRaw } from 'vue';
+import { ref, toRaw, watch } from 'vue';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import BUS from "../EventBus"
 
-var DTObjects = [];  // 用DTObject类包裹场景中的对象
-class DTObject {  
-    obj: Object;
-    type: string;
+class DTObject {  // 用DTObject类包裹场景中的对象
+    children: []
+    item: DTObject
+    key: number
+    mesh: THREE.Object
+    name: string
+    title: string
+    type: string
     constructor(obj) {  
-        this.obj = obj;  
-        this.type = "DTObject";
+        this.children = [];
+        this.key = obj.id;
+        this.mesh = obj;
+        this.name = obj.name;    
+        this.type = obj.type;
+        this.title = this.getTitle();
         obj.DT = this;
-        DTObjects.push(this);
+        DTObjects.value.push(this);
+        return this;
     }  
     destroy() {  
         console.log(this);
-        let rb = this.obj.userData.physicsBody;
+        let rb = this.mesh.userData.physicsBody;
         rb_mesh.delete(rb.ptr);
         physicsWorld.removeRigidBody( rb );
-        this.obj.removeFromParent();
-        this.obj.remove();
-        DTObjects = DTObjects.filter(x => x != this);  
+        this.mesh.removeFromParent();
+        this.mesh.remove();
+        DTObjects.value = DTObjects.value.filter(x => x != this);  
     }  
+    getDTObjects() {return DTObjects;}
+    getTitle() {  // 物体在树中的标题 = 类型 + 名称 
+        return this.type + (this.name ? ": " + this.name : '');
+    }
+    updateChildren() {  // 刷新DTObject的父子关系
+        this.children = []
+        for(let child of this.mesh.children){
+            if(child.DT){
+                this.children.push(child.DT);
+                child.DT.updateChildren();
+            }
+        }
+    }
 }  
 
+var DTObjects = ref([]);
 var loader = new STLLoader();
 window.SCENE = {}
 window.wireframes = {}
@@ -35,11 +58,8 @@ window.wireframes = {}
 const clock = new THREE.Clock();
 const g = 9.8;
 const G = new Ammo.btVector3( 0, 0, -g )
-var rigidBodies = [];
 const margin = 1e-5;
 let animate;
-let hinge;
-let cloth;
 let physicsWorld;
 let transformAux1;
 // 碰撞体到刚体和网格的映射表，因为碰撞检测时碰撞体和刚体不同，而两者ptr相同，所以需要用ptr在此表中查找刚体和网格
@@ -47,8 +67,10 @@ var rb_mesh = new Map();
 
 export default class SceneBuilder{
     camera: THREE.PerspectiveCamera
-    material
     controls: OrbitControls
+    DTScene: DTObject
+    DTObjects = DTObjects
+    material
     ground
     group
     renderer: THREE.WebGLRenderer
@@ -63,6 +85,7 @@ export default class SceneBuilder{
         this.root = root;
         this.scene = new THREE.Scene();
         window.SCENE = this.scene;
+        this.DTScene = new DTObject(this.scene);
         // 渲染器
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.shadowMap.enabled = true;
@@ -88,15 +111,13 @@ export default class SceneBuilder{
         light.shadow.camera.right = 10;
         light.shadow.camera.top = 10;
         light.shadow.camera.bottom = - 10;
-
         light.shadow.camera.near = 2;
         light.shadow.camera.far = 50;
-
         light.shadow.mapSize.x = 1024;
         light.shadow.mapSize.y = 1024;
-
         light.shadow.bias = - 0.003;
         this.scene.add( light );
+        new DTObject(light);
         // 地面
         this.ground = new THREE.Mesh( 
             new THREE.PlaneGeometry(100, 100), 
@@ -113,6 +134,13 @@ export default class SceneBuilder{
         this.ground.wireframe = wireframe;
         wireframe.visible = false;
         this.ground.add(wireframe);
+        new DTObject(this.ground);
+        // 物体数量变化时
+        watch(DTObjects.value, ()=>{
+            this.DTScene.updateChildren();
+            window.DTScene = this.DTScene;
+            BUS.emit('updateTree');
+        }, { immediate:true });
     }
     cameraSetup (){
         this.camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 100 );
