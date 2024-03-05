@@ -123,8 +123,6 @@
           for(let obj of DTObjects){
             for(let child of obj.mesh.children){
               if(child.type == "BoxHelper"){
-                console.log(x)
-                console.log(obj)
                 child.visible = x.includes(obj.key);
               }
             };

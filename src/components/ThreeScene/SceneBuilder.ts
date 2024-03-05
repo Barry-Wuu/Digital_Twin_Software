@@ -52,6 +52,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
 
 var DTObjects = ref([]);
 var loader = new STLLoader();
+var speed = 1;
 window.SCENE = {}
 window.wireframes = {}
 // 物理量
@@ -64,6 +65,10 @@ let physicsWorld;
 let transformAux1;
 // 碰撞体到刚体和网格的映射表，因为碰撞检测时碰撞体和刚体不同，而两者ptr相同，所以需要用ptr在此表中查找刚体和网格
 var rb_mesh = new Map();
+BUS.on("changeSpeed", (k)=>{
+    k = parseInt(k.slice(0, k.length-1));
+    speed = k;
+})
 
 export default class SceneBuilder{
     camera: THREE.PerspectiveCamera
@@ -333,11 +338,12 @@ export default class SceneBuilder{
             }
             if(mesh0.name == "货物"){
                 // 摩擦力 F = kmg(v0-v)/||v0-v||，v和v0为向量
-                // 设置动摩擦系数k、质量m、货物速度v、传送带速度v0、传送带旋转角θ 
-                let k = 2, m = mesh0.mass, v, v0, theta=mesh1.rotation.z;
+                // 设置转动惯量J，动摩擦系数k（转动摩擦系数kw）、质量m、货物速度v、传送带速度v0、传送带旋转角θ 
+                let J = 10, k = 0.5, kw = 0.5, m = mesh0.mass, v, v0, theta=mesh1.rotation.z;
+                let R = 5, speed0 = 2;  // 传送带中轴线半径与速度
                 if(mesh1.name == "直道"){
                     v0 = new Ammo.btVector3(Math.cos(theta), Math.sin(theta), 0);
-                    v0.op_mul(2);
+                    v0.op_mul(speed0);
                     v = rb0.getLinearVelocity();
                     let force = new Ammo.btVector3();
                     force.op_add(v0).op_sub(v).normalize();
@@ -349,16 +355,23 @@ export default class SceneBuilder{
                     let r = new THREE.Vector3();
                     r.add(mesh0.position).sub(mesh1.position)
                     r.setZ(0);
-                    let R = r.length();  // 当货物到弯道的半径为3.2≤R≤6.4时施力
-                    if(R>=3.2 && R<=6.4){
+                    let ra = r.length();  // 径向矢量r的绝对值
+                    if(ra>=3.2 && ra<=6.4){
+                        // 当货物到弯道的半径为3.2≤R≤6.4时向其质心施力
                         v0 = new Ammo.btVector3(r.y, -r.x, 0);
                         v0.normalize();
-                        v0.op_mul(2);
+                        v0.op_mul(speed0 * ra / R);
                         v = rb0.getLinearVelocity();
-                        let force = new Ammo.btVector3();
-                        force.op_add(v0).op_sub(v).normalize();
-                        force.op_mul(k*m*g);
-                        rb0.applyCentralForce(force);
+                        let F = new Ammo.btVector3();
+                        F.op_add(v0).op_sub(v).normalize();
+                        F.op_mul(k*m*g);
+                        rb0.applyCentralForce(F);
+                        // 然后施加转矩
+                        let w0 = -v0.length() / ra;
+                        let w = rb0.getAngularVelocity().z();
+                        let M = new Ammo.btVector3(0, 0, kw * J * (w0 - w));
+                        console.log(M.z())
+                        rb0.applyTorque(M);
                     }  
                 }
                 else if(mesh1.name == "回收器"){mesh0.DT.destroy();}
@@ -366,7 +379,7 @@ export default class SceneBuilder{
         }
     }
     updatePhysics( deltaTime ) {  // 步进
-        physicsWorld.stepSimulation( deltaTime );  // 更新刚体
+        for(let i=0; i<speed; i++)physicsWorld.stepSimulation( deltaTime );  // 更新刚体
         for(let obj of rb_mesh.values()){  // 让网格位置等于刚体位置
             const rb = obj.rb, mesh = obj.mesh;
             if(!mesh) continue;
