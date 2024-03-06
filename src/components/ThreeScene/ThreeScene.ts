@@ -13,6 +13,7 @@ var move = false;  // 用鼠标移动模型
 var moveStart = null;  // 用左键移动镜头之前，射线检测器与地面的交点
 var mouseType;  // 判断鼠标按键类型
 const ray = new THREE.Raycaster();  // 从鼠标发出的射线检测器
+var shift = false;
 var tempModel;
 var tempOpacity;
 var tempPosition = null;
@@ -26,7 +27,6 @@ export default defineComponent({
       BUS.on('dropout', ()=>dragModel.remove());
       BUS.on('resize', ()=>this.resize());
       return{
-        sketch: null,
         description: null,
         rendered: false,
       }
@@ -61,8 +61,8 @@ export default defineComponent({
           }
         },
         dragleave(){
-          dragModel.parent.remove(dragModel);
-          tempModel.parent.remove(tempModel);
+          dragModel.DT.destroy();
+          tempModel.remove();
         },
         drop(){
           dragModel.isDrag = false;
@@ -72,9 +72,10 @@ export default defineComponent({
           dragName.data.modeltype = null;
           dragMovable = false;
           tempModel.clear();
+          BUS.emit("updateTree");
         },
         event2face(e){
-          if(dragName.data.modeltype == "传送带") return this.event2ground(e);
+          if(dragName && dragName.data.modeltype == "传送带") return this.event2ground(e);
           const mouse = new THREE.Vector2(e.offsetX*2/e.target.width-1, 1-e.offsetY*2/e.target.height);
           ray.setFromCamera(mouse, this.scene.camera);  // 射线检测
           for(let intersect of ray.intersectObject(this.scene.scene)){
@@ -94,6 +95,10 @@ export default defineComponent({
           }
           return new THREE.Vector3( 999, 999, 999 )  // 若无交点
         },
+        onKeydown(k){
+          if(k.code == "Delete") BUS.emit("deleteChoices");
+          else if(k.code == "ShiftLeft") shift = true;
+        },
         mousedown(e){
           mouseType = e.button;
           if(mouseType == 0){  // 左键点击
@@ -104,7 +109,7 @@ export default defineComponent({
                 this.scene.removeRigidBody(choice);
                 dragMovable = true;
               }
-              if(choice) BUS.emit("clickModel", choice);
+              if(choice) BUS.emit("clickModel", choice.id +','+shift);
               dragModel = choice;
               tempModel = dragModel.clone();
               tempOpacity = dragModel.material.opacity;
@@ -173,14 +178,15 @@ export default defineComponent({
         }
     },
     mounted(){
-        this.scene = new SceneBuilder(this.$refs.sketch)
-        this.scene.init()
-        this.$refs.sketch.addEventListener('keydown', (e)=>{if(e.key == "Delete"){
-          BUS.emit("deleteChoices");
-        }});
-        this.$refs.sketch.addEventListener('mousedown', this.mousedown, false);
-        this.$refs.sketch.addEventListener('mousemove', (e)=>{move ? this.dragover(e) : this.mousemove(e)}, false);
-        this.$refs.sketch.addEventListener('mouseup', (e)=>{
+        this.scene = new SceneBuilder(this.$refs.canvas)
+        this.scene.init();
+        this.$refs.canvas.addEventListener('keyup', (k)=>{
+          console.log(k)
+          if(k.code == "ShiftLeft"){shift = false;}
+        });
+        this.$refs.canvas.addEventListener('mousemove', 
+          (e)=>{move ? this.dragover(e) : this.mousemove(e)}, false);
+        this.$refs.canvas.addEventListener('mouseup', (e)=>{
           if(move){this.drop(e); move = false}
           else{ moveStart = null;}
         }, false);

@@ -10,7 +10,11 @@
         @dragleave = "dragleave"
         @dragover = "dragover" 
         @drop = "drop"
+        @mousedown = "mousedown"
+        @keydown = "onKeydown"
         @wheel = "wheel"
-        ref="sketch"
+        ref="canvas"
+        style="outline:none;"
+        tabindex="0"
     />
 </template>
