@@ -17,6 +17,7 @@ var shift = false;
 var tempModel;
 var tempOpacity;
 var tempPosition = null;
+var up = new THREE.Vector3(0, 0, 1);
 
 export default defineComponent({
     name:"ThreeScene",
@@ -67,7 +68,7 @@ export default defineComponent({
         drop(){
           dragModel.isDrag = false;
           dragModel.material.opacity = tempOpacity;
-          if(dragModel.rigid){this.scene.createRigidBody(dragModel)}
+          if(dragModel.DT.rigid){this.scene.createRigidBody(dragModel)}
           dragModel = null;
           dragName.data.modeltype = null;
           dragMovable = false;
@@ -166,9 +167,9 @@ export default defineComponent({
         Scene(){
           return this.scene ? this.scene.scene : null ;
         },
-        wheel(e){
+        wheel(e){  // 滚轮事件
           if(dragModel){  // 拖动物体+滚轮=旋转物体
-            dragModel.rotateZ(e.deltaY*Math.PI/1200);
+            dragModel.rotateOnWorldAxis(up, e.deltaY*Math.PI/1200);
           }else{  // 滚轮放缩镜头
             const target = this.event2face(e)[1];
             const k = 0.4;
@@ -181,7 +182,6 @@ export default defineComponent({
         this.scene = new SceneBuilder(this.$refs.canvas)
         this.scene.init();
         this.$refs.canvas.addEventListener('keyup', (k)=>{
-          console.log(k)
           if(k.code == "ShiftLeft"){shift = false;}
         });
         this.$refs.canvas.addEventListener('mousemove', 

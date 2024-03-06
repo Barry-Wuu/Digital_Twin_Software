@@ -9,6 +9,7 @@ import BUS from "../EventBus"
 
 var DTObjects = ref([]);
 var loader = new STLLoader();
+var origin = new THREE.Vector3(0, 0, 0);
 var protectedObjects = [];
 var speed = 1;
 window.SCENE = {}
@@ -20,7 +21,6 @@ const G = new Ammo.btVector3( 0, 0, -g )
 const margin = 1e-5;
 let animate;
 let physicsWorld;
-let transformAux1;
 // 碰撞体到刚体和网格的映射表，因为碰撞检测时碰撞体和刚体不同，而两者ptr相同，所以需要用ptr在此表中查找刚体和网格
 var rb_mesh = new Map();
 BUS.on("changeSpeed", (k: String)=>{
@@ -29,19 +29,24 @@ BUS.on("changeSpeed", (k: String)=>{
 
 class DTObject {  // 用DTObject类包裹场景中的对象
     children: []
-    item: DTObject
+    friction: number
     key: number
     mass: number
     mesh: THREE.Object
     name: string
     rigid: bool
+    timer: number;
+    timeInterval: number;
     title: string
     type: string
     constructor(obj) {  
         this.children = [];
+        this.friction = 0.5;
         this.key = obj.id;
         this.mesh = obj;
-        this.name = obj.name;    
+        this.name = obj.name;
+        this.timer = 0;
+        this.timeInterval = 0;    
         this.type = obj.type;
         this.title = this.getTitle();
         obj.DT = this;
@@ -66,6 +71,36 @@ class DTObject {  // 用DTObject类包裹场景中的对象
     getDTObjects() {return DTObjects.value;}
     getTitle() {  // 物体在树中的标题 = 类型 + 名称 
         return this.type + (this.name ? ": " + this.name : '');
+    }
+    set(prop, delta) {
+        if(!this.rigid){  // 非刚体
+            if(prop == "x") this.mesh.position.x += delta;
+            if(prop == "y") this.mesh.position.y += delta;
+            if(prop == "z") this.mesh.position.z += delta;
+            if(prop == "rx") this.mesh.rotation.x += delta;
+            if(prop == "ry") this.mesh.rotation.y += delta;
+            if(prop == "rz") this.mesh.rotation.z += delta;
+        }else{
+            let rb = this.mesh.userData.physicsBody;
+            let transform = new Ammo.btTransform();
+            const motionState = rb.getMotionState();
+            motionState.getWorldTransform( transform );
+            const p = transform.getOrigin();
+            let q = new THREE.Quaternion();  // q代表四元数
+            const r = this.mesh.rotation;  // r代表欧拉角
+            if(prop == "x"){p.setX(p.x() + delta)}
+            if(prop == "y"){p.setY(p.y() + delta)}
+            if(prop == "z"){p.setZ(p.z() + delta)}
+            if(prop == 'rx'){r.x += delta};
+            if(prop == 'ry'){r.y += delta};
+            if(prop == 'rz'){r.z += delta};
+            q.setFromEuler(r);
+            q = new Ammo.btQuaternion(q.x, q.y, q.z, q.w);
+            transform.setOrigin(p);
+            transform.setRotation(q);
+            motionState.setWorldTransform( transform );
+            rb.setMotionState(motionState);
+        }
     }
     updateChildren() {  // 刷新DTObject的父子关系
         this.children = []
@@ -138,11 +173,11 @@ export default class SceneBuilder{
             new THREE.PlaneGeometry(100, 100), 
             new THREE.MeshPhongMaterial({ color: "grey" })
         );
+        this.ground.name = "地面";
         new DTObject(this.ground);
         protectedObjects.push(this.ground.id);
         this.ground.castShadow = true;
         this.ground.receiveShadow = true;
-        this.ground.name = "地面";
         this.ground.DT.mass = 0 // 不可动
         this.ground.shape = new Ammo.btBoxShape( new Ammo.btVector3( 50, 50, margin ) );
         this.scene.add( this.ground );
@@ -211,7 +246,8 @@ export default class SceneBuilder{
         let indicators = [];  // 传送带的指示箭头
         let name = data.modeltype + '-' + data.modelname;
         let mass, material, shape, rigid = false, scale = 1;
-        console.log(name)
+        let mesh = new THREE.Mesh();
+        let DT = new DTObject(mesh);
         if(data.modeltype == "传送带"){  
             if(data.modelname == "护栏"){
                 window.geom = new THREE.BoxGeometry( 2, 0.5, 1 );
@@ -233,6 +269,8 @@ export default class SceneBuilder{
         else if(name == "货物-发生器"){  
             window.geom = new THREE.BoxGeometry( 1, 1, 1 );
             material = { color: "lime", opacity: 0.5, transparent: true };
+            DT.timer = this.time();
+            DT.timeInterval = 3;
         }
         else if(name == "货物-回收器"){  
             window.geom = new THREE.BoxGeometry( 1, 1, 1 );
@@ -265,12 +303,10 @@ export default class SceneBuilder{
             material = { color: "blue" };
         }
 
-        material = new THREE.MeshPhongMaterial(material);
-        let mesh = new THREE.Mesh( window.geom, material );
-        if(data.modeltype == "基本几何体"){
-            mesh.rotateX(Math.PI/2);
-        }
-        mesh.name = data.modelname;
+        mesh.material = new THREE.MeshPhongMaterial(material);
+        mesh.geometry = window.geom;
+        if(data.modeltype == "基本几何体"){mesh.rotateX(Math.PI/2);}
+        DT.name = data.modelname;
         let wireframe = new THREE.BoxHelper(mesh, "white");  // 线框
         if(indicators.length){
             for(let i of indicators){
@@ -279,9 +315,8 @@ export default class SceneBuilder{
             }
         }
         wireframe.visible = false;
-        new DTObject(mesh);
         mesh.castShadow = true;
-        mesh.DT.rigid = rigid;
+        DT.rigid = rigid;
         mesh.receiveShadow = true;
         mesh.wireframe = wireframe
         mesh.add(wireframe);
@@ -290,7 +325,7 @@ export default class SceneBuilder{
             mesh.scale.set(scale, scale, scale);
         }
         if(rigid){
-            mesh.DT.mass = mass;
+            DT.mass = mass;
             mesh.shape = shape;
         }
         this.scene.add(mesh);
@@ -322,7 +357,6 @@ export default class SceneBuilder{
         const solver = new Ammo.btSequentialImpulseConstraintSolver();
         physicsWorld = new Ammo.btDiscreteDynamicsWorld(dispatcher, broadphase, solver, collisionConfiguration);
         physicsWorld.setGravity( G );
-        transformAux1 = new Ammo.btTransform();
     }
     removeRigidBody( mesh ){  // 移除刚体
         let rb = mesh.userData.physicsBody;
@@ -330,11 +364,14 @@ export default class SceneBuilder{
         physicsWorld.removeRigidBody( rb );
         mesh.userData = {};
     }
-    render = () => {
+    render(){
         this.updatePhysics( clock.getDelta() );
         this.renderer.render(toRaw(this.scene), this.camera)
         //this.controls.update();
     } 
+    time(){  // 获取当前时间戳，毫秒
+        return new Date().getTime();
+    }
     transport(){  // 检测物理世界中的物体是否与传送带碰撞，若有则施力
         const dispatcher = physicsWorld.getDispatcher();  
         for(var i=0; i<dispatcher.getNumManifolds(); i++){ 
@@ -344,35 +381,32 @@ export default class SceneBuilder{
             let rb0 = rb_mesh.get(ptr0).rb, rb1 = rb_mesh.get(ptr1).rb;
             let mesh0 = rb_mesh.get(ptr0).mesh, mesh1 = rb_mesh.get(ptr1).mesh;
             // 让货物排在前面
-            if(mesh1.name == "货物"){
+            if(mesh1.DT.name == "货物"){
                 let t=rb0; rb0=rb1; rb1=t; t=mesh0; mesh0=mesh1; mesh1=t; 
             }
-            if(mesh0.name == "货物"){
-                // 摩擦力 F = kmg(v0-v)/||v0-v||，v和v0为向量
-                // 设置转动惯量J，动摩擦系数k（转动摩擦系数kw）、质量m、货物速度v、传送带速度v0、传送带旋转角θ 
-                let J = 5;
-                let k = 0.5;
-                let kw = 0.5;
-                let m = mesh0.DT.mass;
-                let v;
-                let v0;
-                let theta = mesh1.rotation.z;
-                let R = 5, speed0 = 2;  // 传送带中轴线半径与速度
-                if(mesh1.name == "直道"){
+            if(mesh0.DT.name == "货物"){
+                let J = 5;  // 转动惯量J
+                let k = Math.min(mesh0.DT.friction, mesh1.DT.friction);  // 滑动摩擦系数k
+                let kw = 0.5;  // 转动摩擦系数kw
+                let m = mesh0.DT.mass;  // 质量m
+                let v;  // 货物速度v
+                let v0;  // 传送带中轴线速度v0
+                let theta = mesh1.rotation.z;  //传送带旋转角θ 
+                let R = 5, speed0 = 2;  // 传送带中轴线半径R
+                if(mesh1.DT.name == "直道"){
                     v0 = new Ammo.btVector3(Math.cos(theta), Math.sin(theta), 0);
                     v0.op_mul(speed0);
                     v = rb0.getLinearVelocity();
-                    let force = new Ammo.btVector3();
-                    force.op_add(v0).op_sub(v).normalize();
-                    force.op_mul(k*m*g);
-                    rb0.applyCentralForce(force);
+                    let F = new Ammo.btVector3();
+                    F.op_add(v0).op_sub(v).normalize();
+                    F.op_mul(k*m*g);
+                    rb0.applyCentralForce(F);
                 }
-                else if(mesh1.name == "弯道"){
-                    let p = mesh0.position
+                else if(mesh1.DT.name == "弯道"){
                     let r = new THREE.Vector3();
-                    r.add(mesh0.position).sub(mesh1.position)
+                    r.add(mesh0.position).sub(mesh1.position);
                     r.setZ(0);
-                    let ra = r.length();  // 径向矢量r的绝对值
+                    let ra = r.length();  // 径向矢量r=v0-v，模ra=||v0-v||
                     if(ra>=3.2 && ra<=6.4){
                         // 当货物到弯道的半径为3.2≤R≤6.4时向其质心施力
                         v0 = new Ammo.btVector3(r.y, -r.x, 0);
@@ -382,29 +416,50 @@ export default class SceneBuilder{
                         let F = new Ammo.btVector3();
                         F.op_add(v0).op_sub(v).normalize();
                         F.op_mul(k*m*g);
-                        rb0.applyCentralForce(F);
+                        rb0.applyCentralForce(F);  // 摩擦力 F = kmg(v0-v)/||v0-v||，v和v0为向量
                         // 然后施加转矩
-                        let w0 = -v0.length() / ra;
-                        let w = rb0.getAngularVelocity().z();
+                        let w0 = -v0.length() / ra;  //传送带角速度ω0 
+                        let w = rb0.getAngularVelocity().z();  //货物角速度ω0
                         let M = new Ammo.btVector3(0, 0, kw * J * (w0 - w));
-                        rb0.applyTorque(M);
+                        rb0.applyTorque(M);  // 同理，摩擦力矩 M = kw*J*(ω0-ω)
                     }  
                 }
-                else if(mesh1.name == "回收器"){mesh0.DT.destroy();}
+                else if(mesh1.DT.name == "回收器"){
+                    mesh0.DT.destroy();
+                    BUS.emit("print", `${mesh0.DT.name}${mesh0.id}被${mesh1.DT.name}${mesh1.id}回收`)
+                }
             }
         }
     }
     updatePhysics( deltaTime ) {  // 步进
         for(let i=0; i<speed; i++)physicsWorld.stepSimulation( deltaTime );  // 更新刚体
-        for(let obj of rb_mesh.values()){  // 让网格位置等于刚体位置
-            const rb = obj.rb, mesh = obj.mesh;
-            if(!mesh) continue;
+        for(let obj of DTObjects.value){  // 让网格位置等于刚体位置
+            const mesh = obj.mesh;
+            if(!obj.rigid){
+                if(obj.name == "发生器"){
+                    if(this.time() - obj.timer >= 5000){
+                        let mesh0 = this.createGeometry({modeltype:"货物", modelname:"货物"}, mesh.position);                      
+                        mesh0.rotation.copy(mesh.rotation);
+                        console.log(mesh0)
+                        this.createRigidBody(mesh0);
+                        console.log(mesh0)
+                        BUS.emit("print", `${obj.name}${obj.key}创建了${mesh0.DT.name}${mesh0.id}`);
+                        obj.timer = this.time();
+                    }
+                }
+                continue;
+            };
+            const rb = obj.mesh.userData.physicsBody;
             if(!mesh.isDrag){  // 刚体未被拖动时才计算
+                if(mesh.position.manhattanDistanceTo(origin) > 10000){
+                    mesh.DT.destroy();  // 物体太远则清除
+                }
                 const motionState = rb.getMotionState();
                 if ( motionState ) {
-                    motionState.getWorldTransform( transformAux1 );
-                    const p = transformAux1.getOrigin();
-                    const q = transformAux1.getRotation();
+                    let transform = new Ammo.btTransform();
+                    motionState.getWorldTransform( transform );
+                    const p = transform.getOrigin();
+                    const q = transform.getRotation();
                     mesh.position.set( p.x(), p.y(), p.z() );
                     mesh.quaternion.set( q.x(), q.y(), q.z(), q.w() );
                 }

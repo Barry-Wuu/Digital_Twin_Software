@@ -1,6 +1,7 @@
 <script lang="ts">
     import { defineComponent, ref } from 'vue'
     import Assets from './Assets.vue'
+    import Console from './Console.vue'
     import Menu from './Menu.vue'
     import Models from './Models.vue'
     import Properties from './Properties.vue'
@@ -8,17 +9,14 @@
     import Demo from './Demo.vue'
     import Tree from './Tree.vue'
     export default defineComponent({
-        components:{Assets, Menu, Models, Properties, Screen, Tree},
+        components:{Assets, Console, Menu, Models, Properties, Screen, Tree},
         methods:{
         },
         props:{modules:[], tabs:[]}, 
         setup(props) {
-            const getIMG = path => {  // src为预览时的图片根目录，public/assets为打包后对应的图片根目录
-                return new URL(`${path}`, import.meta.url).href
-            };
             const modules = ref(props.modules);
             const tabs = ref(props.tabs);
-            const activeKey = ref(tabs.value[0]);
+            const activeTab = ref(tabs.value[0]);
             const callback = (key: string) => {
             console.log(key);
             };
@@ -35,18 +33,17 @@
                     }
                 });
                 tabs.value = tabs.value.filter(tab => tab.key !== targetKey);
-                if (tabs.value.length && activeKey.value === targetKey) {
+                if (tabs.value.length && activeTab.value === targetKey) {
                     if (lastIndex >= 0) {
-                    activeKey.value = tabs.value[lastIndex].key;
+                        activeTab.value = tabs.value[lastIndex].key;
                     } else {
-                    activeKey.value = tabs.value[0].key;
+                        activeTab.value = tabs.value[0].key;
                     }
                 }
             };
             return {
-                activeKey, 
+                activeTab, 
                 callback, 
-                getIMG, 
                 H: () => window.innerHeight,  // H()为窗口高度
                 modules, 
                 onEdit, 
@@ -58,27 +55,25 @@
 </script>
   
 <template>
-    <a-tabs v-model:activeKey="activeKey" :hideAdd="true" type="editable-card" @edit="onEdit"
+    <a-tabs v-model:activeKey="activeTab" :hideAdd="true" type="editable-card" @edit="onEdit"
     style = "border:3px solid black; flex-grow: 1;">
-        <a-tab v-for="tab in tabs" :key="tab" :tab="tab" :closable="true" 
-        style="display: flex; flex-direction:column; height:100%; margin-top:-12px;">
+        <a-tab-pane v-for="tab in tabs" :key="tab" :tab="tab" :closable="false" 
+        style="height:100%; margin-top:-12px;">
             <div v-if="tab=='模型'" style="flex-grow: 1;">
                 <div v-if="tab=='模型'" style="display:inline">
-                <Models :getIMG="getIMG"/>
+                <Models/>
             </div>
             </div>
-            <div v-if="tab=='层级'" style="display:block;">  
-                <Tree/>
-            </div>  
+            <Tree v-if="tab=='层级'"/>
             <Screen v-if="tab=='场景'" style="flex-grow: 1;"/>
             <div v-if="tab=='演示场景'" style="display:block">  
                 <Demo style="border:1px solid black"/>
             </div>  
-            <Assets v-if="tab=='组件库'"></Assets>
-            <p v-if="tab=='控制台'" id="log" style="text-align:left"/> 
+            <Assets v-if="tab=='组件库'"/>
+            <Console v-if="tab=='控制台'"/>  
             <div v-if="tab=='属性'" style="display:flex">  
                 <Properties/>
             </div>
-        </a-tab>
+        </a-tab-pane>
     </a-tabs>
 </template>
