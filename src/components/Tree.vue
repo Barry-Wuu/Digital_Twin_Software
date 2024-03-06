@@ -3,6 +3,7 @@
     import {
         BorderlessTableOutlined,  // 网格图标
         BulbOutlined,  // 灯光图标
+        CloseOutlined,  // 清除图标
         CodepenOutlined,  //模型图标
         DragOutlined,  // 坐标轴图标
         DropboxOutlined,  // 根结点图标
@@ -19,15 +20,22 @@
     var expanded;  // 展开的选项
     var lastChoice;  //  上一个选项
     var shift = false;  // 是否按下Shift键
-    const searchValue = ref('');
+    const searchValue = ref("");
     var t0 = -999;
     var TREE = ref([]);
     var TREEs = ref([]);
-    
+    function emitProperty(){  // 将物体id发送到属性栏
+      let len = choices.value.length;
+      if(len == 0){BUS.emit("showProperty", "未选择对象")}
+      else if(len == 1){BUS.emit("showProperty", choices.value[0])}
+      else {BUS.emit("showProperty", `已选择${len}个对象`)}
+    }
+
     export default defineComponent({
       components: {
         BorderlessTableOutlined,
         BulbOutlined,
+        CloseOutlined,
         CodepenOutlined,
         DragOutlined,
         DropboxOutlined,
@@ -40,9 +48,9 @@
           let selection = JSON.parse(id_shift[0]);
           let shift = JSON.parse(id_shift[1]);
           if(shift){  // 按住shift为多选模式
-            if(choices.value.includes(selection)) 
+            if(choices.value.includes(selection))  // 多选取消
               choices.value = choices.value.filter(k => k != selection);
-            else choices.value = choices.value.concat([selection]);
+            else choices.value = choices.value.concat([selection]);  // 多选选择
           }
           else{
             choices.value = [selection]; 
@@ -65,6 +73,7 @@
             let DTObject = window.DTScene.findDTObjectByKey(key);
             if(DTObject) DTObject.destroy();
           }
+          BUS.emit("updateTree");
         },  // 删除所选模型
         deselect(){choices.value = []},  // 点别处取消点选模型
         onClick(_, Selection){  // 点击Tree中的项目
@@ -73,8 +82,11 @@
           let dt = time - t0;
           if(choices.value.length == 1 && selection == lastChoice)  // 取消选择
             choices.value = choices.value.filter(k => k != selection);
-          else if(shift)  // 按shift进入默认的多选模式
-            choices.value = choices.value.concat([selection]);
+          else if(shift){  // 按shift进入默认的多选模式
+            if(choices.value.includes(selection))  // 多选取消
+              choices.value = choices.value.filter(k => k != selection);
+            else choices.value = choices.value.concat([selection]);  // 多选选择
+          }
           else{
             choices.value = [selection];
             console.log(window.DTScene.findDTObjectByKey(selection))
@@ -83,7 +95,8 @@
           lastChoice = selection;
           t0 = time;
         },
-        onRightClick(option, obj){  // 右键菜单
+        onRightClick(option){  // 右键菜单
+          var obj;
           if(option == '取消选择') choices.value = []; 
           if(option == '克隆'){
             if(!choices.value.includes(obj.id)) choices.value = [obj.id]
@@ -97,28 +110,25 @@
             for(let id of temp)choices.value.push(id);
           }
           if(option == '删除'){
-            if(!choices.value.includes(obj.id)) choices.value = [obj.id]  // 删除项在选项中，则删除所有选项
-            for(let id of choices.value)  // 删除项不在选项中，则只删除“删除项”
-    
-            choices.value = []
+            this.deleteChoices();
           }
         },
         onKeydown(k){
           if(k.code == "Delete") {this.deleteChoices();}
           else if(k.code == "ShiftLeft") shift = true;
         },
-        updateChoice(c){  // 根据选项变化来确定被选物体，并展示或隐藏物体边框
-          if(choices.value.length == 1){
-            //BUS.emit("chooseModel")
-            //window.chosenModel = DTObjects.filter()
-          };
-          for(let obj of window.DTScene.getDTObjects()){
-            for(let child of obj.mesh.children){
-              if(child.type == "BoxHelper"){
-                child.visible = c.includes(obj.key);
-              }
-            };
-          };
+        search(){  // 搜索栏内容改变时
+          if(searchValue.value){
+            let result = [];
+            for(let obj of DTObjects){
+              if(obj.title.indexOf(searchValue.value) > -1) {
+                let obj0 = JSON.parse(JSON.stringify(obj));
+                obj0.children = [];  // 清除搜索项的父子关系
+                result.push(obj0)
+              };
+            }
+            TREEs.value = result;
+          }
         }
       },
       mounted(){
@@ -136,20 +146,8 @@
         function onExpand(k){
           expanded = k;
         };
-        function search(){  // 搜索栏内容改变时
-          if(searchValue.value){
-            let result = [];
-            for(let obj of DTObjects){
-              if(obj.title.indexOf(searchValue.value) > -1) result.push(obj);
-            }
-            TREEs.value = result;
-          }
-        };
         watch(choices, (x)=>{  // 根据选项变化来确定被选物体，并展示或隐藏物体边框
-          if(choices.value.length == 1){
-            //BUS.emit("chooseModel")
-            //window.chosenModel = DTObjects.filter()
-          };
+          emitProperty();
           for(let obj of window.DTScene.getDTObjects()){
             for(let child of obj.mesh.children){
               if(child.type == "BoxHelper"){
@@ -159,22 +157,25 @@
           };
         });
         watch(TREE, ()=>{BUS.emit('updateSearch');});
-        return {choices, onExpand, search, searchValue};
+        return {choices, onExpand, searchValue};
       },
     });
 </script>
 <template>
   <!--搜索栏-->
   <a-input-search v-model:value="searchValue" placeholder="搜索"
-    style="margin-bottom: 8px" @change="search()"/>
-  <br/>
-  <!--层级树-->
-  <div tabindex="0" @keydown = "onKeydown" style="outline: none">
-    <a-tree v-if="!searchValue" :tree-data="TREE" multiple selectable :show-icon="false"
-        @expand = "(k)=>{console.log(k)}" 
-        @select="onClick" :selectedKeys = "choices">
-      <template #title="obj">
-        <a-dropdown :trigger="['contextmenu']">
+    style="margin-bottom: 8px" @change="search()" @search="()=>{searchValue = ''}">
+      <template #enterButton>
+        <a-button :disabled="!searchValue" type="primary"><CloseOutlined/></a-button>
+      </template>
+  </a-input-search>
+  <a-dropdown :trigger="['contextmenu']">
+    <div tabindex="0" @keydown = "onKeydown" style="outline: none">
+      <!--层级树-->
+      <a-tree v-if="!searchValue" :tree-data="TREE" multiple selectable :show-icon="false"
+          @expand = "(k)=>{console.log(k)}" 
+          @select="onClick" :selectedKeys = "choices">
+        <template #title="obj">
           <span>
             <BorderlessTableOutlined v-if="obj.type=='GridHelper'"/>
             <BulbOutlined v-if="obj.type && obj.type.includes('Light')"/>
@@ -183,44 +184,36 @@
             <DropboxOutlined v-if="obj.type=='Scene'"/>
             {{ obj.title }}
           </span>
-          <template #overlay>
-            <a-menu @click="({ key: option }) => onRightClick(option, obj.item)">
-              <a-menu-item key="取消选择">取消选择</a-menu-item>
-              <a-menu-item key="克隆">克隆</a-menu-item>
-              <a-menu-item key="复制">复制</a-menu-item>
-              <a-menu-item key="粘贴">粘贴</a-menu-item>
-              <a-menu-item key="删除">删除</a-menu-item>
-            </a-menu>
-          </template>
-        </a-dropdown>
-      </template> 
-    </a-tree>  
-    <!--搜索树-->
-    <a-tree v-if="searchValue" :tree-data="TREEs" multiple @select="onClick" 
-        :selectedKeys = "choices">
-      <template #title="obj">
-        <a-dropdown :trigger="['contextmenu']">
-          <span>
-            <DragOutlined v-if="obj.type=='AxesHelper'"/>
-            <BorderlessTableOutlined v-if="obj.type=='GridHelper'"/>
-            <BulbOutlined v-if="obj.type && obj.type.includes('Light')"/>
-            <CodepenOutlined v-if="obj.type=='Mesh'"/>
-            <DropboxOutlined v-if="obj.type=='Scene'"/>
-            <span>&nbsp;{{ obj.title.substring(0, obj.title.indexOf(searchValue)) }}</span>
-            <span style="color: red"><strong>{{ searchValue }}</strong></span>
-            <span>{{ obj.title.substring(obj.title.indexOf(searchValue) + searchValue.length) }}</span>
-          </span>
-          <template #overlay>
-            <a-menu @click="({ key: option }) => onRightClick(option, obj.item)">
-              <a-menu-item key="取消选择">取消选择</a-menu-item>
-              <a-menu-item key="克隆">克隆</a-menu-item>
-              <a-menu-item key="复制">复制</a-menu-item>
-              <a-menu-item key="粘贴">粘贴</a-menu-item>
-              <a-menu-item key="删除">删除</a-menu-item>
-            </a-menu>
-          </template>
-        </a-dropdown>
-      </template> 
-    </a-tree>  
-  </div>
+        </template> 
+      </a-tree>  
+      <!--搜索树-->
+      <a-tree v-else :tree-data="TREEs" multiple @select="onClick" 
+          :selectedKeys = "choices">
+        <template #title="obj">
+          <a-dropdown :trigger="['contextmenu']">
+            <span>
+              <DragOutlined v-if="obj.type=='AxesHelper'"/>
+              <BorderlessTableOutlined v-if="obj.type=='GridHelper'"/>
+              <BulbOutlined v-if="obj.type && obj.type.includes('Light')"/>
+              <CodepenOutlined v-if="obj.type=='Mesh'"/>
+              <DropboxOutlined v-if="obj.type=='Scene'"/>
+              <span>&nbsp;{{ obj.title.substring(0, obj.title.indexOf(searchValue)) }}</span>
+              <span style="color: red"><strong>{{ searchValue }}</strong></span>
+              <span>{{ obj.title.substring(obj.title.indexOf(searchValue) + searchValue.length) }}</span>
+            </span>
+          </a-dropdown>
+        </template> 
+      </a-tree> 
+    </div>
+    <!--右键菜单-->
+    <template #overlay>
+      <a-menu @click="({ key: option }) => onRightClick(option)">
+        <a-menu-item key="取消选择">取消选择</a-menu-item>
+        <a-menu-item key="克隆">克隆</a-menu-item>
+        <a-menu-item key="复制">复制</a-menu-item>
+        <a-menu-item key="粘贴">粘贴</a-menu-item>
+        <a-menu-item key="删除">删除</a-menu-item>
+      </a-menu>
+    </template>
+  </a-dropdown> 
 </template>
