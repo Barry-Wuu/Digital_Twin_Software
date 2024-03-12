@@ -43,7 +43,7 @@
         border: 3px solid dodgerblue;
         display: flex;
         flex-direction: column;
-        width:100%; 
+        ; 
         height: 100%;"
         :style="{'overflowY': item.info == '场景' ? 'hidden' : 'scroll'}"
     >

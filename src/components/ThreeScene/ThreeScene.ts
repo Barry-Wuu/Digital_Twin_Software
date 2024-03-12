@@ -9,7 +9,7 @@ var canvas;
 var dragModel;
 var dragMovable = true;  // 拖动刚体
 var dragName;
-var move = false;  // 用鼠标移动模型
+var isDrag = false;  // 是否在用鼠标移动模型
 var moveStart = null;  // 用左键移动镜头之前，射线检测器与地面的交点
 var mouseType;  // 判断鼠标按键类型
 const ray = new THREE.Raycaster();  // 从鼠标发出的射线检测器
@@ -37,38 +37,39 @@ export default defineComponent({
           let modelName = dragName.data;
           if(dragName.type != "modelName")return;
           dragModel = this.scene.createGeometry(modelName, this.event2face(e)[1]);
-          console.log(dragModel);
+          dragModel.isDrag = true;
           dragModel.material.transparent = true;
           tempOpacity = dragModel.material.opacity;
           dragModel.material.opacity = tempOpacity/2;
-          dragModel.isDrag = true;
           tempModel = dragModel.clone();
           tempModel.visible = false;
         },
         dragover(e){
           e.preventDefault();
-          dragModel.isDrag = true;
           if(tempModel && dragModel){
-            tempModel.position.set(0, 0, 0)
+            tempModel.position.set(0, 0, 0);
             let box = new THREE.Box3().setFromObject(tempModel);
-            let int = this.event2face(e)
-            tempModel.position.copy(int[1])
-            tempModel.position.x -= (box.max.x+box.min.x)/2  // 将模型的包围盒中心移到鼠标
-            tempModel.position.y -= (box.max.y+box.min.y)/2
+            let intersect = this.event2face(e);
+            tempModel.position.copy(intersect[1]);
+            tempModel.position.x -= (box.max.x+box.min.x)/2;  // 将模型的包围盒中心移到鼠标
+            tempModel.position.y -= (box.max.y+box.min.y)/2;
             box = new THREE.Box3().setFromObject(tempModel);  // 包围盒
-            let box0 = new THREE.Box3().setFromObject(int[0]);
+            let box0 = new THREE.Box3().setFromObject(intersect[0]);
             tempModel.position.z += box0.max.z - box.min.z;
             dragModel.position.copy(tempModel.position);
           }
         },
         dragleave(){
-          dragModel.DT.destroy();
+          if(dragModel){
+            dragModel.DT.destroy();
+            dragModel = null;
+          }     
           tempModel.remove();
         },
         drop(){
           dragModel.isDrag = false;
           dragModel.material.opacity = tempOpacity;
-          if(dragModel.DT.rigid){this.scene.createRigidBody(dragModel)}
+          if(dragModel.DT.rigid){dragModel.DT.createRigidBody()}
           dragModel = null;
           dragName.data.modeltype = null;
           dragMovable = false;
@@ -76,10 +77,9 @@ export default defineComponent({
           BUS.emit("updateTree");
         },
         event2face(e){
-          if(dragName && dragName.data.modeltype == "传送带") return this.event2ground(e);
           const mouse = new THREE.Vector2(e.offsetX*2/e.target.width-1, 1-e.offsetY*2/e.target.height);
           ray.setFromCamera(mouse, this.scene.camera);  // 射线检测
-          for(let intersect of ray.intersectObject(this.scene.scene)){
+          for(let intersect of ray.intersectObject(this.scene.SCENE)){
             if(intersect.object.type == "Mesh" && intersect.object != dragModel 
             && intersect.object != tempModel){
               return [intersect.object, intersect.point];
@@ -96,7 +96,10 @@ export default defineComponent({
           }
           return new THREE.Vector3( 999, 999, 999 )  // 若无交点
         },
-        onKeydown(k){
+        keyup(k){
+          if(k.code == "ShiftLeft"){shift = false;}
+        },
+        keydown(k){
           if(k.code == "Delete") BUS.emit("deleteChoices");
           else if(k.code == "ShiftLeft") shift = true;
         },
@@ -112,9 +115,10 @@ export default defineComponent({
               }
               if(choice) BUS.emit("clickModel", choice.id +','+shift);
               dragModel = choice;
+              dragModel.isDrag = true;
               tempModel = dragModel.clone();
               tempOpacity = dragModel.material.opacity;
-              move = true;
+              isDrag = true;
             }
             else{
               BUS.emit("deselect")
@@ -129,6 +133,7 @@ export default defineComponent({
           };
         },
         mousemove(e){
+          if(isDrag) this.dragover(e);
           if(moveStart){
             const mouse = new THREE.Vector2(e.offsetX*2/e.target.width-1, 1-e.offsetY*2/e.target.height);
             ray.setFromCamera(mouse, this.scene.camera);  // 射线检测
@@ -146,6 +151,13 @@ export default defineComponent({
             catch (e) {} 
           }
         },
+        mouseup(e){
+          if(isDrag){ 
+            this.drop(e);
+            isDrag = false;
+          }
+          else{ moveStart = null; }
+        },
         print(x){
           let time = new Date()
             document.getElementById("log").appendChild(document.createTextNode(
@@ -154,7 +166,7 @@ export default defineComponent({
             document.getElementById("log").appendChild(document.createElement('br'));
         },
         redirectToDetailed(){},
-        remove(){this.scene.scene.remove(dragModel)},
+        remove(){this.scene.SCENE.remove(dragModel)},
         resize() {  //让画布大小和父组件大小相适应
           let tab = canvas;
           for(let i=0; i<4; i++){tab = tab.parentElement;}
@@ -163,9 +175,6 @@ export default defineComponent({
           this.scene.renderer.setSize(width, height);
           this.scene.camera.aspect = width / height;
           this.scene.camera.updateProjectionMatrix();
-        },
-        Scene(){
-          return this.scene ? this.scene.scene : null ;
         },
         wheel(e){  // 滚轮事件
           if(dragModel){  // 拖动物体+滚轮=旋转物体
@@ -179,17 +188,8 @@ export default defineComponent({
         }
     },
     mounted(){
-        this.scene = new SceneBuilder(this.$refs.canvas)
+        this.scene = new SceneBuilder(this.$refs.canvas);
         this.scene.init();
-        this.$refs.canvas.addEventListener('keyup', (k)=>{
-          if(k.code == "ShiftLeft"){shift = false;}
-        });
-        this.$refs.canvas.addEventListener('mousemove', 
-          (e)=>{move ? this.dragover(e) : this.mousemove(e)}, false);
-        this.$refs.canvas.addEventListener('mouseup', (e)=>{
-          if(move){this.drop(e); move = false}
-          else{ moveStart = null;}
-        }, false);
         canvas = document.getElementById('canvas');  
         this.rendered = true;
         this.resize();

@@ -9,7 +9,7 @@
       ["直道",'../assets/直道.jpg'],
       ["弯道",'../assets/弯道.jpg'],
       ["护栏",'../assets/护栏.jpg'],
-      ["模型",'../assets/cube.jpg'],
+      ["传感器",'../assets/传感器.jpg'],
     ],
     "货物": [
       ["发生器",'../assets/发生器.jpg'],
@@ -50,6 +50,15 @@
         e.dataTransfer.setData('modelName',data);
         BUS.emit("dragstart", {type:'modelName', data:data});
       },
+      onRightClick(e){
+        let option = e.key;
+        if(option == '全部展开'){
+          activeKeys.value = Object.keys(models);
+        }
+        else if(option == '全部折叠'){
+          activeKeys.value = [];
+        }
+      },
       search(){  // 搜索栏内容改变时
         if(searchValue.value){
           let result = [];
@@ -61,7 +70,6 @@
             }
           }
           searchResult.value = result;
-          console.log(searchResult.value)
         }
       }
     },
@@ -69,6 +77,18 @@
     mounted(){}
   }
 </script>
+
+<style>
+  .img {  
+    display:flex; 
+    width:100%; 
+    height:100%; 
+    object-fit: contain;
+  }  
+  .title {
+    display:flex; margin-top: -36px; margin-left: 45px;
+  }
+</style>
 
 <template>
   <!--搜索栏-->
@@ -79,54 +99,59 @@
       </template>
   </a-input-search>
   <a-dropdown :trigger="['contextmenu']">
-    <!--模型列表-->
-    <div v-if="!searchValue">
-      <a-collapse accordion v-model:activeKey="activeKeys" :default-active-key="activeAll" id="collapse">
-        <a-collapse-panel v-for="(items, key, index) in models" 
-        :header="key" :key="index" style="text-align: left;">
+    <div>
+      <!--模型列表-->
+      <a-collapse v-if="!searchValue" v-model:activeKey="activeKeys" 
+      :default-active-key="activeAll" id="collapse">
+        <a-collapse-panel v-for="(items, key) in models" 
+        :header="key" :key="key" style="text-align: left;">
           <div style="flex-wrap: wrap;">
             <a-card v-for="item in items" hoverable draggable="true" 
             @dragstart="transfer($event, {modeltype:key, modelname:item[0]})" 
             style="display:flex; width:100%; height:50px; text-align: center;">
-              <template #cover>
-                <img :src="getIMG(item[1])" draggable="false" style="display:flex; width:100%; height:100%"/>
-              </template>
-              <p style="display:flex; margin-top: -10px;">{{item[0]}}</p>
+              <div style="
+                border-right: 1px solid lightgrey; 
+                width:50px; 
+                height:48px;
+                margin-top: -25px;
+                margin-left: -20px;
+                padding-right: 4px;
+              ">
+                <img :src="getIMG(item[1])" class="img" draggable="false"/>
+              </div>
+              <div class="title">{{item[0]}}</div>
             </a-card>
           </div>
         </a-collapse-panel>
       </a-collapse>
-    </div>
-    <!--搜索列表-->
-    <div v-else>
-      <a-card v-for="item of searchResult" hoverable draggable="true" 
-      @dragstart="transfer($event, {modeltype:item[0], modelname:item[1]})" 
-      style="display:flex; width:100%; height:50px; text-align: center;">
-        <template #cover>
-          <img :src="getIMG(item[2])" draggable="false" style="display:flex; width:100%; height:100%"/>
-        </template>
-        <div style="margin-top: -10px;">
-          <span>{{ item[1].substring(0, item[1].indexOf(searchValue)) }}</span>
-          <span style="color: red"><strong>{{ searchValue }}</strong></span>
-          <span>{{ item[1].substring(item[1].indexOf(searchValue) + searchValue.length) }}</span>
-        </div>
-      </a-card>
+      <!--搜索列表-->
+      <div v-else>
+        <a-card v-for="item of searchResult" hoverable draggable="true" 
+        @dragstart="transfer($event, {modeltype:item[0], modelname:item[1]})" 
+        style="display:flex; width:100%; height:50px; text-align: center;">
+          <div style="
+            border-right: 1px solid lightgrey; 
+            width:50px; 
+            height:48px;
+            margin-top: -25px;
+            margin-left: -20px;
+            padding-right: 4px;
+          ">
+            <img :src="getIMG(item[2])" class="img" draggable="false"/>
+          </div>
+          <div class="title">
+            <span>{{ item[1].substring(0, item[1].indexOf(searchValue)) }}</span>
+            <span style="color: red"><strong>{{ searchValue }}</strong></span>
+            <span>{{ item[1].substring(item[1].indexOf(searchValue) + searchValue.length) }}</span>
+          </div>
+        </a-card>
+      </div>
     </div>
     <!--右键菜单-->
     <template #overlay>
-      <a-menu @click="(x)=>{
-        if(x.key == 'A'){
-          let i;
-          for(i in Object.keys(models)){
-            if(!activeKeys.includes(String(i)))activeKeys.push(String(i))
-          }
-        }
-        else{
-          while(activeKeys.length)activeKeys.pop()
-        }
-      }">
-        <a-menu-item key="A">全部展开</a-menu-item>
-        <a-menu-item key="B">全部折叠</a-menu-item>
+      <a-menu @click="onRightClick">
+        <a-menu-item key="全部展开">全部展开</a-menu-item>
+        <a-menu-item key="全部折叠">全部折叠</a-menu-item>
       </a-menu>
     </template>
   </a-dropdown>

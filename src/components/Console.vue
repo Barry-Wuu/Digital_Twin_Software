@@ -27,5 +27,5 @@
 </script>
   
 <template>
-    <div id="console" style="height: 100%; overflow-y: scroll; text-align:left"/>
+    <div id="console" style="max-height: 50%; overflow-y: scroll; text-align:left"/>
 </template> 
