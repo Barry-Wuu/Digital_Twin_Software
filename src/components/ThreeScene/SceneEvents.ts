@@ -1,6 +1,6 @@
 import { defineComponent, ref, watch } from "vue";
 import * as THREE from 'three';
-import SceneBuilder from './SceneBuilder';
+import DTScene from './DTScene';
 import BUS from "../EventBus"
 
 var cameraPosition;
@@ -113,7 +113,9 @@ export default defineComponent({
                 this.scene.removeRigidBody(choice);
                 dragMovable = true;
               }
-              if(choice) BUS.emit("clickModel", choice.id +','+shift);
+              if(choice){
+                BUS.emit("clickModel", choice.id +','+shift);
+              }
               dragModel = choice;
               dragModel.isDrag = true;
               tempModel = dragModel.clone();
@@ -188,7 +190,7 @@ export default defineComponent({
         }
     },
     mounted(){
-        this.scene = new SceneBuilder(this.$refs.canvas);
+        this.scene = new DTScene(this.$refs.canvas);
         this.scene.init();
         canvas = document.getElementById('canvas');  
         this.rendered = true;

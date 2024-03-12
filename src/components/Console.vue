@@ -1,9 +1,8 @@
 <script lang="ts">
     import { defineComponent, ref } from 'vue'
     import BUS from "./EventBus"
-
     var Console;
-    function pad(x){return x.toString().padStart(2, '0')}
+    function pad(x){return x.toString().padStart(2, '0')};
     BUS.on("print", (data)=>{
       let date = new Date();
       Console.innerHTML += date.getFullYear() + '/' 
@@ -11,7 +10,8 @@
         + pad(date.getDate()) + ' '
         + pad(date.getHours()) + ':'
         + pad(date.getMinutes()) + ':'
-        + pad(date.getSeconds()) + ' —— ';
+        + pad(date.getSeconds()) + '.'
+        + String(date.getMilliseconds()).slice(0, 2) + ' —— ';
       Console.innerHTML += data;
       Console.innerHTML += "<br>";
     });

@@ -63,7 +63,7 @@ async function createWindow() {
     win.loadFile(indexHtml)
   }
 
-  // Test actively push message to the Electron-Renderer
+  // 浏览器加载完成后开始计时
   win.webContents.on('did-finish-load', () => {
     win?.webContents.send('main-process-message', new Date().toLocaleString())
   })
@@ -114,5 +114,5 @@ ipcMain.handle('open-win', (_, arg) => {
     childWindow.loadURL(`${url}#${arg}`)
   } else {
     childWindow.loadFile(indexHtml, { hash: arg })
-  }
+  }    
 })

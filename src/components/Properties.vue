@@ -72,6 +72,11 @@
           :value="DT.timeInterval" 
           @wheel="(e)=>{ DT.timeInterval = clamp(DT.timeInterval + scroll(e), 1, 10) }"/>
         </div>
+        <div v-if="DT.mesh.FPS">FPS：
+          <a-input style="width:120px" type="number" 
+          :value="DT.mesh.FPS" 
+        />
+        </div>
       </a-collapse-panel>
       <!--刚体属性-->
       <a-collapse-panel v-if="DT.rigid" header="刚体属性" key="刚体属性">
