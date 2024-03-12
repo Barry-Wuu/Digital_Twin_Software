@@ -1,5 +1,6 @@
 <script lang="ts">
   import {onMounted} from 'vue'
+  import BottomBar from './components/BottomBar.vue'
   import Layout from './components/Layout.vue'
   import Navbar from './components/Navbar.vue'
   import "ant-design-vue"
@@ -27,19 +28,17 @@
 
 <template>
   <div style = "
-    border: 1px solid black;
-    display: flex;
-    flex-direction: column;
+    border: 0px solid grey;
+    display: block;
     margin-left: 0px;
     position: absolute;  
     top: 0;  
     left: 0;  
     width: 100vw;  
-    height: 100%;
+    height: 100vh;
   ">
       <Navbar/>
-      <div style="border: 1px solid grey; display:flex; flex-grow: 1; margin-top:-10px">
-        <Layout :item='layout' parent="none"/>
-      </div> 
+      <Layout style="height: calc(100vh - 149px); margin-top:-10px" :item='layout' parent="none"/>
+      <BottomBar style=""/>
   </div>
 </template>

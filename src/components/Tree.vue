@@ -56,8 +56,15 @@
             choices.value = [selection]; 
             console.log(window.DTScene.findDTObjectByKey(selection))
           }  // 单选
+          BUS.emit(
+            "BottomMessage", 
+            choices.value.length>0 ? `选择${choices.value.length}个物体` : "无"
+          );
         });
-        BUS.on("deselect", ()=>{this.deselect()});
+        BUS.on("deselect", ()=>{
+          this.deselect();
+          BUS.emit("BottomMessage", "无");
+        });
         BUS.on("deleteChoices", ()=>{this.deleteChoices()});
         BUS.on("updateSearch", ()=>{this.search(TREE.value)});
         BUS.on("updateTree", ()=>{

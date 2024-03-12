@@ -1,4 +1,4 @@
-<script lang="ts" src="./ThreeScene.ts"></script>
+<script lang="ts" src="./SceneEvents.ts"></script>
 
 <template>
     <div 
@@ -18,4 +18,4 @@
         style="outline:none;"
         tabindex="0"
     />
-</template>
+</template>./SceneEvents.js./SceneEvents.js

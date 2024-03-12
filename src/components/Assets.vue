@@ -1,6 +1,5 @@
 <script lang="ts" setup>
   import { ref, onMounted } from 'vue'
-  import Card from './Card.vue'
   import { FileOutlined } from '@ant-design/icons-vue'
   interface Item {id: number; text: string}
 

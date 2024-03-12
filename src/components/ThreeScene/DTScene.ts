@@ -3,10 +3,12 @@ import * as THREE from 'three';
 import * as Ammo from 'ammo.js';  
 import { ColladaLoader } from 'three/examples/jsm/loaders/COLLADALoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { ref, toRaw, watch } from 'vue';
+import { ref, onMounted, toRaw, watch } from 'vue';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import BUS from "../EventBus"
+import { contentQuotesLinter } from 'ant-design-vue/es/_util/cssinjs/linters';
 
+var BottomFPS, BottomTimer;
 var DTObjects = ref([]);
 var geom0;
 var loader = new STLLoader();
@@ -14,16 +16,18 @@ var origin = new THREE.Vector3(0, 0, 0);
 var protectedObjects = [];
 var speed = 1;
 var SCENE = new THREE.Scene();
-window.SCENE = {}
-window.wireframes = {}
+window.SCENE = {};
 // 物理量
+var animate;
 const clock = new THREE.Clock();
 const g = 9.8;
 const G = new Ammo.btVector3( 0, 0, -g )
 const margin = 1e-5;
-let animate;
+var T0;  // 开始仿真的时间
+var time = performance.now();
+var timeUpdateFPS = performance.now();
 // 物理解算器
-let physicsWorld;
+var physicsWorld;
 const broadphase = new Ammo.btDbvtBroadphase();
 const collisionConfiguration = new Ammo.btDefaultCollisionConfiguration(); 
 const dispatcher = new Ammo.btCollisionDispatcher( collisionConfiguration );
@@ -35,7 +39,6 @@ var rb_mesh = new Map();
 BUS.on("changeSpeed", (k: String)=>{
     speed = parseInt(k.slice(0, k.length-1));
 })
-
 class DTObject {  // 用DTObject类包裹场景中的对象
     children: []  // 子物体（自动计算）
     friction: number  // 摩擦力
@@ -61,7 +64,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
         this.name = mesh.name;
         this.rigid = false;
         this.scale = 1;
-        this.timer = 0;
+        this.timer = performance.now();
         this.timeInterval = 0;    
         this.type = mesh.type;
         this.title = this.getTitle();
@@ -161,11 +164,15 @@ export default class SceneBuilder{
     renderer: THREE.WebGLRenderer
     root: HTMLElement
     SCENE = SCENE
-    constructor(root: HTMLElement){ // 初始化
+    constructor(root: HTMLElement){ 
+        // 初始化
         animate = () => {
             requestAnimationFrame(animate);  
             this.render();
         }
+        BottomFPS = document.getElementById("BottomFPS");
+        BottomTimer = document.getElementById("BottomTimer");
+        T0 = performance.now();
         //this.group = new THREE.Group();
         this.root = root;
         //场景
@@ -288,7 +295,6 @@ export default class SceneBuilder{
         else if(name == "货物-发生器"){  
             geom0 = new THREE.BoxGeometry( 1, 1, 1 );
             DT.material = { color: "lime", opacity: 0.5, transparent: true };
-            DT.timer = this.time();
             DT.timeInterval = 3;
         }
         else if(name == "货物-回收器"){  
@@ -371,9 +377,6 @@ export default class SceneBuilder{
         this.renderer.render(toRaw(SCENE), this.camera)
         //this.controls.update();
     } 
-    time(){  // 获取当前时间戳，毫秒
-        return new Date().getTime();
-    }
     transport(){  // 检测物理世界中的物体是否与传送带碰撞，若有则施力
         const dispatcher = physicsWorld.getDispatcher();  
         for(var i=0; i<dispatcher.getNumManifolds(); i++){ 
@@ -394,7 +397,7 @@ export default class SceneBuilder{
                 let v;  // 货物速度v
                 let v0 = mesh1.DT.v0;  // 传送带中轴线速度v0
                 let theta = mesh1.rotation.z;  //传送带旋转角θ 
-                let R = 5, speed0 = 2;  // 传送带中轴线半径R
+                let R = 5;  // 传送带中轴线半径R
                 if(mesh1.DT.name == "直道"){  // 摩擦力 F = kmg(v0-v)/||v0-v||，v和v0为向量
                     // 将v0从标量转换为货物处的速度矢量v0_real
                     let v0_real = new Ammo.btVector3(v0*Math.cos(theta), v0*Math.sin(theta), 0);
@@ -435,18 +438,35 @@ export default class SceneBuilder{
             }
         }
     }
-    updatePhysics( deltaTime ) {  // 步进
+    updateFPSandTime(now){  // 更新帧率和用时
+        let totalTime = new Date(now - T0);
+        function pad(x){return x.toString().padStart(2, '0')};
+        BottomTimer.textContent = pad(totalTime.getHours() - 8) + ':'
+        + pad(totalTime.getMinutes()) + ':'
+        + pad(totalTime.getSeconds()) + '.'
+        + String(totalTime.getMilliseconds()).slice(0, 2);
+        if(time - timeUpdateFPS >= 1000){
+            BottomFPS.textContent = (1000/(now - time)).toFixed(0);
+            timeUpdateFPS = time;
+        }
+        else{
+            time = now;
+        }
+    }
+    updatePhysics( deltaTime ) {  // 步进 
+        let now = performance.now();     
+        this.updateFPSandTime(now);
         for(let i=0; i<speed; i++)physicsWorld.stepSimulation( deltaTime );  // 更新刚体
         for(let DT of DTObjects.value){  // 让网格位置等于刚体位置
             const mesh = DT.mesh;
             if(!DT.rigid){
                 if(DT.name == "发生器"){
-                    if(this.time() - DT.timer >= DT.timeInterval * 1000){  // 秒变毫秒
+                    if(now - DT.timer >= DT.timeInterval * 1000){  // 秒变毫秒
                         let mesh0 = this.createGeometry({modeltype:"货物", modelname:"货物"}, mesh.position);                      
                         mesh0.rotation.copy(mesh.rotation);
                         mesh0.DT.createRigidBody();
                         BUS.emit("print", `${DT.name}${DT.key}创建了${mesh0.DT.name}${mesh0.id}`);
-                        DT.timer = this.time();
+                        DT.timer = now;
                     }
                 }
                 continue;
