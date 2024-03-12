@@ -58,12 +58,8 @@
     <a-tabs v-model:activeKey="activeTab" :hideAdd="true" type="editable-card" @edit="onEdit"
     style = "border:3px solid black; flex-grow: 1;">
         <a-tab-pane v-for="tab in tabs" :key="tab" :tab="tab" :closable="false" 
-        style="height:100%; margin-top:-12px;">
-            <div v-if="tab=='模型'" style="flex-grow: 1;">
-                <div v-if="tab=='模型'" style="display:inline">
-                <Models/>
-            </div>
-            </div>
+        style="height:100%; margin-top:-12px; text-align:left">
+            <Models v-if="tab=='模型'"/>
             <Tree v-if="tab=='层级'"/>
             <Screen v-if="tab=='场景'" style="flex-grow: 1;"/>
             <div v-if="tab=='演示场景'" style="display:block">  
@@ -71,9 +67,7 @@
             </div>  
             <Assets v-if="tab=='组件库'"/>
             <Console v-if="tab=='控制台'"/>  
-            <div v-if="tab=='属性'" style="display:flex">  
-                <Properties/>
-            </div>
+            <Properties v-if="tab=='属性'"/>
         </a-tab-pane>
     </a-tabs>
 </template>
