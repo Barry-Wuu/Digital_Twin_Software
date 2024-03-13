@@ -1,15 +1,15 @@
 <script lang="ts">
     import { defineComponent, ref } from 'vue'
     import Assets from './Assets.vue'
+    import Canvas from './ThreeScene/Canvas.vue'
     import Console from './Console.vue'
     import Menu from './Menu.vue'
     import Models from './Models.vue'
     import Properties from './Properties.vue'
-    import Screen from './ThreeScene/Screen.vue'
     import Demo from './Demo.vue'
     import Tree from './Tree.vue'
     export default defineComponent({
-        components:{Assets, Console, Menu, Models, Properties, Screen, Tree},
+        components:{Assets, Canvas, Console, Menu, Models, Properties, Tree},
         methods:{
         },
         props:{modules:[], tabs:[]}, 
@@ -56,12 +56,13 @@
   
 <template>
     <a-tabs v-model:activeKey="activeTab" :hideAdd="true" type="editable-card" @edit="onEdit"
-    style = "border:3px solid black; flex-grow: 1;">
+    style = "border:3px solid black; border-radius: 10px; flex-grow: 1; "
+    :style="{'overflowY': activeTab == '场景' ? 'hidden' : 'scroll'}">
         <a-tab-pane v-for="tab in tabs" :key="tab" :tab="tab" :closable="false" 
         style="height:100%; margin-top:-12px; text-align:left">
             <Models v-if="tab=='模型'"/>
             <Tree v-if="tab=='层级'"/>
-            <Screen v-if="tab=='场景'" style="flex-grow: 1;"/>
+            <Canvas v-if="tab=='场景'" style="flex-grow: 1;"/>
             <div v-if="tab=='演示场景'" style="display:block">  
                 <Demo style="border:1px solid black"/>
             </div>  

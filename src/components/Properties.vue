@@ -5,12 +5,12 @@
   const DT = ref("未选择对象");
   var status = "play";
 
-  BUS.on("showProperty", (key:string)=>{
-    if(!'未已'.includes(key[0])){
-      DT.value = window.DTScene.findDTObjectByKey(key);
+  BUS.on("showProperty", (id:string)=>{
+    if(!'未已'.includes(id[0])){
+      DT.value = window.DTScene.findDTObjectById(id);
       //if(status == "play") updateProperty(); 
     }
-    else DT.value = key;
+    else DT.value = id;
   })
   export default{
     methods:{
@@ -34,7 +34,7 @@
       <a-collapse-panel header="基本属性" key="基本属性">
         <div v-if="'type' in DT">物体类型：{{ DT.type }}</div>
         <div v-if="'name' in DT">物体名称：{{ DT.name }}</div>
-        <div v-if="'key' in DT">物体ID：{{ DT.key }}</div>
+        <div v-if="'id' in DT">物体ID：{{ DT.id }}</div>
         <div v-if="'visible' in DT.mesh">
           是否可见：<a-checkbox :checked="DT.mesh.visible" 
           @click="()=>{DT.mesh.visible = !DT.mesh.visible}">

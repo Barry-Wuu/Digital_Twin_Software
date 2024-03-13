@@ -13,6 +13,7 @@ var isDrag = false;  // 是否在用鼠标移动模型
 var moveStart = null;  // 用左键移动镜头之前，射线检测器与地面的交点
 var mouseType;  // 判断鼠标按键类型
 const ray = new THREE.Raycaster();  // 从鼠标发出的射线检测器
+var resizeObserver;
 var shift = false;
 var tempModel;
 var tempOpacity;
@@ -24,6 +25,7 @@ export default defineComponent({
     props:{},
     components:{},
     data(){
+      resizeObserver = new ResizeObserver(()=>this.resize());
       BUS.on('dragstart', (data)=>{dragName = data;});
       BUS.on('dropout', ()=>dragModel.remove());
       BUS.on('resize', ()=>this.resize());
@@ -190,11 +192,13 @@ export default defineComponent({
         }
     },
     mounted(){
-        this.scene = new DTScene(this.$refs.canvas);
-        this.scene.init();
-        canvas = document.getElementById('canvas');  
-        this.rendered = true;
-        this.resize();
+      canvas = document.getElementById('canvas');  
+      this.scene = new DTScene(canvas);
+      this.scene.init();
+      canvas = document.getElementById('canvas');  
+      this.rendered = true;
+      this.resize();
+      resizeObserver.observe(canvas.parentElement.parentElement.parentElement);
     },
   }
 );

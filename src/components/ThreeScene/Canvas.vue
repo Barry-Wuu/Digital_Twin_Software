@@ -14,8 +14,7 @@
         @mousemove = "mousemove"
         @mouseup = "mouseup"
         @wheel = "wheel"
-        ref="canvas"
-        style="outline:none;"
+        style="display: block; outline:none; height:100%"
         tabindex="0"
     />
 </template>./SceneEvents.js./SceneEvents.js

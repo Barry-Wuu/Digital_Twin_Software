@@ -54,7 +54,7 @@
           }
           else{
             choices.value = [selection]; 
-            console.log(window.DTScene.findDTObjectByKey(selection))
+            console.log(window.DTScene.findDTObjectById(selection))
           }  // 单选
           BUS.emit(
             "BottomMessage", 
@@ -76,8 +76,8 @@
       },
       methods: {
         deleteChoices(){
-          for(let key of choices.value){
-            let DTObject = window.DTScene.findDTObjectByKey(key);
+          for(let id of choices.value){
+            let DTObject = window.DTScene.findDTObjectById(id);
             if(DTObject) DTObject.destroy();
           }
           BUS.emit("updateTree");
@@ -96,22 +96,22 @@
           }
           else{
             choices.value = [selection];
-            console.log(window.DTScene.findDTObjectByKey(selection))
+            console.log(window.DTScene.findDTObjectById(selection))
           }  // 单选
           if(dt < 300) BUS.emit("moveTo", selection);  // 双击拉近
           lastChoice = selection;
           t0 = time;
         },
         onRightClick(option){  // 右键菜单
-          var obj;
+          var DT;
           if(option == '取消选择') choices.value = []; 
           if(option == '克隆'){
-            if(!choices.value.includes(obj.id)) choices.value = [obj.id]
+            if(!choices.value.includes(DT.id)) choices.value = [DT.id]
             let temp = []
             for(let id of choices.value){
-              let clone = obj.clone();
+              let clone = DT.clone();
               clone.wireframe = clone.children.filter(x=>x.type="BoxHelper")[0];
-              obj.parent.add(clone);
+              DT.parent.add(clone);
               temp.push(clone.id);
             }
             for(let id of temp)choices.value.push(id);
@@ -127,11 +127,11 @@
         search(){  // 搜索栏内容改变时
           if(searchValue.value){
             let result = [];
-            for(let obj of DTObjects){
-              if(obj.title.indexOf(searchValue.value) > -1) {
-                let obj0 = JSON.parse(JSON.stringify(obj));
-                obj0.children = [];  // 清除搜索项的父子关系
-                result.push(obj0)
+            for(let DT of DTObjects){
+              if(DT.title.indexOf(searchValue.value) > -1) {
+                let DT0 = JSON.parse(JSON.stringify(DT));
+                DT0.children = [];  // 清除搜索项的父子关系
+                result.push(DT0)
               };
             }
             TREEs.value = result;
@@ -155,10 +155,10 @@
         };
         watch(choices, (x)=>{  // 根据选项变化来确定被选物体，并展示或隐藏物体边框
           emitProperty();
-          for(let obj of window.DTScene.getDTObjects()){
-            for(let child of obj.mesh.children){
+          for(let DT of window.DTScene.getDTObjects()){
+            for(let child of DT.mesh.children){
               if(child.type == "BoxHelper"){
-                child.visible = x.includes(obj.key);
+                child.visible = x.includes(DT.id);
               }
             };
           };
@@ -182,31 +182,31 @@
       <a-tree v-if="!searchValue" :tree-data="TREE" multiple selectable :show-icon="false"
           @expand = "(k)=>{console.log(k)}" 
           @select="onClick" :selectedKeys = "choices">
-        <template #title="obj">
+        <template #title="DT">
           <span>
-            <BorderlessTableOutlined v-if="obj.type=='GridHelper'"/>
-            <BulbOutlined v-if="obj.type && obj.type.includes('Light')"/>
-            <CodepenOutlined v-if="obj.type=='Mesh'"/>
-            <DragOutlined v-if="obj.type=='AxesHelper'"/>
-            <DropboxOutlined v-if="obj.type=='Scene'"/>
-            {{ obj.title }}
+            <BorderlessTableOutlined v-if="DT.type=='GridHelper'"/>
+            <BulbOutlined v-if="DT.type && DT.type.includes('Light')"/>
+            <CodepenOutlined v-if="DT.type=='Mesh'"/>
+            <DragOutlined v-if="DT.type=='AxesHelper'"/>
+            <DropboxOutlined v-if="DT.type=='Scene'"/>
+            {{ DT.title }}
           </span>
         </template> 
       </a-tree>  
       <!--搜索树-->
       <a-tree v-else :tree-data="TREEs" multiple @select="onClick" 
           :selectedKeys = "choices">
-        <template #title="obj">
+        <template #title="DT">
           <a-dropdown :trigger="['contextmenu']">
             <span>
-              <DragOutlined v-if="obj.type=='AxesHelper'"/>
-              <BorderlessTableOutlined v-if="obj.type=='GridHelper'"/>
-              <BulbOutlined v-if="obj.type && obj.type.includes('Light')"/>
-              <CodepenOutlined v-if="obj.type=='Mesh'"/>
-              <DropboxOutlined v-if="obj.type=='Scene'"/>
-              <span>&nbsp;{{ obj.title.substring(0, obj.title.indexOf(searchValue)) }}</span>
+              <DragOutlined v-if="DT.type=='AxesHelper'"/>
+              <BorderlessTableOutlined v-if="DT.type=='GridHelper'"/>
+              <BulbOutlined v-if="DT.type && DT.type.includes('Light')"/>
+              <CodepenOutlined v-if="DT.type=='Mesh'"/>
+              <DropboxOutlined v-if="DT.type=='Scene'"/>
+              <span>&nbsp;{{ DT.title.substring(0, DT.title.indexOf(searchValue)) }}</span>
               <span style="color: red"><strong>{{ searchValue }}</strong></span>
-              <span>{{ obj.title.substring(obj.title.indexOf(searchValue) + searchValue.length) }}</span>
+              <span>{{ DT.title.substring(DT.title.indexOf(searchValue) + searchValue.length) }}</span>
             </span>
           </a-dropdown>
         </template> 
