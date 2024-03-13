@@ -12,40 +12,63 @@
     });
 </script>
   
+<style>
+    .showBorder{ border: 2px solid dodgerblue; }
+    .hideBorder{ border: 2px solid white; }
+</style>
+
 <template>
     <!--根列布局模块-->
-    <div v-if="item.info == 'root'" style="
+    <div v-if="item.info == 'root'" :id="item.id"
+    style="
         display: flex; 
         flex-direction: row;
         flex-grow: 1;
         overflow-x: hidden;
         overflow-y: hidden"
-        :style="{'maxHeight': item.size + '%'}
+        :style="{'maxHeight': item.size/10 + '%'}
     ">
         <Layout v-for="(i) in item.children" :item='i' parent="row"/>
     </div>
     <!--列布局模块-->
-    <div v-else-if="item.info == 'col'"
-        :style="{'width': item.size + '%',}
-    ">
+    <div v-else-if="item.info == 'col'" :id="item.id"
+        style="margin-bottom:5px"
+        :style="{'width': item.size/10 + '%'}">
         <Layout v-for="(i) in item.children" :item='i' parent="col"/>
     </div>
+    <!--列分隔模块-->
+    <div v-else-if="item.info == 'col-split'" class="hideBorder" :id="item.id"
+        style="margin-left: 1px; margin-right: 1px;"
+        :style="{'width': item.size/10 + '%'}"
+        @mouseover = "(e)=>{
+            e.target.style.border = '2px solid dodgerblue';
+            e.target.style.cursor = 'ew-resize';
+        }"
+        @mouseout = "(e)=>{
+            e.target.style.border = '2px solid white';
+            e.target.style.cursor = 'default';
+        }"
+    />
     <!--行布局模块-->
-    <div v-else-if="item.info == 'row'" style="
-        
-        flex-grow: 1;"
-        :style="{'height': item.size + '%'}
-    ">
+    <div v-else-if="item.info == 'row'" :id="item.id"
+    style="flex-grow: 1;" :style="{'height': item.size/10 + '%'}">
         <Layout v-for="(i) in item.children" :item='i' parent="row"/>
     </div>
+    <!--行分隔模块-->
+    <div v-else-if="item.info == 'row-split'" class="hideBorder" :id="item.id"
+        style="flex-grow: 1;  margin-top: 1px; margin-bottom: 1px;" 
+        :style="{'width': item.size/10 + '%',}"
+        @mouseover = "(e)=>{
+            e.target.style.border = '2px solid dodgerblue';
+            e.target.style.cursor = 'ns-resize';
+        }"
+        @mouseout = "(e)=>{
+            e.target.style.border = '2px solid white';
+            e.target.style.cursor = 'default';
+        }"
+    />
     <!--功能模块-->
-    <div v-else style="
-        border: 3px solid dodgerblue;
-        display: flex;
-        flex-direction: column;
-        ; 
-        height: 100%;"
-        :style="{'overflowY': item.info == '场景' ? 'hidden' : 'scroll'}"
+    <div v-else  :id="item.id" style="display: flex; flex-direction: column; height: 100%;"
     >
         <Module :tabs="item.info.split('+')"/>
     </div>

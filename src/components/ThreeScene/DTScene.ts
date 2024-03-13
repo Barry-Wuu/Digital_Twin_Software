@@ -16,7 +16,6 @@ var origin = new THREE.Vector3(0, 0, 0);
 var protectedObjects = [];
 var speed = 1;
 var SCENE = new THREE.Scene();
-window.SCENE = {};
 // 物理量
 var animate;
 const clock = new THREE.Clock();
@@ -41,8 +40,9 @@ BUS.on("changeSpeed", (k: String)=>{
 })
 class DTObject {  // 用DTObject类包裹场景中的对象
     children: []  // 子物体（自动计算）
-    friction: number  // 摩擦力
-    key: number  // 序号
+    friction0: number  // 静摩擦力
+    friction: number  // 滑动摩擦力
+    id: number  // 序号
     mass: number  // 质量
     material: Object  // 材质属性
     mesh: THREE.Object  // 模型网格
@@ -57,17 +57,16 @@ class DTObject {  // 用DTObject类包裹场景中的对象
     v0: number
     constructor(mesh) {  
         this.children = [];
-        this.friction = 0.8;
-        this.key = mesh.id;
+        this.friction0 = 0.5;  
+        this.friction = 0.8;  
+        this.id = mesh.id;
         this.material = {};
         this.mesh = mesh;
-        this.name = mesh.name;
         this.rigid = false;
         this.scale = 1;
         this.timer = performance.now();
         this.timeInterval = 0;    
         this.type = mesh.type;
-        this.title = this.getTitle();
         mesh.DT = this;
         DTObjects.value.push(this);
         return this;
@@ -91,7 +90,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
         if (mass > 0) {rb.setActivationState( 4 );}  // 质量为0代表为固定的刚体
         physicsWorld.addRigidBody( rb );
         rb_mesh.set(rb.ptr, {mesh:this.mesh, rb:rb});
-        rb.setFriction(this.mesh.DT.friction);
+        rb.setFriction( this.mesh.DT.friction0 );  // 静摩擦力
     }
     destroy() {  
         if(protectedObjects.includes(this)) return;  // 不能删除场景和地面
@@ -104,13 +103,17 @@ class DTObject {  // 用DTObject类包裹场景中的对象
         this.mesh.remove();
         DTObjects.value = DTObjects.value.filter(x => x != this);  
     }  
-    findDTObjectByKey(key) {  // 根据id/key寻找物体 
-        let result = DTObjects.value.filter(obj => obj.key == key);
+    findDTObjectById(id) {  // 根据id/key寻找物体 
+        let result = DTObjects.value.filter(DT => DT.id == id);
         return result.length > 0 ? result[0] : null;
     }
     getDTObjects() {return DTObjects.value;}
-    getTitle() {  // 物体在树中的标题 = 类型 + 名称 
-        return this.type + (this.name ? ": " + this.name + this.key : '');
+    setTitle() {  // 物体在树中的标题 = 类型 + 名称 
+        if(this.name){
+            this.title = this.type + '【' + this.name + this.id + '】';
+        } else {
+            this.title = this.type;
+        }
     }
     set(prop, delta) {
         if(!this.rigid){  // 非刚体
@@ -177,8 +180,9 @@ export default class SceneBuilder{
         this.root = root;
         //场景
         protectedObjects.push(SCENE.id);
-        window.SCENE = SCENE;
         this.DTScene = new DTObject(SCENE);
+        this.DTScene.setTitle();
+        window.DTScene = this.DTScene;
         // 渲染器
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.shadowMap.enabled = true;
@@ -210,18 +214,21 @@ export default class SceneBuilder{
         light.shadow.mapSize.y = 1024;
         light.shadow.bias = - 0.003;
         SCENE.add( light );
-        new DTObject(light);
+        let DTLight = new DTObject(light);
+        DTLight.setTitle();
         // 地面
         this.ground = new THREE.Mesh( 
             new THREE.PlaneGeometry(100, 100), 
             new THREE.MeshPhongMaterial({ color: "grey" })
         );
-        this.ground.name = "地面";
-        new DTObject(this.ground);
+        let DTGround = new DTObject(this.ground);
+        DTGround.setTitle();
         protectedObjects.push(this.ground.id);
         this.ground.castShadow = true;
         this.ground.receiveShadow = true;
         this.ground.DT.mass = 0 // 不可动
+        this.ground.DT.name = "地面";
+        this.ground.DT.name = "地面";
         this.ground.DT.rigidShape = new Ammo.btBoxShape( new Ammo.btVector3( 50, 50, margin ) );
         this.ground.DT.createRigidBody();
         SCENE.add( this.ground );
@@ -332,6 +339,7 @@ export default class SceneBuilder{
         mesh.geometry = geom0;
         if(data.modeltype == "基本几何体"){mesh.rotateX(Math.PI/2);}
         DT.name = data.modelname;
+        DT.setTitle();
         let wireframe = new THREE.BoxHelper(mesh, "white");  // 线框
         if(indicators.length){
             for(let i of indicators){
@@ -433,7 +441,7 @@ export default class SceneBuilder{
                 }
                 else if(mesh1.DT.name == "回收器"){
                     mesh0.DT.destroy();
-                    BUS.emit("print", `${mesh0.DT.name}${mesh0.id}被${mesh1.DT.name}${mesh1.id}回收`)
+                    BUS.emit("print", `【${mesh0.DT.name}${mesh0.id}】被【${mesh1.DT.name}${mesh1.id}】回收`)
                 }
             }
         }
@@ -465,7 +473,7 @@ export default class SceneBuilder{
                         let mesh0 = this.createGeometry({modeltype:"货物", modelname:"货物"}, mesh.position);                      
                         mesh0.rotation.copy(mesh.rotation);
                         mesh0.DT.createRigidBody();
-                        BUS.emit("print", `${DT.name}${DT.key}创建了${mesh0.DT.name}${mesh0.id}`);
+                        BUS.emit("print", `【${DT.name}${DT.id}】创建了【${mesh0.DT.name}${mesh0.id}】`);
                         DT.timer = now;
                     }
                 }
