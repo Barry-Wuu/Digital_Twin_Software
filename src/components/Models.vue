@@ -105,23 +105,21 @@
       :default-active-key="activeAll" id="collapse">
         <a-collapse-panel v-for="(items, key) in models" 
         :header="key" :key="key" style="text-align: left;">
-          <div style="flex-wrap: wrap;">
-            <a-card v-for="item in items" hoverable draggable="true" 
-            @dragstart="transfer($event, {modeltype:key, modelname:item[0]})" 
-            style="display:flex; width:100%; height:50px; text-align: center;">
-              <div style="
-                border-right: 1px solid lightgrey; 
-                width:50px; 
-                height:48px;
-                margin-top: -25px;
-                margin-left: -20px;
-                padding-right: 4px;
-              ">
-                <img :src="getIMG(item[1])" class="img" draggable="false"/>
-              </div>
-              <div class="title">{{item[0]}}</div>
-            </a-card>
-          </div>
+          <a-card v-for="item in items" hoverable draggable="true" 
+          @dragstart="transfer($event, {modeltype:key, modelname:item[0]})" 
+          style="display:flex; width:100%; height:50px; text-align: center;">
+            <div style="
+              border-right: 1px solid lightgrey; 
+              width:50px; 
+              height:48px;
+              margin-top: -25px;
+              margin-left: -20px;
+              padding-right: 4px;
+            ">
+              <img :src="getIMG(item[1])" class="img" draggable="false"/>
+            </div>
+            <div class="title">{{item[0]}}</div>
+          </a-card>
         </a-collapse-panel>
       </a-collapse>
       <!--搜索列表-->

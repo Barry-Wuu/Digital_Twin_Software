@@ -13,7 +13,7 @@
   var layout = ref({
     info: "root", size: 1000, children:[
       {info: "col", size: 250, children: [
-        {info: "row", size: 500, children: [{info: "模型"}]},
+        {info: "row", size: 500, children: [{info: "模型库"}]},
         {info: "row-split"},
         {info: "row", size: 500, children: [{info: "层级"}]},
       ]},
