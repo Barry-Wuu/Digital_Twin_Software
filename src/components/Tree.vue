@@ -96,7 +96,6 @@
           }
           else{
             choices.value = [selection];
-            console.log(window.DTScene.findDTObjectById(selection))
           }  // 单选
           if(dt < 300) BUS.emit("moveTo", selection);  // 双击拉近
           lastChoice = selection;

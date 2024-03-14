@@ -1,6 +1,7 @@
 <script lang="ts">
     import { defineComponent, ref } from 'vue'
     import BUS from "./EventBus"
+    import * as THREE from 'three';  // 导入库以便在控制台中执行相应命令
     var Console;
     var command = ref('')
     var DTScene;

@@ -1,37 +1,65 @@
 <script lang="ts" setup>
-  import { ref, onMounted } from 'vue'
-  import { FileOutlined } from '@ant-design/icons-vue'
-  interface Item {id: number; text: string}
+  import { ref } from 'vue'
+  import { 
+    CodeOutlined,
+    FileTwoTone,
+    FolderOpenTwoTone,
+    PictureTwoTone
+  } from '@ant-design/icons-vue'
+  import BUS from "./EventBus"
+  import DTScene from './ThreeScene/DTScene';
+  import * as THREE from 'three';
 
-  const cards = ref<Item[]>([
-    { id: 1, text: '文件1'},
-    { id: 2, text: '文件2'},
-    { id: 3, text: '文件3'},
-    { id: 4, text: '文件4'},
-    { id: 5, text: '文件5'},
-    { id: 6, text: '文件6'},
-    { id: 7, text: '文件7'},
+  const assets = ref([
+    { id: 0, name: "文件1", type: "folder"},
+    { id: 1, content:{
+      color: "white", opacity: 1
+    }, name: "材质", type: "material"},
+    { id: 2, name: "文件3", type: "code"},
+    { id: 3, name: "文件4", type: "file"},
+    { id: 4, name: "文件5", type: "file"},
+    { id: 5, name: "文件6", type: "file"},
+    { id: 6, name: "文件7", type: "file"},
+    { id: 7, name: "文件8", type: "file"},
   ])
+  var DT;
 
-  const moveCard = (dragIndex: number, hoverIndex: number) => {
-    const item = cards.value[dragIndex]
-    cards.value.splice(dragIndex, 1) // 减去
-    cards.value.splice(hoverIndex, 0, item) // 增加
-    console.log(cards)
+  function chooseAsset(asset) {
+    if(asset.type == "material"){
+      let mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(), 
+        new THREE.MeshPhongMaterial(asset.content)
+      );
+      let DT = new DTScene.DTObject(mesh, inScene=false);
+      window.asset = DT;
+      BUS.emit("showProperty", "asset");
+    }
   }
 </script>
 
-<template><!--index暂时没用上-->
+<template>
   <div style="margin-left: 1em">
     <a-breadcrumb>
       <a-breadcrumb-item>场景</a-breadcrumb-item>
       <a-breadcrumb-item>路径1</a-breadcrumb-item>
     </a-breadcrumb>
   </div>
-  <div id='files' style="display: flex;">
-    <a-card v-for="(card, index) in cards">
-      <file-outlined style="fontSize:50px;"/><br>
-      {{ card.text }}
+  <div id='files' style="display: flex; flex-wrap: wrap;">
+    <a-card v-for="asset in assets" hoverable style="
+      height: 100px;
+      margin: 3px;
+      margin-left: 10px;
+    " @click="()=>{chooseAsset(asset)}">
+      <div style="margin-top: -6px">
+        <FolderOpenTwoTone v-if="asset.type == 'folder'" 
+        twoToneColor="olive" style="fontSize:50px;"/>
+        <CodeOutlined v-else-if="asset.type == 'code'" 
+        twoToneColor="black" style="fontSize:50px;"/>   
+        <FileTwoTone v-if="asset.type == 'file'" style="fontSize:50px;"/>
+        <PictureTwoTone v-if="asset.type == 'material'" 
+        style="fontSize:50px;" :style="{'opacity': asset.content.opacity}"/> 
+        <div style="padding-bottom: 1px; text-align: center;">{{ asset.name }}</div>
+      </div>
     </a-card>
   </div>
 </template>

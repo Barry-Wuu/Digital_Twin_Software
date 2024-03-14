@@ -7,7 +7,6 @@ var cameraPosition;
 var cameraRotation;
 var canvas;
 var dragModel;
-var dragMovable = true;  // 拖动刚体
 var dragName;
 var isDrag = false;  // 是否在用鼠标移动模型
 var moveStart = null;  // 用左键移动镜头之前，射线检测器与地面的交点
@@ -18,7 +17,7 @@ var shift = false;
 var tempModel;
 var tempOpacity;
 var tempPosition = null;
-var up = new THREE.Vector3(0, 0, 1);
+var UP = new THREE.Vector3(0, 0, 1);  // z轴朝上
 
 export default defineComponent({
     name:"ThreeScene",
@@ -74,7 +73,6 @@ export default defineComponent({
           if(dragModel.DT.rigid){dragModel.DT.createRigidBody()}
           dragModel = null;
           dragName.data.modeltype = null;
-          dragMovable = false;
           tempModel.clear();
           BUS.emit("updateTree");
         },
@@ -108,13 +106,10 @@ export default defineComponent({
         mousedown(e){
           mouseType = e.button;
           if(mouseType == 0){  // 左键点击
+            this.scene.setControl("LEFT", "NONE");
             let choice = this.event2face(e)[0];
             if(choice.geometry.type == "ShapeGeometry") choice = choice.parent;
             if(choice != this.scene.ground){
-              if(choice.rigid){
-                this.scene.removeRigidBody(choice);
-                dragMovable = true;
-              }
               if(choice){
                 BUS.emit("clickModel", choice.id +','+shift);
               }
@@ -123,6 +118,9 @@ export default defineComponent({
               tempModel = dragModel.clone();
               tempOpacity = dragModel.material.opacity;
               isDrag = true;
+              if(dragModel.DT.rigid){
+                this.scene.removeRigidBody(dragModel);
+              }
             }
             else{
               BUS.emit("deselect")
@@ -144,12 +142,10 @@ export default defineComponent({
             try{
               let move = ray.intersectObject(this.scene.ground)[0].point;
               if(mouseType == 1){  // 中键移动镜头
-                this.scene.camera.position.x = cameraPosition.x - move.x + moveStart.x;
-                this.scene.camera.position.y = cameraPosition.y - move.y + moveStart.y;
+                this.scene.setControl("MIDDLE", "PAN");
               }
               else if (mouseType == 2){  // 右键旋转镜头
-                this.scene.camera.rotation.y = cameraRotation.y + (tempPosition.x - mouse.x)/10;
-                this.scene.camera.rotation.x = cameraRotation.x + (mouse.y - tempPosition.y)/10;
+                this.scene.setControl("RIGHT", "ROTATE");
               }
             }
             catch (e) {} 
@@ -180,14 +176,13 @@ export default defineComponent({
           this.scene.camera.aspect = width / height;
           this.scene.camera.updateProjectionMatrix();
         },
+        
         wheel(e){  // 滚轮事件
           if(dragModel){  // 拖动物体+滚轮=旋转物体
-            dragModel.rotateOnWorldAxis(up, e.deltaY*Math.PI/1200);
-          }else{  // 滚轮放缩镜头
-            const target = this.event2face(e)[1];
-            const k = 0.4;
-            this.scene.camera.position = this.scene.camera.position.multiplyScalar(1+k*e.deltaY/100)
-            .addScaledVector(target.position, -k*e.deltaY/100);
+            this.scene.setControl("MIDDLE", "NONE");
+            dragModel.rotateOnWorldAxis(UP, e.deltaY*Math.PI/1200);
+          } else {  // 滚轮放缩镜头
+            this.scene.setControl("MIDDLE", "DOLLY");
           }
         }
     },

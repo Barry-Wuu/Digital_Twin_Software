@@ -14,6 +14,7 @@
         @mousemove = "mousemove"
         @mouseup = "mouseup"
         @wheel = "wheel"
+        @wheelstart = "() => console.log('wheel')"
         style="display: block; outline:none; height:100%"
         tabindex="0"
     />

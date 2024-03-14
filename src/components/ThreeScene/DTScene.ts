@@ -16,6 +16,7 @@ var origin = new THREE.Vector3(0, 0, 0);
 var protectedObjects = [];
 var speed = 1;
 var SCENE = new THREE.Scene();
+var UP = new THREE.Vector3(0, 0, 1);  // z轴朝上
 // 物理量
 var animate;
 const clock = new THREE.Clock();
@@ -43,6 +44,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
     friction0: number  // 静摩擦力
     friction: number  // 滑动摩擦力
     id: number  // 序号
+    key: number  // 层级数的键
     mass: number  // 质量
     material: Object  // 材质属性
     mesh: THREE.Object  // 模型网格
@@ -54,12 +56,13 @@ class DTObject {  // 用DTObject类包裹场景中的对象
     timeInterval: number  // 定时器触发时间
     title: string  // 标题 = 物体类型 + 名称 + 序号（自动计算）
     type: string  // 模型类型
-    v0: number
-    constructor(mesh) {  
+    v0: number  // 传送带中轴线速度
+    constructor(mesh, inScene=true) {  
         this.children = [];
         this.friction0 = 0.5;  
         this.friction = 0.8;  
         this.id = mesh.id;
+        this.key = mesh.id;
         this.material = {};
         this.mesh = mesh;
         this.rigid = false;
@@ -68,7 +71,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
         this.timeInterval = 0;    
         this.type = mesh.type;
         mesh.DT = this;
-        DTObjects.value.push(this);
+        if(inScene) DTObjects.value.push(this);
         return this;
     }  
     createRigidBody() {  // 添加刚体
@@ -116,14 +119,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
         }
     }
     set(prop, delta) {
-        if(!this.rigid){  // 非刚体
-            if(prop == "x") this.mesh.position.x += delta;
-            if(prop == "y") this.mesh.position.y += delta;
-            if(prop == "z") this.mesh.position.z += delta;
-            if(prop == "rx") this.mesh.rotation.x += delta;
-            if(prop == "ry") this.mesh.rotation.y += delta;
-            if(prop == "rz") this.mesh.rotation.z += delta;
-        }else{
+        if(this.rigid){  // 非刚体
             let rb = this.mesh.userData.physicsBody;
             let transform = new Ammo.btTransform();
             const motionState = rb.getMotionState();
@@ -143,7 +139,18 @@ class DTObject {  // 用DTObject类包裹场景中的对象
             transform.setRotation(q);
             motionState.setWorldTransform( transform );
             rb.setMotionState(motionState);
+        }else{
+            if(prop == "x") this.mesh.position.x += delta;
+            if(prop == "y") this.mesh.position.y += delta;
+            if(prop == "z") this.mesh.position.z += delta;
+            if(prop == "rx") this.mesh.rotation.x += delta;
+            if(prop == "ry") this.mesh.rotation.y += delta;
+            if(prop == "rz") this.mesh.rotation.z += delta;
         }
+        if(prop == 'R'){this.mesh.material.color.r += delta};
+        if(prop == 'G'){this.mesh.material.color.g += delta};
+        if(prop == 'B'){this.mesh.material.color.b += delta};
+        if(prop == 'A'){this.mesh.material.opacity += delta};
     }
     updateChildren() {  // 刷新DTObject的父子关系
         this.children = []
@@ -158,7 +165,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
 
 export default class SceneBuilder{
     camera: THREE.PerspectiveCamera
-    controls: OrbitControls
+    cameraControls: OrbitControls
     DTScene: DTObject
     DTObjects = DTObjects
     material
@@ -178,7 +185,8 @@ export default class SceneBuilder{
         T0 = performance.now();
         //this.group = new THREE.Group();
         this.root = root;
-        //场景
+        // 场景
+        SCENE.fog = new THREE.Fog("white", 5, 400);  // 设置远端雾化
         protectedObjects.push(SCENE.id);
         this.DTScene = new DTObject(SCENE);
         this.DTScene.setTitle();
@@ -188,13 +196,27 @@ export default class SceneBuilder{
         this.renderer.shadowMap.enabled = true;
         this.root.appendChild( this.renderer.domElement );
         // 天空
-        SCENE.background = new THREE.Color("dodgerblue");
+        //SCENE.background = new THREE.Color("dodgerblue");
+        this.createSkyBoxFromShader();
         // 相机
-        this.cameraSetup();
-        //this.controls = new OrbitControls( this.camera, this.renderer.domElement );
-        //this.controls.mouseButtons = {LEFT: -1,MIDDLE: -1,RIGHT: THREE.MOUSE.ROTATE};
+        const fov = 75;
+        const aspect = window.innerWidth / window.innerHeight;
+        const near = 0.1;
+        const far = 1000;
+        this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+        this.camera.position.set( 0, -25, 15 );
+        this.camera.lookAt(0, 0, 0);
+        this.camera.up.copy(UP);  // 在相机里让z轴向上
+        // 轨道控制器
+        this.cameraControls = new OrbitControls( this.camera, this.renderer.domElement );
+        this.cameraControls.mouseButtons = {  // 清除默认快捷键
+            LEFT: -1, MIDDLE: -1, RIGHT: -1
+        };
+        // 限制相机缩放距离
+        this.cameraControls.minDistance = 1;
+        this.cameraControls.maxDistance = 300;
         // 网格
-        const gridHelper = new THREE.GridHelper(100, 20, "red", "white");
+        const gridHelper = new THREE.GridHelper(500, 100, "red", "white");
         gridHelper.rotateX(Math.PI/2);
         SCENE.add( gridHelper );
         // 坐标轴
@@ -218,7 +240,7 @@ export default class SceneBuilder{
         DTLight.setTitle();
         // 地面
         this.ground = new THREE.Mesh( 
-            new THREE.PlaneGeometry(100, 100), 
+            new THREE.PlaneGeometry(500, 500), 
             new THREE.MeshPhongMaterial({ color: "grey" })
         );
         let DTGround = new DTObject(this.ground);
@@ -228,8 +250,7 @@ export default class SceneBuilder{
         this.ground.receiveShadow = true;
         this.ground.DT.mass = 0 // 不可动
         this.ground.DT.name = "地面";
-        this.ground.DT.name = "地面";
-        this.ground.DT.rigidShape = new Ammo.btBoxShape( new Ammo.btVector3( 50, 50, margin ) );
+        this.ground.DT.rigidShape = new Ammo.btBoxShape( new Ammo.btVector3( 250, 250, margin ) );
         this.ground.DT.createRigidBody();
         SCENE.add( this.ground );
         // 地面边框
@@ -245,9 +266,6 @@ export default class SceneBuilder{
         }, { immediate:true });
     }
     cameraSetup (){
-        this.camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 100 );
-        this.camera.position.set( 0, -25, 15 );
-        this.camera.lookAt(0, 0, 0)
         BUS.on("moveTo",(model)=>{
             let box = new THREE.Box3().setFromObject(model);
             let center = {
@@ -272,6 +290,7 @@ export default class SceneBuilder{
     }
     createGeometry(data, position: Object){  // 定义各物体属性
         let indicators = [];  // 传送带的指示箭头
+        let modelPath;
         let name = data.modeltype + '-' + data.modelname;
         let mesh = new THREE.Mesh();
         let DT = new DTObject(mesh);
@@ -279,75 +298,88 @@ export default class SceneBuilder{
             DT.mass = 0;
             DT.rigid = true; 
             if(data.modelname == "护栏"){
-                geom0 = new THREE.BoxGeometry( 2, 0.5, 1 );
+                mesh.geometry = new THREE.BoxGeometry( 2, 0.5, 1 );
                 DT.rigidShape = new Ammo.btBoxShape( new Ammo.btVector3( 1, 0.25, 0.5 ) );
             }
+            else if(data.modelname == "传感器"){
+                mesh.geometry = new THREE.BoxGeometry( 2, 0.5, 1 );
+                DT.rigidShape = new Ammo.btBoxShape( new Ammo.btVector3( 1, 0.25, 0.5 ) );
+                DT.material = { color: "red", opacity: 0.5, transparent: true };
+            }
             else{
-                loader.load(`src/assets/models/传送带-${data.modelname}.stl`, function(geom){
-                    geom0 = geom;
+                modelPath = `src/assets/models/传送带-${data.modelname}.stl`;
+                loader.load(modelPath, function(geom){ 
+                    geom0 = geom; 
                 })
                 DT.scale = 0.05;
                 DT.rigidShape = this.geom2rigidShape(geom0, DT.scale);
-            }
-            DT.material = { color: "lightgray" };
-            if(data.modelname == "直道"){
-                DT.v0 = 2;
-                indicators = [this.createArrow(0.5, 0, 0)]
-            }
-            if(data.modelname == "弯道"){
-                DT.v0 = 2;
-                indicators = [this.createArrow(-5, 0, 90)]
+                if(data.modelname == "直道"){
+                    DT.material = { color: "lightgray" };
+                    DT.v0 = 2;
+                    indicators = [this.createArrow(0.5, 0, 0)]
+                }
+                if(data.modelname == "弯道"){
+                    DT.material = { color: "lightgray" };
+                    DT.v0 = 2;
+                    indicators = [this.createArrow(-5, 0, 90)]
+                }
             }
         }
         else if(name == "货物-发生器"){  
-            geom0 = new THREE.BoxGeometry( 1, 1, 1 );
+            mesh.geometry = new THREE.BoxGeometry( 1, 1, 1 );
             DT.material = { color: "lime", opacity: 0.5, transparent: true };
             DT.timeInterval = 3;
         }
         else if(name == "货物-回收器"){  
-            geom0 = new THREE.BoxGeometry( 1, 1, 1 );
+            mesh.geometry = new THREE.BoxGeometry( 1, 1, 1 );
             DT.material = { color: "red", opacity: 0.5, transparent: true };
             DT.mass = 0;
             DT.rigid = true;
             DT.rigidShape = new Ammo.btBoxShape( new Ammo.btVector3( 0.5, 0.5, 0.5 ) ); 
         }
         else if(name == "货物-货物"){  
-            geom0 = new THREE.BoxGeometry( 1, 1, 1 );
+            mesh.geometry = new THREE.BoxGeometry( 1, 1, 1 );
             DT.material = { color: "blue" };
             DT.mass = 1;
             DT.rigid = true;
             DT.rigidShape = new Ammo.btBoxShape( new Ammo.btVector3( 0.5, 0.5, 0.5 ) ); 
         }
         else if(name == "基本几何体-正方体"){
-            geom0 = new THREE.BoxGeometry( 1, 1, 1 );
+            mesh.geometry = new THREE.BoxGeometry( 1, 1, 1 );
             DT.material = { color: "lime" };
         }
         else if(name == "基本几何体-球"){
-            geom0 = new THREE.SphereGeometry( 0.5 );
+            mesh.geometry = new THREE.SphereGeometry( 0.5 );
             DT.material = { color: "red" };
         }
         else if(name == "基本几何体-锥体"){
-            geom0 = new THREE.ConeGeometry( 0.5, 1, 12 );
+            mesh.geometry = new THREE.ConeGeometry( 0.5, 1, 12 );
             DT.material = { color: "yellow" };
         }
         else if(name == "基本几何体-圆柱"){
-            geom0 = new THREE.CylinderGeometry(0.5, 0.5);
+            mesh.geometry = new THREE.CylinderGeometry(0.5, 0.5);
             DT.material = { color: "blue" };
         }
 
         mesh.material = new THREE.MeshPhongMaterial(DT.material);
-        mesh.geometry = geom0;
         if(data.modeltype == "基本几何体"){mesh.rotateX(Math.PI/2);}
         DT.name = data.modelname;
         DT.setTitle();
+
+        if(geom0){
+            mesh.geometry = geom0;
+            geom0 = null;
+        }
+        if(modelPath) mesh.geometry.userData = modelPath;
         let wireframe = new THREE.BoxHelper(mesh, "white");  // 线框
-        if(indicators.length){
+        wireframe.visible = false;
+        if(indicators.length){  // 指示箭头
             for(let i of indicators){
                 i.scale.set(1/DT.scale, 1/DT.scale, 1/DT.scale);
                 mesh.add(i);
             }
         }
-        wireframe.visible = false;
+        
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         mesh.wireframe = wireframe
@@ -357,19 +389,85 @@ export default class SceneBuilder{
         SCENE.add(mesh);
         return(mesh);
     }  
+    createSkyBoxFromShader(skyColor: number = 0x86B6F5, lineColor: number = 0xffffff, groundColor: number = 0xffffff) {
+        const radius: number = 600;
+        const widthSegments: number = 32;
+        const heightSegments: number = 15;
+        const skyGeo = new THREE.SphereGeometry(radius, widthSegments, heightSegments);
+
+        const uniforms = {
+            topColor: { value: new THREE.Color(skyColor) },
+            skylineColor: { value: new THREE.Color(lineColor) },
+            bottomColor: { value: new THREE.Color(groundColor) },
+            offset: { value: 0 },
+            exponent: { value: 0.6 },
+            skyCenter: { value: new THREE.Vector3() }
+        }
+        // 顶点着色器
+        const vertexShader = `
+        varying vec3 vWorldPosition;
+        void main() {
+          vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
+          vWorldPosition = worldPosition.xyz;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+        }`
+        // 片着色器
+        const fragmentShader = `
+        uniform vec3 topColor;
+        uniform vec3 skylineColor;
+        uniform vec3 bottomColor;
+        uniform float offset;
+        uniform float exponent;
+        uniform vec3 skyCenter;
+        varying vec3 vWorldPosition;
+        void main() {
+          vec3 position = vec3(vWorldPosition.x - skyCenter.x, vWorldPosition.y - skyCenter.y, vWorldPosition.z - skyCenter.z);
+          float h = normalize( position + offset ).z;
+          vec3 color;
+          if (h > 0.0) {
+            color = mix( skylineColor, topColor, max( pow( max( h, 0.0 ), exponent ), 0.0 ) );
+          } else {
+            color = mix( skylineColor, bottomColor, max( pow( max( -h, 0.0 ), exponent ), 0.0 ) );
+          }
+          gl_FragColor = vec4(color , 1.0 );
+        }`
+        // 着色器材质
+        const skyMat = new THREE.ShaderMaterial({
+            uniforms: uniforms,
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
+            side: THREE.BackSide
+        });
+
+        let skyBox = new THREE.Mesh(skyGeo, skyMat);
+        skyBox.rotation.x = (Math.PI/2);
+        SCENE.add(skyBox);
+    }
+    createSkyBoxFromTexture() {
+        // 图片路径有要求，需要放在public文件夹下
+        const picPath = '../src/assets/skybox/'; // 默认为public内
+        const skybox = new THREE.CubeTextureLoader().setPath(picPath)
+        .load( [ 'px.jpg', 'nx.jpg', 'py.jpg', 'ny.jpg', 'pz.jpg', 'nz.jpg', ] );
+        skybox.format = THREE.RGBAFormat;
+        this.scene.background = skybox;
+    }
     geom2rigidShape(geom, scale){  // 从几何形状建立刚体形状
-        let shape = new Ammo.btConvexHullShape();
-        // points里每三个连续的点定义了一个三角形面，但几万个面同时导入后碰撞时会卡死
+        // points里每三个连续的点定义了一个三角形面
         let points = geom.attributes.position.array
-        for (let i=0; i < points.length; i+=3) {
-            let point = new Ammo.btVector3(points[i], points[i+1], points[i+2])
-            point.op_mul(scale)
-            shape.addPoint(
-                point,
-                i >= (points.length-3) 
-            );
+        let triangleMesh = new Ammo.btTriangleMesh();
+        for (let i=0; i < points.length; i+=9) {
+            let p0 = new Ammo.btVector3(points[i], points[i+1], points[i+2]);
+            let p1 = new Ammo.btVector3(points[i+3], points[i+4], points[i+5]);
+            let p2 = new Ammo.btVector3(points[i+6], points[i+7], points[i+8]);
+            p0.op_mul(scale)
+            p1.op_mul(scale)
+            p2.op_mul(scale)
+            triangleMesh.addTriangle(p0, p1, p2);  
         } 
-        return shape;
+        //return shape;
+        //let shape = new Ammo.btbvhTriangleMeshShape(triangleMesh);  // 真实碰撞网格，几千个面同时导入后碰撞时会卡死
+        let shape = new Ammo.btConvexTriangleMeshShape(triangleMesh);  // 凸碰撞网格
+        return shape
     }
     init(){
         animate(this.render());
@@ -383,8 +481,24 @@ export default class SceneBuilder{
     render(){
         this.updatePhysics( clock.getDelta() );
         this.renderer.render(toRaw(SCENE), this.camera)
-        //this.controls.update();
+        //this.cameraControls.update();
     } 
+    setControl(key, action){  // 设置快捷键（左键、中间、右键：平移、旋转、放缩）
+        var map = {
+          "NONE": -1,  // 无
+          "PAN": THREE.MOUSE.PAN,  // 平移
+          "ROTATE": THREE.MOUSE.ROTATE,  // 旋转
+          "DOLLY": THREE.MOUSE.DOLLY,  // 放缩
+        }
+        let act = map[action];
+        let button = this.cameraControls.mouseButtons;
+        if(key == "LEFT") button.LEFT = act;  // 左键
+        else if(key == "MIDDLE") button.MIDDLE = act;  // 中键
+        else if(key == "RIGHT") button.RIGHT = act;  // 右键
+        this.cameraControls.enablePan = action == "PAN";
+        this.cameraControls.enableRotate = action == "ROTATE";
+        this.cameraControls.enableZoom = action == "DOLLY";
+    }
     transport(){  // 检测物理世界中的物体是否与传送带碰撞，若有则施力
         const dispatcher = physicsWorld.getDispatcher();  
         for(var i=0; i<dispatcher.getNumManifolds(); i++){ 
@@ -464,7 +578,7 @@ export default class SceneBuilder{
     updatePhysics( deltaTime ) {  // 步进 
         let now = performance.now();     
         this.updateFPSandTime(now);
-        for(let i=0; i<speed; i++)physicsWorld.stepSimulation( deltaTime );  // 更新刚体
+        for(let i=0; i<speed; i++) physicsWorld.stepSimulation( deltaTime );  // 更新刚体
         for(let DT of DTObjects.value){  // 让网格位置等于刚体位置
             const mesh = DT.mesh;
             if(!DT.rigid){

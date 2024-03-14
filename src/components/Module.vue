@@ -60,7 +60,7 @@
     :style="{'overflowY': activeTab == '场景' ? 'hidden' : 'scroll'}">
         <a-tab-pane v-for="tab in tabs" :key="tab" :tab="tab" :closable="false" 
         style="height:100%; margin-top:-12px; text-align:left">
-            <Models v-if="tab=='模型'"/>
+            <Models v-if="tab=='模型库'"/>
             <Tree v-if="tab=='层级'"/>
             <Canvas v-if="tab=='场景'" style="flex-grow: 1;"/>
             <div v-if="tab=='演示场景'" style="display:block">  
