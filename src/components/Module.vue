@@ -44,11 +44,9 @@
             return {
                 activeTab, 
                 callback, 
-                H: () => window.innerHeight,  // H()为窗口高度
                 modules, 
                 onEdit, 
                 tabs,
-                W: () => window.innerWidth,  // W()为窗口宽度
             };
         },
     });
@@ -62,7 +60,7 @@
         style="height:100%; margin-top:-12px; text-align:left">
             <Models v-if="tab=='模型库'"/>
             <Tree v-if="tab=='层级'"/>
-            <Canvas v-if="tab=='场景'" style="flex-grow: 1;"/>
+            <Canvas v-if="tab=='场景'"/>
             <div v-if="tab=='演示场景'" style="display:block">  
                 <Demo style="border:1px solid black"/>
             </div>  
@@ -71,4 +69,5 @@
             <Properties v-if="tab=='属性'"/>
         </a-tab-pane>
     </a-tabs>
+
 </template>

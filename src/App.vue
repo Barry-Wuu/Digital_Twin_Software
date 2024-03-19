@@ -2,15 +2,16 @@
   import {onMounted, ref} from "vue"
   import BottomBar from "./components/BottomBar.vue"
   import Layout from "./components/Layout.vue"
-  import Navbar from "./components/Navbar.vue"
+  import Topbar from "./components/Topbar.vue"
   import "ant-design-vue"
+  import { FullscreenExitOutlined } from '@ant-design/icons-vue';
   import BUS from "./components/EventBus"
 
   var dragPoint = [0, 0];
   var draggedSpliter;
   var id = 0;
   var initSize = [0, 0];
-  var layout = ref({
+  const layout = ref({
     info: "root", size: 1000, children:[
       {info: "col", size: 250, children: [
         {info: "row", size: 500, children: [{info: "模型库"}]},
@@ -26,9 +27,12 @@
       {info: "col-split"},
       {info: "col", size: 250, children: [{info: "属性"}]},
     ]
-  })
+  });
+  const showQuitFullscreen = ref(false);
+  BUS.on("changeQuitFullscreen", (data)=>{showQuitFullscreen.value = JSON.parse(data)});
+  const quitFullscreenStyle = ref("default");
   var target;
-  
+
   function addId(layout){  // 给每个模块加id
     layout.id = "Layout" + id;
     if(layout.children){
@@ -92,12 +96,11 @@
     window.addEventListener("mouseup", ()=>{
       draggedSpliter = null;
     });
-    window.addEventListener('resize', ()=>BUS.emit("resize"));
   })
 </script>
 
 <template>
-  <div style = "
+  <div id="main" style = "
     border: 0px solid grey;
     display: block;
     margin-left: 0px;
@@ -107,8 +110,21 @@
     width: 100vw;  
     height: 100vh;
   ">
-      <Navbar/>
-      <Layout style="height: calc(100vh - 149px); margin-top:-10px" :item='layout' parent="none"/>
-      <BottomBar style=""/>
+    <a-button v-if="showQuitFullscreen" danger style="
+      position: absolute; 
+      top: 10px; 
+      right: 10px;
+      z-index: 1919810;    
+    " 
+    :type="quitFullscreenStyle"
+    @mouseenter = "quitFullscreenStyle = 'primary'"
+    @mousedown = "BUS.emit('canvasFullscreen')"
+    @mouseleave = "quitFullscreenStyle = 'default'"
+    >
+      <FullscreenExitOutlined/>退出全屏&nbsp;(Esc)
+    </a-button>
+    <Topbar/>
+    <Layout style="height: calc(100vh - 186px);" :item="layout" parent="none"/>
+    <BottomBar style=""/>
   </div>
 </template>
