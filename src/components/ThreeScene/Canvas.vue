@@ -1,21 +1,20 @@
-<script lang="ts" src="./SceneEvents.ts"></script>
+<script lang="ts" src="./CanvasEvents.ts"></script>
 
 <template>
     <div 
         class="sketch-container"
         id="canvas"
-        @dragenter = "dragenter"
-        @dragleave = "dragleave"
-        @dragover = "dragover" 
-        @drop = "drop"
-        @keydown = "keydown"
-        @keyup = "keyup"
-        @mousedown = "mousedown"
-        @mousemove = "mousemove"
-        @mouseup = "mouseup"
-        @wheel = "wheel"
-        @wheelstart = "() => console.log('wheel')"
-        style="display: block; outline:none; height:100%"
+        @dragenter = "onDragenter"
+        @dragleave = "onDragleave"
+        @dragover = "onDragover" 
+        @drop = "onDrop"
+        @keydown = "onKeyup"
+        @keyup = "onKeydown"
+        @mousedown = "onMousedown"
+        @mousemove = "onMousemove"
+        @mouseup = "onMouseup"
+        @wheel = "onWheel"
+        style="outline:none; "
         tabindex="0"
     />
-</template>./SceneEvents.js./SceneEvents.js
+</template>./SceneEvents.js./SceneEvents.js./CanvasEvents.js./CanvasEvents.js

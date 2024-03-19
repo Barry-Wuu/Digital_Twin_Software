@@ -1,17 +1,8 @@
 import { app, BrowserWindow, shell, ipcMain } from 'electron'
+import { onMounted } from 'vue'
 import { release } from 'node:os'
 import { join } from 'node:path'
 
-// The built directory structure
-//
-// ├─┬ dist-electron
-// │ ├─┬ main
-// │ │ └── index.js    > Electron-Main
-// │ └─┬ preload
-// │   └── index.js    > Preload-Scripts
-// ├─┬ dist
-// │ └── index.html    > Electron-Renderer
-//
 process.env.DIST_ELECTRON = join(__dirname, '..')
 process.env.DIST = join(process.env.DIST_ELECTRON, '../dist')
 process.env.VITE_PUBLIC = process.env.VITE_DEV_SERVER_URL
@@ -100,8 +91,8 @@ app.on('activate', () => {
   }
 })
 
-// New window example arg: new windows url
-ipcMain.handle('open-win', (_, arg) => {
+// Electron浏览器的事件
+ipcMain.handle('open-win', (_, arg) => {  // 窗口打开时
   const childWindow = new BrowserWindow({
     webPreferences: {
       preload,
@@ -109,10 +100,12 @@ ipcMain.handle('open-win', (_, arg) => {
       contextIsolation: false,
     },
   })
-
   if (process.env.VITE_DEV_SERVER_URL) {
     childWindow.loadURL(`${url}#${arg}`)
   } else {
     childWindow.loadFile(indexHtml, { hash: arg })
   }    
 })
+ipcMain.on('openDevTools', () => { win.webContents.openDevTools(); })  // 打开开发人员工具
+ipcMain.on('closeDevTools', () => { win.webContents.closeDevTools(); })  // 关闭开发人员工具
+ipcMain.on('reload', () => { win.reload() })  // 重载页面

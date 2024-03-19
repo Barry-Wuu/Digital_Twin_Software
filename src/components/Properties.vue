@@ -61,7 +61,8 @@
         <!--位置-->
         <div v-if="'position' in DT.mesh">
           <strong>位置：</strong><br/>
-          <strong>x:</strong><a-input style="width:80px" type="number" :value="DT.mesh.position.x"   
+          <strong>x:</strong><a-input style="width:80px" type="number" 
+          :value="DT.mesh.position.x.toFixed(4)"   
           @wheel="(e)=>{DT.set('x', 1 * scroll(e));}"/>, 
           <strong>y:</strong><a-input style="width:80px" type="number" :value="DT.mesh.position.y" 
           @wheel="(e)=>{DT.set('y', 1 * scroll(e));}"/>, 

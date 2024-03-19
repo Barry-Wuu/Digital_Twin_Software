@@ -8,12 +8,15 @@ var cameraRotation;
 var canvas;
 var dragModel;
 var dragName;
+var fullscreen = false;
 var isDrag = false;  // 是否在用鼠标移动模型
+var app;
 var moveStart = null;  // 用左键移动镜头之前，射线检测器与地面的交点
 var mouseType;  // 判断鼠标按键类型
 const ray = new THREE.Raycaster();  // 从鼠标发出的射线检测器
 var resizeObserver;
 var shift = false;
+var style;
 var tempModel;
 var tempOpacity;
 var tempPosition = null;
@@ -24,58 +27,34 @@ export default defineComponent({
     props:{},
     components:{},
     data(){
-      resizeObserver = new ResizeObserver(()=>this.resize());
-      BUS.on('dragstart', (data)=>{dragName = data;});
-      BUS.on('dropout', ()=>dragModel.remove());
-      BUS.on('resize', ()=>this.resize());
+      resizeObserver = new ResizeObserver(()=>{
+        this.resizeCanvas()
+      });
+      BUS.on("dragstart", (data)=>{dragName = data;});
+      BUS.on("dropout", ()=>dragModel.remove());
+      BUS.on("canvasFullscreen", ()=>{  // 全屏或退出全屏
+        fullscreen = !fullscreen;
+        if(fullscreen){ 
+          parent = canvas.parentElement;
+          style = canvas.style;
+          canvas.style = 
+            "position: absolute;" +
+            "top: 0px; left: 0px;" +
+            "zIndex: 114514;";  // 让画布盖住其它组件\
+          app.appendChild(canvas);  
+        } else {
+          canvas.style = style;
+          parent.appendChild(canvas);
+        }
+        BUS.emit("changeQuitFullscreen", fullscreen);
+        this.resizeCanvas();
+      });
       return{
         description: null,
         rendered: false,
       }
     },
     methods:{
-        dragenter(e){
-          let modelName = dragName.data;
-          if(dragName.type != "modelName")return;
-          dragModel = this.scene.createGeometry(modelName, this.event2face(e)[1]);
-          dragModel.isDrag = true;
-          dragModel.material.transparent = true;
-          tempOpacity = dragModel.material.opacity;
-          dragModel.material.opacity = tempOpacity/2;
-          tempModel = dragModel.clone();
-          tempModel.visible = false;
-        },
-        dragover(e){
-          e.preventDefault();
-          if(tempModel && dragModel){
-            tempModel.position.set(0, 0, 0);
-            let box = new THREE.Box3().setFromObject(tempModel);
-            let intersect = this.event2face(e);
-            tempModel.position.copy(intersect[1]);
-            tempModel.position.x -= (box.max.x+box.min.x)/2;  // 将模型的包围盒中心移到鼠标
-            tempModel.position.y -= (box.max.y+box.min.y)/2;
-            box = new THREE.Box3().setFromObject(tempModel);  // 包围盒
-            let box0 = new THREE.Box3().setFromObject(intersect[0]);
-            tempModel.position.z += box0.max.z - box.min.z;
-            dragModel.position.copy(tempModel.position);
-          }
-        },
-        dragleave(){
-          if(dragModel){
-            dragModel.DT.destroy();
-            dragModel = null;
-          }     
-          tempModel.remove();
-        },
-        drop(){
-          dragModel.isDrag = false;
-          dragModel.material.opacity = tempOpacity;
-          if(dragModel.DT.rigid){dragModel.DT.createRigidBody()}
-          dragModel = null;
-          dragName.data.modeltype = null;
-          tempModel.clear();
-          BUS.emit("updateTree");
-        },
         event2face(e){
           const mouse = new THREE.Vector2(e.offsetX*2/e.target.width-1, 1-e.offsetY*2/e.target.height);
           ray.setFromCamera(mouse, this.scene.camera);  // 射线检测
@@ -96,17 +75,59 @@ export default defineComponent({
           }
           return new THREE.Vector3( 999, 999, 999 )  // 若无交点
         },
-        keyup(k){
+        onDragenter(e){
+          let modelName = dragName.data;
+          if(dragName.type != "modelName")return;
+          dragModel = this.scene.createGeometry(modelName, this.event2face(e)[1]);
+          dragModel.isDrag = true;
+          dragModel.material.transparent = true;
+          tempOpacity = dragModel.material.opacity;
+          dragModel.material.opacity = tempOpacity/2;
+          tempModel = dragModel.clone();
+          tempModel.visible = false;
+        },
+        onDragleave(){
+          if(dragModel){
+            dragModel.DT.destroy();
+            dragModel = null;
+          }     
+          tempModel.remove();
+        },
+        onDragover(e){
+          e.preventDefault();
+          if(tempModel && dragModel){
+            tempModel.position.set(0, 0, 0);
+            let box = new THREE.Box3().setFromObject(tempModel);
+            let intersect = this.event2face(e);
+            tempModel.position.copy(intersect[1]);
+            tempModel.position.x -= (box.max.x+box.min.x)/2;  // 将模型的包围盒中心移到鼠标
+            tempModel.position.y -= (box.max.y+box.min.y)/2;
+            box = new THREE.Box3().setFromObject(tempModel);  // 包围盒
+            let box0 = new THREE.Box3().setFromObject(intersect[0]);
+            tempModel.position.z += box0.max.z - box.min.z;
+            dragModel.position.copy(tempModel.position);
+          }
+        },
+        onDrop(){
+          dragModel.isDrag = false;
+          dragModel.material.opacity = tempOpacity;
+          if(dragModel.DT.rigid){dragModel.DT.createRigidBody()}
+          dragModel = null;
+          dragName.data.modeltype = null;
+          tempModel.clear();
+          BUS.emit("updateTree");
+        },
+        onKeyup(k){
           if(k.code == "ShiftLeft"){shift = false;}
         },
-        keydown(k){
+        onKeydown(k){
           if(k.code == "Delete") BUS.emit("deleteChoices");
           else if(k.code == "ShiftLeft") shift = true;
         },
-        mousedown(e){
+        onMousedown(e){
           mouseType = e.button;
           if(mouseType == 0){  // 左键点击
-            this.scene.setControl("LEFT", "NONE");
+            this.setControl("LEFT", "NONE");
             let choice = this.event2face(e)[0];
             if(choice.geometry.type == "ShapeGeometry") choice = choice.parent;
             if(choice != this.scene.ground){
@@ -127,6 +148,8 @@ export default defineComponent({
             }
           }
           else{  // 中键或右键点击
+            if(mouseType == 1) this.setControl("MIDDLE", "PAN");  // 中键移动镜头
+            else if (mouseType == 2) this.setControl("RIGHT", "ROTATE");  // 右键旋转镜头
             tempPosition = new THREE.Vector2(e.offsetX*2/e.target.width-1, 1-e.offsetY*2/e.target.height);
             ray.setFromCamera(tempPosition, this.scene.camera);  // 射线检测
             moveStart = ray.intersectObject(this.scene.ground)[0].point;
@@ -134,66 +157,74 @@ export default defineComponent({
             cameraRotation = this.scene.camera.rotation;
           };
         },
-        mousemove(e){
-          if(isDrag) this.dragover(e);
+        onMousemove(e){
+          if(isDrag) this.onDragover(e);
           if(moveStart){
             const mouse = new THREE.Vector2(e.offsetX*2/e.target.width-1, 1-e.offsetY*2/e.target.height);
             ray.setFromCamera(mouse, this.scene.camera);  // 射线检测
             try{
               let move = ray.intersectObject(this.scene.ground)[0].point;
-              if(mouseType == 1){  // 中键移动镜头
-                this.scene.setControl("MIDDLE", "PAN");
-              }
-              else if (mouseType == 2){  // 右键旋转镜头
-                this.scene.setControl("RIGHT", "ROTATE");
-              }
             }
             catch (e) {} 
           }
         },
-        mouseup(e){
+        onMouseup(e){
           if(isDrag){ 
-            this.drop(e);
+            this.onDrop(e);
             isDrag = false;
           }
           else{ moveStart = null; }
         },
-        print(x){
-          let time = new Date()
-            document.getElementById("log").appendChild(document.createTextNode(
-              time.toLocaleString() + " —— " + x
-            ));
-            document.getElementById("log").appendChild(document.createElement('br'));
+        onWheel(e){  // 滚轮事件
+          if(dragModel){  // 拖动物体+滚轮=旋转物体
+            this.scene.cameraControls.enableZoom = false;
+            this.setControl("MIDDLE", "NONE");          
+            dragModel.rotateOnWorldAxis(UP, e.deltaY*Math.PI/1200);
+          } else {  // 滚轮放缩镜头
+            this.scene.cameraControls.enableZoom = true;
+            this.setControl("MIDDLE", "DOLLY");
+          }
         },
-        redirectToDetailed(){},
         remove(){this.scene.SCENE.remove(dragModel)},
-        resize() {  //让画布大小和父组件大小相适应
-          let tab = canvas;
-          for(let i=0; i<4; i++){tab = tab.parentElement;}
-          const width = canvas.clientWidth;  
-          const height = tab.clientHeight - tab.children[0].clientHeight - 4;  
+        resizeCanvas() {  //让画布大小和父组件大小相适应
+          let width = window.innerWidth, height = window.innerHeight;
+          if(!fullscreen){  // 直接预览
+            let tab = canvas;
+            for(let i=0; i<4; i++){tab = tab.parentElement;}
+            width = canvas.clientWidth;  
+            height = tab.clientHeight - tab.children[0].clientHeight - 4; 
+          }  // 否则全屏预览
           this.scene.renderer.setSize(width, height);
           this.scene.camera.aspect = width / height;
           this.scene.camera.updateProjectionMatrix();
         },
-        
-        wheel(e){  // 滚轮事件
-          if(dragModel){  // 拖动物体+滚轮=旋转物体
-            this.scene.setControl("MIDDLE", "NONE");
-            dragModel.rotateOnWorldAxis(UP, e.deltaY*Math.PI/1200);
-          } else {  // 滚轮放缩镜头
-            this.scene.setControl("MIDDLE", "DOLLY");
+        setControl(key, action){  // 设置快捷键（左键、中间、右键：平移、旋转、放缩）
+          var map = {
+            "NONE": -1,  // 无
+            "PAN": THREE.MOUSE.PAN,  // 平移
+            "ROTATE": THREE.MOUSE.ROTATE,  // 旋转
+            "DOLLY": THREE.MOUSE.DOLLY,  // 放缩
           }
+          let act = map[action];
+          let button = this.scene.cameraControls.mouseButtons;
+          if(key == "LEFT") button.LEFT = act;  // 左键
+          else if(key == "MIDDLE") button.MIDDLE = act;  // 中键
+          else if(key == "RIGHT") button.RIGHT = act;  // 右键
         }
     },
     mounted(){
-      canvas = document.getElementById('canvas');  
+      canvas = document.getElementById("canvas");  
+      app = document.getElementById("app"); 
       this.scene = new DTScene(canvas);
       this.scene.init();
-      canvas = document.getElementById('canvas');  
       this.rendered = true;
-      this.resize();
+      this.resizeCanvas();
       resizeObserver.observe(canvas.parentElement.parentElement.parentElement);
+      window.addEventListener("keydown", (k)=>{
+        if(k.code == "Escape" && fullscreen){
+          BUS.emit("canvasFullscreen");
+        }
+      });
     },
   }
 );

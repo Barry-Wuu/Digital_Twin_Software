@@ -209,8 +209,8 @@ export default class SceneBuilder{
         this.camera.up.copy(UP);  // 在相机里让z轴向上
         // 轨道控制器
         this.cameraControls = new OrbitControls( this.camera, this.renderer.domElement );
-        this.cameraControls.mouseButtons = {  // 清除默认快捷键
-            LEFT: -1, MIDDLE: -1, RIGHT: -1
+        this.cameraControls.mouseButtons = {  // 设置默认快捷键
+            LEFT: -1, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE
         };
         // 限制相机缩放距离
         this.cameraControls.minDistance = 1;
@@ -465,7 +465,7 @@ export default class SceneBuilder{
             triangleMesh.addTriangle(p0, p1, p2);  
         } 
         //return shape;
-        //let shape = new Ammo.btbvhTriangleMeshShape(triangleMesh);  // 真实碰撞网格，几千个面同时导入后碰撞时会卡死
+        //let shape = new Ammo.btBvhTriangleMeshShape(triangleMesh);  // 真实碰撞网格，几千个面同时导入后碰撞时会卡死
         let shape = new Ammo.btConvexTriangleMeshShape(triangleMesh);  // 凸碰撞网格
         return shape
     }
@@ -481,24 +481,8 @@ export default class SceneBuilder{
     render(){
         this.updatePhysics( clock.getDelta() );
         this.renderer.render(toRaw(SCENE), this.camera)
-        //this.cameraControls.update();
+        this.cameraControls.update();
     } 
-    setControl(key, action){  // 设置快捷键（左键、中间、右键：平移、旋转、放缩）
-        var map = {
-          "NONE": -1,  // 无
-          "PAN": THREE.MOUSE.PAN,  // 平移
-          "ROTATE": THREE.MOUSE.ROTATE,  // 旋转
-          "DOLLY": THREE.MOUSE.DOLLY,  // 放缩
-        }
-        let act = map[action];
-        let button = this.cameraControls.mouseButtons;
-        if(key == "LEFT") button.LEFT = act;  // 左键
-        else if(key == "MIDDLE") button.MIDDLE = act;  // 中键
-        else if(key == "RIGHT") button.RIGHT = act;  // 右键
-        this.cameraControls.enablePan = action == "PAN";
-        this.cameraControls.enableRotate = action == "ROTATE";
-        this.cameraControls.enableZoom = action == "DOLLY";
-    }
     transport(){  // 检测物理世界中的物体是否与传送带碰撞，若有则施力
         const dispatcher = physicsWorld.getDispatcher();  
         for(var i=0; i<dispatcher.getNumManifolds(); i++){ 
