@@ -53,7 +53,7 @@
     <div class="split"/>
     &nbsp&nbsp窗口尺寸：<div id="BottomWindowSize" class="item"/>&nbsp&nbsp
     <div class="split"/>
-    &nbsp&nbsp消息：<div id="BottomMessage" class="item">无</div>&nbsp&nbsp
+    &nbsp&nbsp消息：<div id="BottomMessage" class="item">仿真停止</div>&nbsp&nbsp
     <div style="
       display: inline; 
       position: absolute; 

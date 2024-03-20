@@ -10,6 +10,8 @@ import { contentQuotesLinter } from 'ant-design-vue/es/_util/cssinjs/linters';
 
 var BottomFPS, BottomTimer;
 var DTObjects = ref([]);
+var emulateMode = "stop";  // 仿真模式
+var frames = 0;  // 帧率计算
 var geom0;
 var loader = new STLLoader();
 var origin = new THREE.Vector3(0, 0, 0);
@@ -36,9 +38,11 @@ physicsWorld = new Ammo.btDiscreteDynamicsWorld(dispatcher, broadphase, solver, 
 physicsWorld.setGravity( G );
 // 碰撞体到刚体和网格的映射表，因为碰撞检测时碰撞体和刚体不同，而两者ptr相同，所以需要用ptr在此表中查找刚体和网格
 var rb_mesh = new Map();
-BUS.on("changeSpeed", (k: String)=>{
-    speed = parseInt(k.slice(0, k.length-1));
-})
+
+BUS.on("changeEmulateMode", (mode: string)=>{emulateMode = mode});
+BUS.on("changeSpeed", (k: string)=>{speed = parseInt(k.slice(0, k.length-1))});
+BUS.on("clearTemp", ()=>{SCENE.DT.clearTemp()});
+
 class DTObject {  // 用DTObject类包裹场景中的对象
     children: []  // 子物体（自动计算）
     friction0: number  // 静摩擦力
@@ -46,12 +50,13 @@ class DTObject {  // 用DTObject类包裹场景中的对象
     id: number  // 序号
     key: number  // 层级数的键
     mass: number  // 质量
-    material: Object  // 材质属性
-    mesh: THREE.Object  // 模型网格
+    material: object  // 材质属性
+    mesh: THREE.object  // 模型网格
     name: string  // 名称
-    rigid: Boolean  // 是否为刚体
-    rigidShape: Ammo.Object  // 刚体网格（自动计算）
+    rigid: boolean  // 是否为刚体
+    rigidShape: Ammo.object  // 刚体网格（自动计算）
     scale: number  // 尺寸
+    temp: boolean  // 临时实体（如货物）
     timer: number  // 定时器（自动计算）
     timeInterval: number  // 定时器触发时间
     title: string  // 标题 = 物体类型 + 名称 + 序号（自动计算）
@@ -74,6 +79,12 @@ class DTObject {  // 用DTObject类包裹场景中的对象
         if(inScene) DTObjects.value.push(this);
         return this;
     }  
+    clearTemp() {  // 重置仿真动画时遍历清除所有临时物体
+        if(this.rigid && this.mass>0) this.destroy();
+        for(let child of this.children){
+            child.clearTemp();
+        }
+    }
     createRigidBody() {  // 添加刚体
         let pos = this.mesh.position;
         let quat = this.mesh.quaternion;
@@ -95,7 +106,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
         rb_mesh.set(rb.ptr, {mesh:this.mesh, rb:rb});
         rb.setFriction( this.mesh.DT.friction0 );  // 静摩擦力
     }
-    destroy() {  
+    destroy() {  // 清除自身及其网格和刚体
         if(protectedObjects.includes(this)) return;  // 不能删除场景和地面
         let rb = this.mesh.userData.physicsBody;
         if(rb){
@@ -119,7 +130,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
         }
     }
     set(prop, delta) {
-        if(this.rigid){  // 非刚体
+        if(this.rigid){  // 刚体
             let rb = this.mesh.userData.physicsBody;
             let transform = new Ammo.btTransform();
             const motionState = rb.getMotionState();
@@ -139,7 +150,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
             transform.setRotation(q);
             motionState.setWorldTransform( transform );
             rb.setMotionState(motionState);
-        }else{
+        }else{  // 非刚体
             if(prop == "x") this.mesh.position.x += delta;
             if(prop == "y") this.mesh.position.y += delta;
             if(prop == "z") this.mesh.position.z += delta;
@@ -172,9 +183,9 @@ export default class SceneBuilder{
     ground
     group
     renderer: THREE.WebGLRenderer
-    root: HTMLElement
+    canvas: HTMLElement
     SCENE = SCENE
-    constructor(root: HTMLElement){ 
+    constructor(canvas: HTMLElement){ 
         // 初始化
         animate = () => {
             requestAnimationFrame(animate);  
@@ -184,7 +195,7 @@ export default class SceneBuilder{
         BottomTimer = document.getElementById("BottomTimer");
         T0 = performance.now();
         //this.group = new THREE.Group();
-        this.root = root;
+        this.canvas = canvas;
         // 场景
         SCENE.fog = new THREE.Fog("white", 5, 400);  // 设置远端雾化
         protectedObjects.push(SCENE.id);
@@ -194,7 +205,7 @@ export default class SceneBuilder{
         // 渲染器
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.shadowMap.enabled = true;
-        this.root.appendChild( this.renderer.domElement );
+        this.canvas.appendChild( this.renderer.domElement );
         // 天空
         //SCENE.background = new THREE.Color("dodgerblue");
         this.createSkyBoxFromShader();
@@ -343,6 +354,7 @@ export default class SceneBuilder{
             DT.mass = 1;
             DT.rigid = true;
             DT.rigidShape = new Ammo.btBoxShape( new Ammo.btVector3( 0.5, 0.5, 0.5 ) ); 
+            DT.temp = true;  // 临时实体
         }
         else if(name == "基本几何体-正方体"){
             mesh.geometry = new THREE.BoxGeometry( 1, 1, 1 );
@@ -551,22 +563,27 @@ export default class SceneBuilder{
         + pad(totalTime.getMinutes()) + ':'
         + pad(totalTime.getSeconds()) + '.'
         + String(totalTime.getMilliseconds()).slice(0, 2);
-        if(time - timeUpdateFPS >= 1000){
-            BottomFPS.textContent = (1000/(now - time)).toFixed(0);
-            timeUpdateFPS = time;
-        }
-        else{
+        if(time - timeUpdateFPS < 1000){  // 未到一秒则统计一秒钟的步进次数，将其作为帧数
+            frames++;
             time = now;
+        }
+        else{  // 到一秒时更新帧率显示          
+            BottomFPS.textContent = frames;
+            frames = 0;
+            timeUpdateFPS = time;
         }
     }
     updatePhysics( deltaTime ) {  // 步进 
         let now = performance.now();     
         this.updateFPSandTime(now);
-        for(let i=0; i<speed; i++) physicsWorld.stepSimulation( deltaTime );  // 更新刚体
+        let stop = (emulateMode == "pause" || emulateMode == "stop");  // 是否暂停或停止
+        if(!stop){  // 未暂停时更新刚体
+            for(let i=0; i<speed; i++) physicsWorld.stepSimulation( deltaTime );
+        }
         for(let DT of DTObjects.value){  // 让网格位置等于刚体位置
             const mesh = DT.mesh;
             if(!DT.rigid){
-                if(DT.name == "发生器"){
+                if(!stop && DT.name == "发生器"){  // 未暂停时制造货物
                     if(now - DT.timer >= DT.timeInterval * 1000){  // 秒变毫秒
                         let mesh0 = this.createGeometry({modeltype:"货物", modelname:"货物"}, mesh.position);                      
                         mesh0.rotation.copy(mesh.rotation);
@@ -589,11 +606,12 @@ export default class SceneBuilder{
                     motionState.getWorldTransform( transform );
                     const p = transform.getOrigin();
                     const q = transform.getRotation();
-                    mesh.position.set( p.x(), p.y(), p.z() );
-                    mesh.quaternion.set( q.x(), q.y(), q.z(), q.w() );
+                    mesh.position.set( p.x(), p.y(), p.z() );  // 将网格位移设为刚体位移
+                    mesh.quaternion.set( q.x(), q.y(), q.z(), q.w() );  // 将网格旋转设为刚体旋转
                 }
             }
         }
         this.transport();
+        if(emulateMode == "step") emulateMode = "stop";  // 步进模式下，每仿真完一步就停止
     }
 }

@@ -43,10 +43,10 @@
         FormOutlined,
       },
       data(){
-        BUS.on("clickModel", (id_shift)=>{  // 点击屏幕中的物体
-          id_shift = id_shift.split(',');
-          let selection = JSON.parse(id_shift[0]);
-          let shift = JSON.parse(id_shift[1]);
+        BUS.on("clickModel", (id_shift: string)=>{  // 点击屏幕中的物体
+          let id_shift_split = id_shift.split(',');
+          let selection = JSON.parse(id_shift_split[0]);
+          let shift = JSON.parse(id_shift_split[1]);
           if(shift){  // 按住shift为多选模式
             if(choices.value.includes(selection))  // 多选取消
               choices.value = choices.value.filter(k => k != selection);
@@ -56,14 +56,11 @@
             choices.value = [selection]; 
             console.log(window.DTScene.findDTObjectById(selection))
           }  // 单选
-          BUS.emit(
-            "BottomMessage", 
-            choices.value.length>0 ? `选择${choices.value.length}个物体` : "无"
-          );
+          //BUS.emit("BottomMessage", choices.value.length>0 ? `选择${choices.value.length}个物体` : "无");
         });
         BUS.on("deselect", ()=>{
           this.deselect();
-          BUS.emit("BottomMessage", "无");
+          //BUS.emit("BottomMessage", "无");
         });
         BUS.on("deleteChoices", ()=>{this.deleteChoices()});
         BUS.on("updateSearch", ()=>{this.search(TREE.value)});

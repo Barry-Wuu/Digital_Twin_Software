@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import DTScene from './DTScene';
 import BUS from "../EventBus"
 
+var app;
 var cameraPosition;
 var cameraRotation;
 var canvas;
@@ -10,9 +11,9 @@ var dragModel;
 var dragName;
 var fullscreen = false;
 var isDrag = false;  // 是否在用鼠标移动模型
-var app;
+var mode = "edit";  // 编辑模式（edit）或浏览模式（view）
 var moveStart = null;  // 用左键移动镜头之前，射线检测器与地面的交点
-var mouseType;  // 判断鼠标按键类型
+var mouseType = [false, false, false];  // 左、中、右键是否按下
 const ray = new THREE.Raycaster();  // 从鼠标发出的射线检测器
 var resizeObserver;
 var shift = false;
@@ -20,6 +21,10 @@ var style;
 var tempModel;
 var tempOpacity;
 var tempPosition = null;
+
+var MOVE = THREE.MOUSE.PAN;
+var ROTATE = THREE.MOUSE.ROTATE;
+var ZOOM = THREE.MOUSE.DOLLY;
 var UP = new THREE.Vector3(0, 0, 1);  // z轴朝上
 
 export default defineComponent({
@@ -49,6 +54,7 @@ export default defineComponent({
         BUS.emit("changeQuitFullscreen", fullscreen);
         this.resizeCanvas();
       });
+      BUS.on('modeSelect', data => mode = data);
       return{
         description: null,
         rendered: false,
@@ -109,12 +115,14 @@ export default defineComponent({
           }
         },
         onDrop(){
-          dragModel.isDrag = false;
-          dragModel.material.opacity = tempOpacity;
-          if(dragModel.DT.rigid){dragModel.DT.createRigidBody()}
-          dragModel = null;
-          dragName.data.modeltype = null;
-          tempModel.clear();
+          if(dragModel){
+            dragModel.isDrag = false;
+            dragModel.material.opacity = tempOpacity;
+            if(dragModel.DT.rigid){dragModel.DT.createRigidBody()}
+            dragModel = null;
+            if(dragName) dragName.data.modeltype = null;
+            tempModel.clear();
+          }
           BUS.emit("updateTree");
         },
         onKeyup(k){
@@ -125,31 +133,30 @@ export default defineComponent({
           else if(k.code == "ShiftLeft") shift = true;
         },
         onMousedown(e){
-          mouseType = e.button;
-          if(mouseType == 0){  // 左键点击
-            this.setControl("LEFT", "NONE");
-            let choice = this.event2face(e)[0];
-            if(choice.geometry.type == "ShapeGeometry") choice = choice.parent;
-            if(choice != this.scene.ground){
-              if(choice){
-                BUS.emit("clickModel", choice.id +','+shift);
+          mouseType[e.button] = true;
+          if(mouseType[0]){
+            if(mouseType[2]){  // 双击左右键则移动
+            } else if(mode == "edit"){  // 左键点击
+              let choice = this.event2face(e)[0];
+              if(choice.geometry.type == "ShapeGeometry") choice = choice.parent;
+              if(choice.DT && choice != this.scene.ground){
+                if(choice){
+                  BUS.emit("clickModel", choice.id +','+shift);
+                }
+                dragModel = choice;
+                dragModel.isDrag = true;
+                tempModel = dragModel.clone();
+                tempOpacity = dragModel.material.opacity;
+                isDrag = true;
+                if(dragModel.DT.rigid){
+                  this.scene.removeRigidBody(dragModel);
+                }
+              } else{
+                BUS.emit("deselect")
               }
-              dragModel = choice;
-              dragModel.isDrag = true;
-              tempModel = dragModel.clone();
-              tempOpacity = dragModel.material.opacity;
-              isDrag = true;
-              if(dragModel.DT.rigid){
-                this.scene.removeRigidBody(dragModel);
-              }
-            }
-            else{
-              BUS.emit("deselect")
             }
           }
           else{  // 中键或右键点击
-            if(mouseType == 1) this.setControl("MIDDLE", "PAN");  // 中键移动镜头
-            else if (mouseType == 2) this.setControl("RIGHT", "ROTATE");  // 右键旋转镜头
             tempPosition = new THREE.Vector2(e.offsetX*2/e.target.width-1, 1-e.offsetY*2/e.target.height);
             ray.setFromCamera(tempPosition, this.scene.camera);  // 射线检测
             moveStart = ray.intersectObject(this.scene.ground)[0].point;
@@ -158,6 +165,23 @@ export default defineComponent({
           };
         },
         onMousemove(e){
+          if(mouseType[0] && mouseType[2]){
+            this.scene.cameraControls.mouseButtons = {
+              LEFT: MOVE, MIDDLE: -1, RIGHT: MOVE
+            };
+          } else if(mouseType[0]){
+            this.scene.cameraControls.mouseButtons = {
+              LEFT: mode == "edit" ? -1 : ROTATE, MIDDLE: isDrag ? -1 : ZOOM, RIGHT: -1
+            };
+          } else if(mouseType[1]){
+            this.scene.cameraControls.mouseButtons = {
+              LEFT: -1, MIDDLE: MOVE, RIGHT: -1
+            };
+          } else if(mouseType[2]){
+            this.scene.cameraControls.mouseButtons = {
+              LEFT: -1, MIDDLE: -1, RIGHT: ROTATE
+            };
+          }
           if(isDrag) this.onDragover(e);
           if(moveStart){
             const mouse = new THREE.Vector2(e.offsetX*2/e.target.width-1, 1-e.offsetY*2/e.target.height);
@@ -169,6 +193,7 @@ export default defineComponent({
           }
         },
         onMouseup(e){
+          mouseType[e.button] = false;
           if(isDrag){ 
             this.onDrop(e);
             isDrag = false;
@@ -177,12 +202,10 @@ export default defineComponent({
         },
         onWheel(e){  // 滚轮事件
           if(dragModel){  // 拖动物体+滚轮=旋转物体
-            this.scene.cameraControls.enableZoom = false;
-            this.setControl("MIDDLE", "NONE");          
+            this.scene.cameraControls.enableZoom = false;     
             dragModel.rotateOnWorldAxis(UP, e.deltaY*Math.PI/1200);
           } else {  // 滚轮放缩镜头
             this.scene.cameraControls.enableZoom = true;
-            this.setControl("MIDDLE", "DOLLY");
           }
         },
         remove(){this.scene.SCENE.remove(dragModel)},
@@ -215,7 +238,8 @@ export default defineComponent({
     mounted(){
       canvas = document.getElementById("canvas");  
       app = document.getElementById("app"); 
-      this.scene = new DTScene(canvas);
+      let main = document.getElementById("main"); 
+      this.scene = new DTScene(canvas, main);
       this.scene.init();
       this.rendered = true;
       this.resizeCanvas();

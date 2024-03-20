@@ -5,17 +5,6 @@
   const DT = ref("未选择对象");
   var status = "play";
 
-  BUS.on("showProperty", (data:string)=>{
-    if(!'未已'.includes(data[0])){
-      DT.value = window.DTScene.findDTObjectById(data);
-      //if(status == "play") updateProperty(); 
-    }
-    else if(data == "asset"){
-      DT.value = window.asset;
-      console.log(window.asset)
-    }
-    else DT.value = data;
-  })
   export default{
     methods:{
       clamp(x, min, max){  // 范围限制
@@ -29,6 +18,19 @@
     setup(){
       return {angle, DT}
     },
+    mounted(){
+      BUS.on("showProperty", (data:string)=>{
+        if(!'未已'.includes(data[0])){
+          DT.value = window.DTScene.findDTObjectById(data);
+          //if(status == "play") updateProperty(); 
+        }
+        else if(data == "asset"){
+          DT.value = this.$refs.main.asset;
+          console.log(this.$refs.main.asset)
+        }
+        else DT.value = data;
+      })
+    }
   }
 </script>
 
@@ -61,25 +63,24 @@
         <!--位置-->
         <div v-if="'position' in DT.mesh">
           <strong>位置：</strong><br/>
-          <strong>x:</strong><a-input style="width:80px" type="number" 
-          :value="DT.mesh.position.x.toFixed(4)"   
-          @wheel="(e)=>{DT.set('x', 1 * scroll(e));}"/>, 
-          <strong>y:</strong><a-input style="width:80px" type="number" :value="DT.mesh.position.y" 
-          @wheel="(e)=>{DT.set('y', 1 * scroll(e));}"/>, 
-          <strong>z:</strong><a-input style="width:80px" type="number" :value="DT.mesh.position.z" 
+          <strong>x:</strong><a-input style="width:80px" type="number" :value="DT.mesh.position.x.toFixed(2)"   
+          @wheel="(e)=>{DT.set('x', 1 * scroll(e));}"/>&nbsp;
+          <strong>y:</strong><a-input style="width:80px" type="number" :value="DT.mesh.position.y.toFixed(2)" 
+          @wheel="(e)=>{DT.set('y', 1 * scroll(e));}"/>&nbsp; 
+          <strong>z:</strong><a-input style="width:80px" type="number" :value="DT.mesh.position.z.toFixed(2)" 
           @wheel="(e)=>{DT.set('z', 1 * scroll(e));}"/>
         </div>
         <!--旋转-->
         <div v-if="'rotation' in DT.mesh">
           <strong>旋转：</strong><br/>
           <strong>x:</strong><a-input style="width:80px" suffix="°" type="number" 
-          :value="DT.mesh.rotation.x*180/Math.PI"   
-          @wheel="(e)=>{DT.set('rx', angle*10*scroll(e));}"/>, 
+          :value="(DT.mesh.rotation.x*180/Math.PI).toFixed(2)"   
+          @wheel="(e)=>{DT.set('rx', angle*10*scroll(e));}"/>&nbsp; 
           <strong>y:</strong><a-input style="width:80px" suffix="°" type="number" 
-          :value="DT.mesh.rotation.y*180/Math.PI" 
-          @wheel="(e)=>{DT.set('ry', angle*10*scroll(e));}"/>, 
+          :value="(DT.mesh.rotation.y*180/Math.PI).toFixed(2)" 
+          @wheel="(e)=>{DT.set('ry', angle*10*scroll(e));}"/>&nbsp; 
           <strong>z:</strong><a-input style="width:80px" suffix="°" type="number" 
-          :value="DT.mesh.rotation.z*180/Math.PI" 
+          :value="(DT.mesh.rotation.z*180/Math.PI).toFixed(2)" 
           @wheel="(e)=>{DT.set('rz', angle*10*scroll(e));}"/>
         </div>
         <!--比例-->
@@ -90,14 +91,14 @@
         <div v-if="DT.v0">
           <strong>传送带速度：</strong>
           <a-input style="width:120px" suffix="单位/s" type="number" 
-          :value="DT.v0" 
+          :value="DT.v0.toFixed(2)" 
           @wheel="(e)=>{DT.v0 = clamp(DT.v0 + 0.1*scroll(e), 0.1, 5);}"/>
         </div>
         <!--发生时间间隔-->
         <div v-if="DT.timeInterval">
           <strong>发生时间间隔：</strong>
           <a-input style="width:80px" suffix="s" type="number" 
-          :value="DT.timeInterval" 
+          :value="DT.timeInterval.toFixed(2)" 
           @wheel="(e)=>{DT.timeInterval = clamp(DT.timeInterval + scroll(e), 1, 10);}"/>
         </div>
       </a-collapse-panel>
@@ -131,13 +132,13 @@
         <!--包围盒-->
         <div v-if="DT.mesh.geometry.boundingBox">
           <strong>包围盒最小值：</strong>
-          x:&nbsp{{DT.mesh.geometry.boundingBox.min.x}},
-          y:&nbsp{{DT.mesh.geometry.boundingBox.min.y}},
-          z:&nbsp{{DT.mesh.geometry.boundingBox.min.z}}
+          x:&nbsp{{DT.mesh.geometry.boundingBox.min.x.toFixed(2)}},
+          y:&nbsp{{DT.mesh.geometry.boundingBox.min.y.toFixed(2)}},
+          z:&nbsp{{DT.mesh.geometry.boundingBox.min.z.toFixed(2)}}
           <br><strong>包围盒最大值：</strong>
-          x:&nbsp{{DT.mesh.geometry.boundingBox.max.x}},
-          y:&nbsp{{DT.mesh.geometry.boundingBox.max.y}},
-          z:&nbsp{{DT.mesh.geometry.boundingBox.max.z}}
+          x:&nbsp{{DT.mesh.geometry.boundingBox.max.x.toFixed(2)}},
+          y:&nbsp{{DT.mesh.geometry.boundingBox.max.y.toFixed(2)}},
+          z:&nbsp{{DT.mesh.geometry.boundingBox.max.z.toFixed(2)}}
         </div>
       </a-collapse-panel>
       <!--物理属性-->
@@ -155,19 +156,19 @@
         <!--质量-->
         <div v-if="DT.mass">
           <strong>质量：</strong>
-          <a-input :disabled="DT.mass==0" style="width:80px" type="number" :value="DT.mass" 
+          <a-input :disabled="DT.mass==0" style="width:80px" type="number" :value="DT.mass.toFixed(2)" 
           @wheel="(e)=>{DT.mass = Math.max(1e-10, DT.mass + 0.1*scroll(e));}"/>
         </div>
         <!--静摩擦系数-->
         <div v-if="DT.friction0">
           <strong>静摩擦系数：</strong>
-          <a-input style="width:80px" type="number" :value="DT.friction0" 
+          <a-input style="width:80px" type="number" :value="DT.friction0.toFixed(2)" 
           @wheel="(e)=>{DT.friction0 = clamp(DT.friction0 + 0.1*scroll(e), 1e-10, 1);}"/>
         </div>
         <!--滑动摩擦系数-->
         <div v-if="DT.friction">
           <strong>滑动摩擦系数：</strong>
-          <a-input style="width:80px" type="number" :value="DT.friction" 
+          <a-input style="width:80px" type="number" :value="DT.friction.toFixed(2)" 
           @wheel="(e)=>{DT.friction = clamp(DT.friction + 0.1*scroll(e), 1e-10, 1);}"/>
         </div>
       </a-collapse-panel>
@@ -186,13 +187,13 @@
           @wheel="(e)=>{
             DT.set('R', scroll(e)/255);
             DT.mesh.material.color.r = clamp(DT.mesh.material.color.r, 0, 1);
-          }"/>,
+          }"/>&nbsp;
           <strong>G:</strong><a-input style="width:80px" type="number" 
           :value="parseInt(DT.mesh.material.color.g * 255)"
           @wheel="(e)=>{
             DT.set('G', scroll(e)/255);
             DT.mesh.material.color.g = clamp(DT.mesh.material.color.g, 0, 1);
-          }"/>,
+          }"/>&nbsp;
           <strong>B:</strong><a-input style="width:80px" type="number" 
           :value="parseInt(DT.mesh.material.color.b * 255)"
           @wheel="(e)=>{

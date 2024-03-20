@@ -100,7 +100,7 @@
 </script>
 
 <template>
-  <div id="main" style = "
+  <div :DTScene="{}" id="main" ref="main" style = "
     border: 0px solid grey;
     display: block;
     margin-left: 0px;
@@ -118,7 +118,7 @@
     " 
     :type="quitFullscreenStyle"
     @mouseenter = "quitFullscreenStyle = 'primary'"
-    @mousedown = "BUS.emit('canvasFullscreen')"
+    @mousedown = "BUS.emit('canvasFullscreen'); quitFullscreenStyle = 'default'"
     @mouseleave = "quitFullscreenStyle = 'default'"
     >
       <FullscreenExitOutlined/>退出全屏&nbsp;(Esc)
