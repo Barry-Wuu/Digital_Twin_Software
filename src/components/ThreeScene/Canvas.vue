@@ -17,4 +17,4 @@
         style="outline:none; "
         tabindex="0"
     />
-</template>./SceneEvents.js./SceneEvents.js./CanvasEvents.js./CanvasEvents.js
+</template>

@@ -38,16 +38,10 @@
     </div>
     <!--列分隔模块-->
     <div v-else-if="item.info == 'col-split'" class="hideBorder" :id="item.id"
-        style="margin-left: 1px; margin-right: 1px;"
+        style="cursor: ew-resize; margin-left: 1px; margin-right: 1px;"
         :style="{'width': item.size/10 + '%'}"
-        @mouseover = "(e)=>{
-            e.target.style.border = '2px solid dodgerblue';
-            e.target.style.cursor = 'ew-resize';
-        }"
-        @mouseout = "(e)=>{
-            e.target.style.border = '2px solid white';
-            e.target.style.cursor = 'default';
-        }"
+        @mouseover = "(e)=>{e.target.style.border = '2px solid dodgerblue'}"
+        @mouseout = "(e)=>{e.target.style.border = '2px solid white'}"
     />
     <!--行布局模块-->
     <div v-else-if="item.info == 'row'" :id="item.id"
@@ -56,16 +50,10 @@
     </div>
     <!--行分隔模块-->
     <div v-else-if="item.info == 'row-split'" class="hideBorder" :id="item.id"
-        style="flex-grow: 1;  margin-top: 1px; margin-bottom: 1px;" 
+        style="cursor: ns-resize; flex-grow: 1;  margin-top: 1px; margin-bottom: 1px;" 
         :style="{'width': item.size/10 + '%',}"
-        @mouseover = "(e)=>{
-            e.target.style.border = '2px solid dodgerblue';
-            e.target.style.cursor = 'ns-resize';
-        }"
-        @mouseout = "(e)=>{
-            e.target.style.border = '2px solid white';
-            e.target.style.cursor = 'default';
-        }"
+        @mouseover = "e => e.target.style.border = '2px solid dodgerblue'"
+        @mouseout = "e => e.target.style.border = '2px solid white'"
     />
     <!--功能模块-->
     <div v-else  :id="item.id" style="display: flex; flex-direction: column; height: 100%;"
