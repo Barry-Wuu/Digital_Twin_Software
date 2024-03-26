@@ -10,19 +10,19 @@
         FormOutlined,
         ForwardOutlined,
         FullscreenOutlined,
-        MenuFoldOutlined,
-        MenuUnfoldOutlined,    
         PauseOutlined,
         ReloadOutlined,
         StepForwardOutlined,
     } from '@ant-design/icons-vue';
     var BottomMessage;
     var BottomSpeed;
-    const devOpened = ref(true);  // 开发人员工具是否打开
     const emulateMode = ref("stop");  // 仿真状态
     var fast = ref(25);  // 快进速度
     const fullscreen = ref(false);  // 是否全屏
-    const marks = {0:'1x', 25: '2x', 50: '4x', 75: '8x', 100:'10x'};
+    const marks = {0:'1x', 25: '2x', 50: '4x', 
+        75: {style: {color: 'lightgrey', textDecoration: "line-through"}, label: '8x'}, 
+        100: {style: {color: 'lightgrey', textDecoration: "line-through"}, label: '10x'}
+    };
     var menu = [
         ["文件", [
             "新建",
@@ -51,8 +51,6 @@
             FormOutlined,
             ForwardOutlined,
             FullscreenOutlined,
-            MenuFoldOutlined,
-            MenuUnfoldOutlined,  
             PauseOutlined,  
             ReloadOutlined,
             StepForwardOutlined,
@@ -66,7 +64,6 @@
                 BUS.emit("changeEmulateMode", mode);
                 if(mode == "stop") {this.message("仿真停止");}
                 if(mode == "play") {this.message("仿真开始");}
-                if(mode == "pause") {this.message("仿真暂停");}
                 if(mode == "step") {this.message("仿真步进");}
                 if(mode == "fast") {this.message("仿真快进");}
                 speed.value = mode == "fast" ? fast.value : 0;
@@ -75,6 +72,7 @@
             },
             changeSpeed(value){  // 更改速度，value为滑动条百分比，marks[value]为实际速度倍率
                 if(value.key) value=value.key;
+                if(value>=75) value=50;
                 emulateMode.value = value==0 ? "play" : "fast";
                 this.message(value==0 ? "仿真开始" : "仿真快进"); 
                 speed.value = value;
@@ -83,10 +81,6 @@
             },
             changeTab(key){tab.value = key;},  // 切换顶部栏目
             clearTemp(){BUS.emit('clearTemp')},  // 清除临时实体
-            devtoolChange(){  // 展开或折叠开发人员工具
-                this.ipcRenderer(devOpened.value ? "openDevTools" : "closeDevTools");
-                devOpened.value = !devOpened.value;
-            },
             ipcRenderer(data){ require("electron").ipcRenderer.send(data); },  // 刷新页面
             message(data){ BottomMessage.textContent = data; },
             setFast(e){  // 设置快进速度
@@ -97,7 +91,7 @@
         setup() {
             const selectedKey = ref([]);
             return {
-                BUS, devOpened, emulateMode, fast, marks, menu, mode, selectedKey, speed, tab
+                BUS, emulateMode, fast, marks, menu, mode, selectedKey, speed, tab
             };
         },
         mounted(){
@@ -111,7 +105,7 @@
 <style>
     .bottom {margin-bottom:10px;}
     .bottomBorder {border-top:2px solid grey; width:100%}
-    .logo {cursor:pointer}
+    .logo {border-radius:5px; cursor:pointer}
     .logoBig {font-size:36px;}
     .marginLR5 {margin-left:5px; margin-right:5px;}
     .marginLR10 {margin-left:10px; margin-right:10px;}
@@ -135,6 +129,7 @@
         </li>  
       </a-sub-menu>
     </a-menu>
+
     <!--主要功能-->
     <span v-if="tab=='主要功能'" style="border:2px solid grey; display: flex; height:100px">
         <!--模式选择-->
@@ -163,6 +158,7 @@
             <div class="bottomBorder">模式选择</div>
         </div>
         <div class="split"/><!--分隔符-->
+
         <!--动画-->
         <div style="align-items:center; height:100%;" class="bottom marginLR5">
             <span style="align-items:center; display:flex; 
@@ -216,10 +212,18 @@
                         </a-button>
                         <template #overlay>
                             <a-menu @click="setFast">
-                                <a-menu-item key="25">2x&nbsp;&nbsp;<CheckOutlined v-if="fast==25"/></a-menu-item>
-                                <a-menu-item key="50">4x&nbsp;&nbsp;<CheckOutlined v-if="fast==50"/></a-menu-item>
-                                <a-menu-item key="75">8x&nbsp;&nbsp;<CheckOutlined v-if="fast==75"/></a-menu-item>
-                                <a-menu-item key="100">10x&nbsp;&nbsp;<CheckOutlined v-if="fast==100"/></a-menu-item>
+                                <a-menu-item key="25">
+                                    2x&nbsp;&nbsp;<CheckOutlined v-if="fast==25"/>
+                                </a-menu-item>
+                                <a-menu-item key="50">
+                                    4x&nbsp;&nbsp;<CheckOutlined v-if="fast==50"/>
+                                </a-menu-item>
+                                <a-menu-item key="75" :disabled="true">
+                                    8x&nbsp;&nbsp;<CheckOutlined v-if="fast==75"/>
+                                </a-menu-item>
+                                <a-menu-item key="100" :disabled="true">
+                                    10x&nbsp;&nbsp;<CheckOutlined v-if="fast==100"/>
+                                </a-menu-item>
                             </a-menu>
                         </template>
                     </a-dropdown>
@@ -234,6 +238,8 @@
         </div>
         <div class="split"/><!--分隔符-->
     </span>
+
+    <!--可视化-->
     <span v-if="tab=='可视化'" style="border:2px solid grey; display: flex; height:100px">
         <!--屏幕-->
         <div style="align-items:center; display:inline; height:100%" class="marginLR5">
@@ -250,6 +256,7 @@
             <div class="bottomBorder">屏幕</div>
         </div>
         <div class="split"/><!--分隔符-->
+
         <!--系统操作-->
         <div style="align-items:center; display:inline; height:100%" class="bottom marginLR5">
             <span style="align-items:center; display:flex; 
@@ -261,22 +268,6 @@
                 @mouseleave = "e => e.target.style.color = 'black'">
                     <ReloadOutlined class="logoBig"/>
                     <br>重载界面
-                </div>
-                <!--显示开发人员工具-->
-                <div v-if="devOpened" class="logo marginLR10 top16" @click="devtoolChange"
-                @mousedown = "e => e.preventDefault()"
-                @mouseenter = "e => e.target.style.color = 'dodgerblue'"
-                @mouseleave = "e => e.target.style.color = 'black'">
-                    <MenuFoldOutlined class="logoBig"/>
-                    <br>显示开发人员工具
-                </div>
-                <!--隐藏开发人员工具-->
-                <div v-else class="logo marginLR10 top16" @click="devtoolChange"
-                @mousedown = "e => e.preventDefault()"
-                @mouseenter = "e => e.target.style.color = 'dodgerblue'"
-                @mouseleave = "e => e.target.style.color = 'black'">
-                    <MenuUnfoldOutlined class="logoBig"/>
-                    <br>隐藏开发人员工具
                 </div>
             </span>
             <div class="bottomBorder">系统操作</div>

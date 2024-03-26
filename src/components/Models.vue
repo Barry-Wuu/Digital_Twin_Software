@@ -4,7 +4,7 @@
     CloseOutlined,  // 清除图标
   } from '@ant-design/icons-vue';
   import BUS from "./EventBus"
-  var models = {
+  var models = ref({
     "传送带": [
       ["直道",'../assets/直道.jpg'],
       ["弯道",'../assets/弯道.jpg'],
@@ -23,9 +23,7 @@
       ["锥体",'../assets/pyramid.jpg'],
       ["圆柱",'../assets/cone.jpg'],
     ],
-  }
-  //let active0 = []
-  //for(let i in Object.keys(models))active0.push(String(i))
+  })
   const activeKeys = ref([]);
   const searchResult = ref([]);
   const searchValue = ref("");
@@ -53,7 +51,7 @@
       onRightClick(e){
         let option = e.key;
         if(option == '全部展开'){
-          activeKeys.value = Object.keys(models);
+          activeKeys.value = Object.keys(models.value);
         }
         else if(option == '全部折叠'){
           activeKeys.value = [];
@@ -62,8 +60,8 @@
       search(){  // 搜索栏内容改变时
         if(searchValue.value){
           let result = [];
-          for(let items in models){
-            for(let item of models[items]){
+          for(let items in models.value){
+            for(let item of models.value[items]){
               if(item[0].indexOf(searchValue.value) > -1) {
                 result.push([items].concat(item));
               }
@@ -101,8 +99,7 @@
   <a-dropdown :trigger="['contextmenu']">
     <div>
       <!--模型列表-->
-      <a-collapse v-if="!searchValue" v-model:activeKey="activeKeys" 
-      :default-active-key="activeAll" id="collapse">
+      <a-collapse v-if="!searchValue" v-model:activeKey="activeKeys" id="collapse">
         <a-collapse-panel v-for="(items, key) in models" 
         :header="key" :key="key" style="text-align: left;">
           <a-card v-for="item in items" hoverable draggable="true" 

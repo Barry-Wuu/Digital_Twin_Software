@@ -4,6 +4,7 @@
     CodeOutlined,
     FileTwoTone,
     FolderOpenTwoTone,
+    GiftTwoTone,
     PictureTwoTone
   } from '@ant-design/icons-vue'
   import BUS from "./EventBus"
@@ -11,16 +12,16 @@
   import * as THREE from 'three';
 
   const assets = ref([
-    { id: 0, name: "文件1", type: "folder"},
+    { id: 0, name: "文件夹", type: "folder"},
     { id: 1, content:{
       color: "white", opacity: 1
     }, name: "材质", type: "material"},
-    { id: 2, name: "文件3", type: "code"},
-    { id: 3, name: "文件4", type: "file"},
-    { id: 4, name: "文件5", type: "file"},
-    { id: 5, name: "文件6", type: "file"},
-    { id: 6, name: "文件7", type: "file"},
-    { id: 7, name: "文件8", type: "file"},
+    { id: 2, name: "脚本", type: "code"},
+    { id: 3, name: "模型", type: "model"},
+    { id: 4, name: "模型", type: "model"},
+    { id: 5, name: "模型", type: "model"},
+    { id: 6, name: "模型", type: "model"},
+    { id: 7, name: "模型", type: "model"},
   ])
   var DT;
 
@@ -55,9 +56,11 @@
         twoToneColor="olive" style="fontSize:50px;"/>
         <CodeOutlined v-else-if="asset.type == 'code'" 
         twoToneColor="black" style="fontSize:50px;"/>   
-        <FileTwoTone v-if="asset.type == 'file'" style="fontSize:50px;"/>
-        <PictureTwoTone v-if="asset.type == 'material'" 
-        style="fontSize:50px;" :style="{'opacity': asset.content.opacity}"/> 
+        <PictureTwoTone v-else-if="asset.type == 'material'"
+        twoToneColor="grey" style="fontSize:50px;"/>    
+        <GiftTwoTone v-else-if="asset.type == 'model'"
+        twoToneColor="grey" style="fontSize:50px;"/>
+        <FileTwoTone v-else style="fontSize:50px;"/>
         <div style="padding-bottom: 1px; text-align: center;">{{ asset.name }}</div>
       </div>
     </a-card>

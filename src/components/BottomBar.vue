@@ -29,10 +29,6 @@
   display: inline-block;
   margin-top: 3px;
 }
-.split{
-  border-right: 1px solid white;
-  display: inline; 
-}
 </style>
 
 <template>
@@ -47,18 +43,18 @@
     position: absolute; 
     width: calc(100% - 6px);
   ">
-    &nbsp&nbspFPS：<div id="BottomFPS" class="item"/>&nbsp&nbsp
-    <div class="split"/>
-    &nbsp&nbsp仿真速度：<div id="BottomSpeed" class="item">1x</div>&nbsp&nbsp
-    <div class="split"/>
-    &nbsp&nbsp窗口尺寸：<div id="BottomWindowSize" class="item"/>&nbsp&nbsp
-    <div class="split"/>
-    &nbsp&nbsp消息：<div id="BottomMessage" class="item">仿真停止</div>&nbsp&nbsp
+    &nbsp;&nbsp;FPS：<div id="BottomFPS" class="item"/>&nbsp;&nbsp;
+    <div style="border-right: 1px solid lightgrey; display: inline; "/>
+    &nbsp;&nbsp;仿真速度：<div id="BottomSpeed" class="item">1x</div>&nbsp;&nbsp;
+    <div style="border-right: 1px solid lightgrey; display: inline; "/>
+    &nbsp;&nbsp;窗口尺寸：<div id="BottomWindowSize" class="item"/>&nbsp;&nbsp;
+    <div style="border-right: 1px solid lightgrey; display: inline; "/>
+    &nbsp;&nbsp;消息：<div id="BottomMessage" class="item">仿真停止</div>&nbsp;&nbsp;
     <div style="
       display: inline; 
       position: absolute; 
       right: 0px;
       top: 3px;
-    ">仿真时间：<span id="BottomTimer">00:00:00.00</span>&nbsps&nbsp&nbsp</div>
+    ">仿真时间：<span id="BottomTimer">00:00:00.000</span>&nbsp;s&nbsp;&nbsp;</div>
   </div> 
 </template>

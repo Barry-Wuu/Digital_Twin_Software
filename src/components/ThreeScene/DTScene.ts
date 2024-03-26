@@ -8,11 +8,14 @@ import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import BUS from "../EventBus"
 import { contentQuotesLinter } from 'ant-design-vue/es/_util/cssinjs/linters';
 
+const angle =  180/Math.PI;
 var BottomFPS, BottomTimer;
 var DTObjects = ref([]);
 var emulateMode = "stop";  // 仿真模式
 var frames = 0;  // 帧率计算
 var geom0;
+var groundColor = "azure";
+var groundSize = 250;  // 地面范围：-groundSize ≤ x ≤ groundSize，-groundSize ≤ y ≤ groundSize
 var loader = new STLLoader();
 var origin = new THREE.Vector3(0, 0, 0);
 var protectedObjects = [];
@@ -44,7 +47,8 @@ BUS.on("changeSpeed", (k: string)=>{speed = parseInt(k.slice(0, k.length-1))});
 BUS.on("clearTemp", ()=>{SCENE.DT.clearTemp()});
 
 class DTObject {  // 用DTObject类包裹场景中的对象
-    children: []  // 子物体（自动计算）
+    children  // 子物体（自动计算）
+    custom: object  // 自定义属性
     friction0: number  // 静摩擦力
     friction: number  // 滑动摩擦力
     id: number  // 序号
@@ -56,6 +60,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
     rigid: boolean  // 是否为刚体
     rigidShape: Ammo.object  // 刚体网格（自动计算）
     scale: number  // 尺寸
+    skybox: object  // 天空盒
     temp: boolean  // 临时实体（如货物）
     timer: number  // 定时器（自动计算）
     timeInterval: number  // 定时器触发时间
@@ -64,6 +69,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
     v0: number  // 传送带中轴线速度
     constructor(mesh, inScene=true) {  
         this.children = [];
+        this.custom = {};
         this.friction0 = 0.5;  
         this.friction = 0.8;  
         this.id = mesh.id;
@@ -72,8 +78,8 @@ class DTObject {  // 用DTObject类包裹场景中的对象
         this.mesh = mesh;
         this.rigid = false;
         this.scale = 1;
-        this.timer = performance.now();
-        this.timeInterval = 0;    
+        this.skybox = {};
+        this.timer = performance.now(); 
         this.type = mesh.type;
         mesh.DT = this;
         if(inScene) DTObjects.value.push(this);
@@ -122,55 +128,46 @@ class DTObject {  // 用DTObject类包裹场景中的对象
         return result.length > 0 ? result[0] : null;
     }
     getDTObjects() {return DTObjects.value;}
-    setTitle() {  // 物体在树中的标题 = 类型 + 名称 
-        if(this.name){
-            this.title = this.type + '【' + this.name + this.id + '】';
-        } else {
-            this.title = this.type;
-        }
-    }
-    set(prop, delta) {
+    setProp(prop, newValue) {
+        let node = this, split = prop.split('.');
+        let last = split.splice(-1);
+        for(let p of split){node = node[p];}
+        node[last] = newValue;
         if(this.rigid){  // 刚体
             let rb = this.mesh.userData.physicsBody;
             let transform = new Ammo.btTransform();
             const motionState = rb.getMotionState();
             motionState.getWorldTransform( transform );
-            const p = transform.getOrigin();
+            let p = this.mesh.position;
             let q = new THREE.Quaternion();  // q代表四元数
             const r = this.mesh.rotation;  // r代表欧拉角
-            if(prop == "x"){p.setX(p.x() + delta)}
-            if(prop == "y"){p.setY(p.y() + delta)}
-            if(prop == "z"){p.setZ(p.z() + delta)}
-            if(prop == 'rx'){r.x += delta};
-            if(prop == 'ry'){r.y += delta};
-            if(prop == 'rz'){r.z += delta};
+            p = new Ammo.btVector3(p.x, p.y, p.z);
             q.setFromEuler(r);
             q = new Ammo.btQuaternion(q.x, q.y, q.z, q.w);
             transform.setOrigin(p);
             transform.setRotation(q);
             motionState.setWorldTransform( transform );
             rb.setMotionState(motionState);
-        }else{  // 非刚体
-            if(prop == "x") this.mesh.position.x += delta;
-            if(prop == "y") this.mesh.position.y += delta;
-            if(prop == "z") this.mesh.position.z += delta;
-            if(prop == "rx") this.mesh.rotation.x += delta;
-            if(prop == "ry") this.mesh.rotation.y += delta;
-            if(prop == "rz") this.mesh.rotation.z += delta;
         }
-        if(prop == 'R'){this.mesh.material.color.r += delta};
-        if(prop == 'G'){this.mesh.material.color.g += delta};
-        if(prop == 'B'){this.mesh.material.color.b += delta};
-        if(prop == 'A'){this.mesh.material.opacity += delta};
+    }
+    setTitle(name='') {  // 物体在树中的标题 = 类型 + 名称 
+        let title = '';
+        if(this.name){
+            title = `【${this.name + this.id}】`;
+        } else if(this.name){
+            title = `【${name}】`;
+        }
+        this.title = this.type + title;
     }
     updateChildren() {  // 刷新DTObject的父子关系
-        this.children = []
+        let children = [];
         for(let child of this.mesh.children){
             if(child.DT){
-                this.children.push(child.DT);
+                children.push(child.DT);
                 child.DT.updateChildren();
             }
         }
+        this.children = children;
     }
 }  
 
@@ -197,18 +194,15 @@ export default class SceneBuilder{
         //this.group = new THREE.Group();
         this.canvas = canvas;
         // 场景
-        SCENE.fog = new THREE.Fog("white", 5, 400);  // 设置远端雾化
         protectedObjects.push(SCENE.id);
         this.DTScene = new DTObject(SCENE);
-        this.DTScene.setTitle();
+        this.DTScene.setTitle("地面");
+        this.DTScene.skybox = {skyColor:"skyblue", skyline:"white", groundColor:"darkkhaki"};
         window.DTScene = this.DTScene;
         // 渲染器
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.shadowMap.enabled = true;
         this.canvas.appendChild( this.renderer.domElement );
-        // 天空
-        //SCENE.background = new THREE.Color("dodgerblue");
-        this.createSkyBoxFromShader();
         // 相机
         const fov = 75;
         const aspect = window.innerWidth / window.innerHeight;
@@ -226,13 +220,6 @@ export default class SceneBuilder{
         // 限制相机缩放距离
         this.cameraControls.minDistance = 1;
         this.cameraControls.maxDistance = 300;
-        // 网格
-        const gridHelper = new THREE.GridHelper(500, 100, "red", "white");
-        gridHelper.rotateX(Math.PI/2);
-        SCENE.add( gridHelper );
-        // 坐标轴
-        const axesHelper = new THREE.AxesHelper( 10 );
-        SCENE.add( axesHelper );
         // 平行光
         const light = new THREE.DirectionalLight( "white", 3 );
         light.castShadow = true;
@@ -249,10 +236,15 @@ export default class SceneBuilder{
         SCENE.add( light );
         let DTLight = new DTObject(light);
         DTLight.setTitle();
+        // 天空
+        this.setSkyboxByColor(DTScene);
+        BUS.on("updateSkybox", ()=>this.setSkyboxByColor(DTScene));
+        // 远处雾化
+        SCENE.fog = new THREE.Fog(groundColor, 5, 200);
         // 地面
         this.ground = new THREE.Mesh( 
             new THREE.PlaneGeometry(500, 500), 
-            new THREE.MeshPhongMaterial({ color: "grey" })
+            new THREE.MeshPhongMaterial({ color: groundColor })
         );
         let DTGround = new DTObject(this.ground);
         DTGround.setTitle();
@@ -261,14 +253,43 @@ export default class SceneBuilder{
         this.ground.receiveShadow = true;
         this.ground.DT.mass = 0 // 不可动
         this.ground.DT.name = "地面";
-        this.ground.DT.rigidShape = new Ammo.btBoxShape( new Ammo.btVector3( 250, 250, margin ) );
+        this.ground.DT.rigidShape = new Ammo.btBoxShape( 
+            new Ammo.btVector3(groundSize, groundSize, margin) 
+        );
         this.ground.DT.createRigidBody();
         SCENE.add( this.ground );
         // 地面边框
-        let wireframe = new THREE.BoxHelper(this.ground, "red");
+        let wireframe = new THREE.BoxHelper(this.ground, "black");
         this.ground.wireframe = wireframe;
         wireframe.visible = false;
         this.ground.add(wireframe);
+        // 网格
+        const gridHelper = new THREE.GridHelper(500, 100, groundColor, "#AAAAAA");
+        gridHelper.rotateX(Math.PI/2);
+        SCENE.add( gridHelper );
+        gridHelper.position.z = 0.01;
+        // 正主坐标轴（不包括z轴）
+        const lineXGeometry = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3( groundSize, 0, 0.02 ),
+            new THREE.Vector3( 0, 0, 0.02 )
+        ]);
+        const lineXMaterial = new THREE.LineBasicMaterial({color: "red"});
+        SCENE.add( new THREE.Line( lineXGeometry, lineXMaterial ) );
+        let lineYGeometry = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3( 0, groundSize, 0.02 ),
+            new THREE.Vector3( 0, 0, 0.02 )
+        ]);
+        let lineYMaterial = new THREE.LineBasicMaterial({color: "green"});
+        SCENE.add( new THREE.Line( lineYGeometry, lineYMaterial ) );
+        // 负主坐标轴
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3( -groundSize, 0, 0.02 ),
+            new THREE.Vector3( 0, 0, 0.02 ),
+            new THREE.Vector3( 0, -groundSize, 0.02 )
+        ]);
+        const lineMaterial = new THREE.LineBasicMaterial({color: "black"});
+        const line = new THREE.Line( lineGeometry, lineMaterial );
+        SCENE.add( line );
         // 物体数量变化时
         watch(DTObjects.value, ()=>{
             this.DTScene.updateChildren();
@@ -276,6 +297,7 @@ export default class SceneBuilder{
             BUS.emit('updateTree');
         }, { immediate:true });
     }
+    init(){animate()}
     cameraSetup (){
         BUS.on("moveTo",(model)=>{
             let box = new THREE.Box3().setFromObject(model);
@@ -383,7 +405,7 @@ export default class SceneBuilder{
             geom0 = null;
         }
         if(modelPath) mesh.geometry.userData = modelPath;
-        let wireframe = new THREE.BoxHelper(mesh, "white");  // 线框
+        let wireframe = new THREE.BoxHelper(mesh, "black");  // 线框
         wireframe.visible = false;
         if(indicators.length){  // 指示箭头
             for(let i of indicators){
@@ -401,15 +423,61 @@ export default class SceneBuilder{
         SCENE.add(mesh);
         return(mesh);
     }  
-    createSkyBoxFromShader(skyColor: number = 0x86B6F5, lineColor: number = 0xffffff, groundColor: number = 0xffffff) {
+    createSkyBoxFromTexture() {
+        // 图片路径有要求，需要放在public文件夹下
+        const picPath = '../src/assets/skybox/'; // 默认为public内
+        const skybox = new THREE.CubeTextureLoader().setPath(picPath)
+        .load( [ 'px.jpg', 'nx.jpg', 'py.jpg', 'ny.jpg', 'pz.jpg', 'nz.jpg', ] );
+        skybox.format = THREE.RGBAFormat;
+        this.scene.background = skybox;
+    }
+    geom2rigidShape(geom, scale){  // 从几何形状建立刚体形状
+        // points里每三个连续的点定义了一个三角形面
+        let points = geom.attributes.position.array
+        let triangleMesh = new Ammo.btTriangleMesh();
+        for (let i=0; i < points.length; i+=9) {
+            let p0 = new Ammo.btVector3(points[i], points[i+1], points[i+2]);
+            let p1 = new Ammo.btVector3(points[i+3], points[i+4], points[i+5]);
+            let p2 = new Ammo.btVector3(points[i+6], points[i+7], points[i+8]);
+            p0.op_mul(scale)
+            p1.op_mul(scale)
+            p2.op_mul(scale)
+            triangleMesh.addTriangle(p0, p1, p2);  
+        } 
+        //return shape;
+        //let shape = new Ammo.btBvhTriangleMeshShape(triangleMesh);  // 真实碰撞网格，几千个面同时导入后碰撞时会卡死
+        let shape = new Ammo.btConvexTriangleMeshShape(triangleMesh);  // 凸碰撞网格
+        return shape
+    }
+    removeRigidBody( mesh ){  // 移除刚体
+        let rb = mesh.userData.physicsBody;
+        rb_mesh.delete(rb.ptr);
+        physicsWorld.removeRigidBody( rb );
+        mesh.userData = {};
+    }
+    render(){
+        this.updatePhysics( clock.getDelta() );
+        this.renderer.render(toRaw(SCENE), this.camera)
+        this.cameraControls.update();
+    } 
+    setSkyboxByColor(DTScene) {  // 根据上中下三种颜色设置天空盒
+        function isColor(color, defaultColor){  // 测试字符串是否能解析成颜色，否则将颜色恢复为默认值
+            const temp = document.createElement('div');  
+            temp.style.color = color;  
+            return temp.style.color ? color : defaultColor;  
+        }  
+        let skyColor = isColor(DTScene.skybox.skyColor, "skyblue");
+        let skyline = isColor(DTScene.skybox.skyline, "white");
+        let groundColor = isColor(DTScene.skybox.groundColor, "darkkhaki");
+        DTScene.skybox = {skyColor:skyColor, skyline:skyline, groundColor:groundColor};
+
         const radius: number = 600;
         const widthSegments: number = 32;
         const heightSegments: number = 15;
         const skyGeo = new THREE.SphereGeometry(radius, widthSegments, heightSegments);
-
         const uniforms = {
             topColor: { value: new THREE.Color(skyColor) },
-            skylineColor: { value: new THREE.Color(lineColor) },
+            skylineColor: { value: new THREE.Color(skyline) },
             bottomColor: { value: new THREE.Color(groundColor) },
             offset: { value: 0 },
             exponent: { value: 0.6 },
@@ -455,46 +523,6 @@ export default class SceneBuilder{
         skyBox.rotation.x = (Math.PI/2);
         SCENE.add(skyBox);
     }
-    createSkyBoxFromTexture() {
-        // 图片路径有要求，需要放在public文件夹下
-        const picPath = '../src/assets/skybox/'; // 默认为public内
-        const skybox = new THREE.CubeTextureLoader().setPath(picPath)
-        .load( [ 'px.jpg', 'nx.jpg', 'py.jpg', 'ny.jpg', 'pz.jpg', 'nz.jpg', ] );
-        skybox.format = THREE.RGBAFormat;
-        this.scene.background = skybox;
-    }
-    geom2rigidShape(geom, scale){  // 从几何形状建立刚体形状
-        // points里每三个连续的点定义了一个三角形面
-        let points = geom.attributes.position.array
-        let triangleMesh = new Ammo.btTriangleMesh();
-        for (let i=0; i < points.length; i+=9) {
-            let p0 = new Ammo.btVector3(points[i], points[i+1], points[i+2]);
-            let p1 = new Ammo.btVector3(points[i+3], points[i+4], points[i+5]);
-            let p2 = new Ammo.btVector3(points[i+6], points[i+7], points[i+8]);
-            p0.op_mul(scale)
-            p1.op_mul(scale)
-            p2.op_mul(scale)
-            triangleMesh.addTriangle(p0, p1, p2);  
-        } 
-        //return shape;
-        //let shape = new Ammo.btBvhTriangleMeshShape(triangleMesh);  // 真实碰撞网格，几千个面同时导入后碰撞时会卡死
-        let shape = new Ammo.btConvexTriangleMeshShape(triangleMesh);  // 凸碰撞网格
-        return shape
-    }
-    init(){
-        animate(this.render());
-    }
-    removeRigidBody( mesh ){  // 移除刚体
-        let rb = mesh.userData.physicsBody;
-        rb_mesh.delete(rb.ptr);
-        physicsWorld.removeRigidBody( rb );
-        mesh.userData = {};
-    }
-    render(){
-        this.updatePhysics( clock.getDelta() );
-        this.renderer.render(toRaw(SCENE), this.camera)
-        this.cameraControls.update();
-    } 
     transport(){  // 检测物理世界中的物体是否与传送带碰撞，若有则施力
         const dispatcher = physicsWorld.getDispatcher();  
         for(var i=0; i<dispatcher.getNumManifolds(); i++){ 
@@ -556,13 +584,17 @@ export default class SceneBuilder{
             }
         }
     }
-    updateFPSandTime(now){  // 更新帧率和用时
-        let totalTime = new Date(now - T0);
-        function pad(x){return x.toString().padStart(2, '0')};
-        BottomTimer.textContent = pad(totalTime.getHours() - 8) + ':'
-        + pad(totalTime.getMinutes()) + ':'
-        + pad(totalTime.getSeconds()) + '.'
-        + String(totalTime.getMilliseconds()).slice(0, 2);
+    updateFPSandTime(now, pause, stop){  // 更新帧率和用时
+        if(stop){ 
+            BottomTimer.textContent = "00:00:00.000"
+        } else {
+            let totalTime = new Date(now - T0);
+            function pad(x, n=2){return x.toString().padStart(n, '0')};
+            BottomTimer.textContent = pad(totalTime.getHours() - 8) + ':'
+            + pad(totalTime.getMinutes()) + ':'
+            + pad(totalTime.getSeconds()) + '.'
+            + pad(totalTime.getMilliseconds(), 3);
+        }
         if(time - timeUpdateFPS < 1000){  // 未到一秒则统计一秒钟的步进次数，将其作为帧数
             frames++;
             time = now;
@@ -575,9 +607,14 @@ export default class SceneBuilder{
     }
     updatePhysics( deltaTime ) {  // 步进 
         let now = performance.now();     
-        this.updateFPSandTime(now);
-        let stop = (emulateMode == "pause" || emulateMode == "stop");  // 是否暂停或停止
-        if(!stop){  // 未暂停时更新刚体
+        let pause = emulateMode == "pause", stop = emulateMode == "stop";  // 是否暂停或停止
+        this.updateFPSandTime(now, pause, stop);
+        if(stop){
+            T0 = performance.now();
+        }
+        if(pause || stop)return;  // 未暂停时更新刚体
+        if(emulateMode == "step") physicsWorld.stepSimulation( deltaTime );
+        else{
             for(let i=0; i<speed; i++) physicsWorld.stepSimulation( deltaTime );
         }
         for(let DT of DTObjects.value){  // 让网格位置等于刚体位置
@@ -612,6 +649,6 @@ export default class SceneBuilder{
             }
         }
         this.transport();
-        if(emulateMode == "step") emulateMode = "stop";  // 步进模式下，每仿真完一步就停止
+        if(emulateMode == "step") emulateMode = "pause";  // 步进模式下，每仿真完一步就停止
     }
 }
