@@ -6,7 +6,7 @@
     var command = ref('')
     var DTScene;
 
-    function pad(x){return x.toString().padStart(2, '0')};
+    function pad(x, n=2){return x.toString().padStart(n, '0')};
     function print(s){BUS.emit("print", s)};
     BUS.on("print", (data)=>{
       Console.innerHTML += "<br>";
@@ -17,7 +17,7 @@
         + pad(date.getHours()) + ':'
         + pad(date.getMinutes()) + ':'
         + pad(date.getSeconds()) + '.'
-        + String(date.getMilliseconds()).slice(0, 2) + ' —— ';
+        + pad(date.getMilliseconds(), 3) + ' —— ';
       Console.innerHTML += data;
     });
     export default{

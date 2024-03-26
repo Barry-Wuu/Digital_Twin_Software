@@ -1,22 +1,114 @@
 <script lang="ts">
   import BUS from "./EventBus"
   import { ref } from 'vue'
-  const angle = Math.PI / 180;
+  import {
+    CheckCircleOutlined,
+    CheckOutlined,
+    CloseOutlined,
+  } from '@ant-design/icons-vue';
+
+  const addCustomProp = ref(false);
+  const angle = Math.PI/180;
+  const chosenDOM = ref(null);
+  const chosenDOM_value = ref(null);
   const DT = ref("未选择对象");
-  var status = "play";
+  const editProp = ref('');
+  const editValue = ref();
+  const helpChange = "点此可修改参数，按下回车键确认修改";
+  var main;
+  const newProp = ref('');
+  var popup;
+  var popupContent;
 
   export default{
+    components:{CheckCircleOutlined, CheckOutlined, CloseOutlined},
     methods:{
-      clamp(x, min, max){  // 范围限制
-        return Math.min(Math.max(x, min), max);
+      clearNewProp(){  // 清空并隐藏新增属性输入栏
+        addCustomProp.value = false;
+        editProp.value = '';
+        newProp.value = '';
       },
-      scroll(e){  // 滚轮向上滚时返回1，否则返回-1
-        e.preventDefault();
-        return e.deltaY<0 ? 1 : -1;
-      }
+      createCustomProp(e){
+        if(DT.value.custom[newProp.value] == undefined) {
+          DT.value.custom[newProp.value] = null;
+          this.clearNewProp();
+        };
+      },
+      editCustomProp(){  // 编辑自定义属性
+        popup.style.display = 'block';
+        let rect = popup.getBoundingClientRect();
+        popup.style.top = (main.offsetHeight - rect.height)/2 + 'px';
+        popup.style.left = (main.offsetWidth - rect.width)/2 + 'px';
+        // popupContent.textContent = DT.custom
+      },
+      hasProp(prop){  // DT对象有某属性则显示，无则不显示
+        let node = DT.value;
+        for(let p of prop.split('.')){
+          if(node[p] == undefined) return [];
+          node = node[p];
+        }
+        return [[[prop], node]];  // 也返回该属性的值
+      },
+      loop(x, max){  // 限定x在0~max之间循环，比如角度
+        x = JSON.parse(x);
+        return x%max + (x<0 ? max : 0);
+      },
+      obj2table(data){  // 将自定义属性对象转为a-table对象
+        if(!data) return [];
+        let result = [];
+        for(let prop of Object.keys(data).sort()) {
+          result.push({key:prop, prop:prop, value:data[prop]});
+        }
+        return result;
+      },
+      propStyle(prop, width){
+        return {editable:true, prop:prop, width:width + "px"};
+      },
+      selectDOM(e){  // 点击属性进行编辑
+        let DOM = e.target;
+        if(DOM.style.editable){
+          chosenDOM_value.value = DOM.value;
+          chosenDOM.value = DOM.style.prop;
+        } else {
+          chosenDOM_value.value = null;
+          chosenDOM.value = null;
+        }
+      },
+      setCustomProp(editValue, prop){
+        if(editValue.length>0 && editValue[0]=='$'){ 
+          DT.value.custom[prop]=JSON.parse(editValue.slice(1));
+        }else DT.value.custom[prop]=editValue; 
+        editProp.value = null;
+      },
+      // 滚轮或按回车键更改属性的值，超出范围时取边界值，fixed为小数位数
+      setProp({e=null, unit=null, min=null, max=null, delta=1, fixed=0, loop=false, type="number"}){
+        let result = chosenDOM_value.value;
+        let enter = e.type=="keydown" && e.key=="Enter", scroll = e.type=="wheel";
+        if(type=="number"){
+          if(enter){result = JSON.parse(chosenDOM_value.value);}
+          else if(scroll){
+            e.preventDefault();
+            result = e.target.value - e.deltaY/100*delta;
+          }
+          else return;
+          let clamped = result.toFixed(fixed);
+          if(loop) result = this.loop(clamped, 360);
+          else if(min!=null && result<min) {result = min; clamped = result;}
+          else if(max!=null && result>max) {result = max; clamped = result;}
+          clamped = result;
+          if(unit) result *= unit;
+          if(enter || scroll){
+            DT.value.setProp(e.target.style.prop, result);
+          } 
+          chosenDOM_value.value = unit ? clamped : clamped.toFixed(2);
+        } else if(enter || scroll){
+          DT.value.setProp(e.target.style.prop, result);
+        } 
+      },
     },
     setup(){
-      return {angle, DT}
+      return {addCustomProp, angle, BUS, chosenDOM, chosenDOM_value, DT, editProp, editValue,
+        helpChange, newProp, popup, popupContent,}
     },
     mounted(){
       BUS.on("showProperty", (data:string)=>{
@@ -26,82 +118,222 @@
         }
         else if(data == "asset"){
           DT.value = this.$refs.main.asset;
-          console.log(this.$refs.main.asset)
+          console.log(this.$refs.main.asset);
         }
         else DT.value = data;
       })
+      main = document.getElementById("main");
+      popup = document.getElementById("popup"); 
+      // popupContent = document.getElementById("popup-content");
+      main.appendChild(popup);  
+      var popupHeader = document.getElementById("popup-header");  
+      var startM, startP;
+      // 点击属性进行编辑
+      window.addEventListener("mousedown", this.selectDOM);
+      // 拖动弹窗  
+      popupHeader.addEventListener("mousedown", (e)=>{  
+        e.preventDefault();  
+        startM = [e.clientX, e.clientY]
+        startP = [popup.getBoundingClientRect().left, popup.getBoundingClientRect().top]
+        var onMousemove = function(e) {  
+            e.preventDefault();  
+            popup.style.left = startP[0] + (e.clientX - startM[0]) + "px";  
+            popup.style.top = startP[1] + (e.clientY - startM[1]) + "px";  
+        };  
+        document.addEventListener("mousemove", onMousemove);  
+        document.addEventListener("mouseup", function() {  
+          document.removeEventListener("mousemove", onMousemove);  
+        });  
+      })
+    
+      // 退出按钮  
+      var popupCloseBtn = document.getElementById('popup-quit');  
+      popupCloseBtn.addEventListener('click', function() {  
+          popup.style.display = 'none';  
+      }); 
     }
   }
 </script>
 
+<style>
+  .input{border:1px solid dodgerblue;}
+	.popup{  
+    background-color: #fff;  
+    border: 2px solid dodgerblue;  
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);  
+    border-radius: 10px;  
+    display: none;
+    position: absolute;
+    width: 600px;     
+    z-index: 1919;  
+  }  
+  .popup-header{  
+    background: dodgerblue;
+    cursor: move;  
+    display: flex;  
+    justify-content: space-between;  
+    align-items: center;   
+    padding-left:10px
+  }  
+  .row{display:block; margin-top:3px; margin-bottom:3px;}
+</style>
+
 <template>
   <h2 v-if="typeof DT == 'string'">{{ DT }}</h2>
   <div v-else style="text-align:left">   
-    <a-collapse :default-active-key="['基本属性', '几何属性', '物理属性', '材质属性']">
+    <a-collapse :default-active-key="['基本属性', '几何属性', '物理属性', '材质属性', '代码属性', '自定义属性']">
+      
       <!--基本属性-->
       <a-collapse-panel header="基本属性" key="基本属性">
+
         <!--物体类型-->
-        <div v-if="'type' in DT">
+        <div v-if="'type' in DT" class="row">
           <strong>物体类型：</strong>{{ DT.type }}
         </div>
+
         <!--物体名称-->
-        <div v-if="'name' in DT">
+        <div v-if="'name' in DT" class="row">
           <strong>物体名称：</strong>{{ DT.name }}
         </div>
+
         <!--物体ID-->
-        <div v-if="'id' in DT">
+        <div v-if="'id' in DT" class="row">
           <strong>物体ID：</strong>{{ DT.id }}
         </div>
+
         <!--是否可见-->
-        <div v-if="'visible' in DT.mesh">
+        <div v-if="'visible' in DT.mesh" class="row">
           <strong>是否可见：</strong>
           <a-checkbox :checked="DT.mesh.visible" 
           @click="()=>{DT.mesh.visible = !DT.mesh.visible}">
             {{ DT.mesh.visible ? "是" : "否" }}
           </a-checkbox>
         </div>
+
         <!--位置-->
-        <div v-if="'position' in DT.mesh">
-          <strong>位置：</strong><br/>
-          <strong>x:</strong><a-input style="width:80px" type="number" :value="DT.mesh.position.x.toFixed(2)"   
-          @wheel="(e)=>{DT.set('x', 1 * scroll(e));}"/>&nbsp;
-          <strong>y:</strong><a-input style="width:80px" type="number" :value="DT.mesh.position.y.toFixed(2)" 
-          @wheel="(e)=>{DT.set('y', 1 * scroll(e));}"/>&nbsp; 
-          <strong>z:</strong><a-input style="width:80px" type="number" :value="DT.mesh.position.z.toFixed(2)" 
-          @wheel="(e)=>{DT.set('z', 1 * scroll(e));}"/>
+        <div v-if="'position' in DT.mesh" class="row">
+          <strong>位置：</strong>
         </div>
+
+        <span :title="helpChange" v-for="prop in hasProp('mesh.position.x')">
+          <strong>x:</strong>
+          <a-input class="input" :style="propStyle(prop[0], 80)"
+            v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+            @keydown="(e)=>setProp({e:e, fixed:2})" @mouseout="chosenDOM=null"
+          />
+          <a-input :style="propStyle(prop[0], 80)" v-else
+            :value="prop[1].toFixed(2)"
+            @wheel="(e)=>setProp({e:e, fixed:2})"
+          />
+        </span>&nbsp;
+        
+        <strong>y:</strong>
+        <span :title="helpChange" v-for="prop in hasProp('mesh.position.y')">
+          <a-input class="input" :style="propStyle(prop[0], 80)"
+            v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+            @keydown="(e)=>setProp({e:e, fixed:2})" @mouseout="chosenDOM=null"
+          />
+          <a-input :style="propStyle(prop[0], 80)" v-else
+            :value="prop[1].toFixed(2)" 
+            @wheel="(e)=>setProp({e:e, fixed:2})"
+          />
+        </span>&nbsp;
+        
+        <strong>z:</strong>
+        <span :title="helpChange" v-for="prop in hasProp('mesh.position.z')">
+          <a-input class="input" :style="propStyle(prop[0], 80)"
+            v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+            @keydown="(e)=>setProp({e:e, fixed:2})" @mouseout="chosenDOM=null"
+          />
+          <a-input :style="propStyle(prop[0], 80)" v-else
+            :value="prop[1].toFixed(2)" 
+            @wheel="(e)=>setProp({e:e, fixed:2})"
+          />
+        </span>
+        
         <!--旋转-->
-        <div v-if="'rotation' in DT.mesh">
-          <strong>旋转：</strong><br/>
-          <strong>x:</strong><a-input style="width:80px" suffix="°" type="number" 
-          :value="(DT.mesh.rotation.x*180/Math.PI).toFixed(2)"   
-          @wheel="(e)=>{DT.set('rx', angle*10*scroll(e));}"/>&nbsp; 
-          <strong>y:</strong><a-input style="width:80px" suffix="°" type="number" 
-          :value="(DT.mesh.rotation.y*180/Math.PI).toFixed(2)" 
-          @wheel="(e)=>{DT.set('ry', angle*10*scroll(e));}"/>&nbsp; 
-          <strong>z:</strong><a-input style="width:80px" suffix="°" type="number" 
-          :value="(DT.mesh.rotation.z*180/Math.PI).toFixed(2)" 
-          @wheel="(e)=>{DT.set('rz', angle*10*scroll(e));}"/>
+        <div v-if="'rotation' in DT.mesh" class="row">
+          <strong>旋转：</strong>
         </div>
+          
+        <span :title="helpChange" v-for="prop in hasProp('mesh.rotation.x')">
+          <strong>x:</strong>
+          <a-input class="input" :style="propStyle(prop[0], 80)"
+            v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+            @keydown="(e)=>setProp({e:e, unit:angle, min:0, max:360, fixed:2, loop:true})" 
+            @mouseout="chosenDOM=null"
+          />
+          <a-input :style="propStyle(prop[0], 80)" v-else
+            :value="loop(Math.round(prop[1]/angle), 360)"
+            @wheel="(e)=>setProp({e:e, unit:angle, min:0, max:360, delta:10, fixed:2, loop:true})"
+          />°
+        </span>
+
+        <span :title="helpChange" v-for="prop in hasProp('mesh.rotation.y')">
+          <strong>y:</strong>
+          <a-input class="input" :style="propStyle(prop[0], 80)"
+            v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+            @keydown="(e)=>setProp({e:e, unit:angle, min:0, max:360, fixed:2, loop:true})" 
+            @mouseout="chosenDOM=null"
+          />
+          <a-input :style="propStyle(prop[0], 80)" v-else
+            :value="loop(Math.round(prop[1]/angle), 360)"
+            @wheel="(e)=>setProp({e:e, unit:angle, min:0, max:360, delta:10, fixed:2, loop:true})"
+          />
+        </span>&nbsp;
+
+        <span :title="helpChange" v-for="prop in hasProp('mesh.rotation.z')">
+          <strong>z:</strong>
+          <a-input class="input" :style="propStyle(prop[0], 80)"
+            v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+            @keydown="setProp({e:e, unit:angle, min:0, max:360, fixed:2, loop:true})" 
+            @mouseout="chosenDOM=null"
+          />
+          <a-input :style="propStyle(prop[0], 80)" v-else
+            :value="loop(Math.round(prop[1]/angle), 360)"
+            @wheel="(e)=>setProp({e:e, unit:angle, min:0, max:360, delta:10, fixed:2, loop:true})"
+          />
+        </span>  
+
         <!--比例-->
-        <div v-if="DT.scale">
+        <div v-if="DT.scale" class="row">
           <strong>比例：</strong>{{DT.scale}}
         </div>
-        <!--传送带速度-->
-        <div v-if="DT.v0">
-          <strong>传送带速度：</strong>
-          <a-input style="width:120px" suffix="单位/s" type="number" 
-          :value="DT.v0.toFixed(2)" 
-          @wheel="(e)=>{DT.v0 = clamp(DT.v0 + 0.1*scroll(e), 0.1, 5);}"/>
-        </div>
-        <!--发生时间间隔-->
-        <div v-if="DT.timeInterval">
-          <strong>发生时间间隔：</strong>
-          <a-input style="width:80px" suffix="s" type="number" 
-          :value="DT.timeInterval.toFixed(2)" 
-          @wheel="(e)=>{DT.timeInterval = clamp(DT.timeInterval + scroll(e), 1, 10);}"/>
-        </div>
+
+        <!--天空颜色-->
+        <span :title="helpChange" v-for="prop in hasProp('skybox.skyColor')" class="row">
+          <strong>天空颜色：</strong>
+          <a-input class="input" :style="propStyle(prop[0], 120)"
+            v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+            @keydown="(e)=>{setProp({e:e, type:typeof prop[1]}); BUS.emit('updateSkybox')}" 
+            @mouseout="chosenDOM=null"
+          />
+          <a-input :style="propStyle(prop[0], 120)" v-else :value="prop[1]"/>
+        </span>
+
+        <!--天际线颜色-->
+        <span :title="helpChange" v-for="prop in hasProp('skybox.skyline')" class="row">
+          <strong>天际线颜色：</strong>
+          <a-input class="input" :style="propStyle(prop[0], 120)"
+            v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+            @keydown="(e)=>{setProp({e:e, type:typeof prop[1]}); BUS.emit('updateSkybox')}" 
+            @mouseout="chosenDOM=null"
+          />
+          <a-input :style="propStyle(prop[0], 120)" v-else :value="prop[1]"/>
+        </span>
+
+        <!--地面颜色-->
+        <span :title="helpChange" v-for="prop in hasProp('skybox.groundColor')" class="row">
+          <strong>地面颜色：</strong>
+          <a-input class="input" :style="propStyle(prop[0], 120)"
+            v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+            @keydown="(e)=>{setProp({e:e, type:typeof prop[1]}); BUS.emit('updateSkybox')}" 
+            @mouseout="chosenDOM=null"
+          />
+          <a-input :style="propStyle(prop[0], 120)" v-else :value="prop[1]"/>
+        </span>
       </a-collapse-panel>
+
       <!--几何属性-->
       <a-collapse-panel v-if="DT.mesh.geometry" header="几何属性" key="几何属性">
         <!--几何体类型-->
@@ -109,28 +341,33 @@
           <strong>几何体类型：</strong>
           {{DT.mesh.geometry.type}}
         </div>
+
         <!--模型路径-->
-        <div v-if="typeof DT.mesh.geometry.userData == 'string'">
+        <div v-if="typeof DT.mesh.geometry.userData == 'string'" class="row">
           <strong>模型路径：</strong>
           {{DT.mesh.geometry.userData}}
         </div>
+
         <!--顶点数-->
-        <div v-if="DT.mesh.geometry.attributes.position">
+        <div v-if="DT.mesh.geometry.attributes.position" class="row">
           <strong>顶点数：</strong>
           {{DT.mesh.geometry.attributes.position.count}}
         </div>
+
         <!--法向量数-->
-        <div v-if="DT.mesh.geometry.attributes.normal">
+        <div v-if="DT.mesh.geometry.attributes.normal" class="row">
           <strong>法向量数：</strong>
           {{DT.mesh.geometry.attributes.normal.count}}
         </div>
+
         <!--UV坐标数-->
-        <div v-if="DT.mesh.geometry.attributes.uv">
+        <div v-if="DT.mesh.geometry.attributes.uv" class="row">
           <strong>UV坐标数：</strong>
           {{DT.mesh.geometry.attributes.uv.count}}
         </div>
+
         <!--包围盒-->
-        <div v-if="DT.mesh.geometry.boundingBox">
+        <div v-if="DT.mesh.geometry.boundingBox" class="row">
           <strong>包围盒最小值：</strong>
           x:&nbsp{{DT.mesh.geometry.boundingBox.min.x.toFixed(2)}},
           y:&nbsp{{DT.mesh.geometry.boundingBox.min.y.toFixed(2)}},
@@ -141,77 +378,235 @@
           z:&nbsp{{DT.mesh.geometry.boundingBox.max.z.toFixed(2)}}
         </div>
       </a-collapse-panel>
+      <a-collapse-panel v-else disabled header="几何属性（无）"/>
+
       <!--物理属性-->
       <a-collapse-panel v-if="DT.rigid" header="物理属性" key="物理属性">
+
         <!--刚体类型-->
-        <div v-if="DT.rigidShape">
+        <div v-if="DT.rigidShape" class="row">
           <strong>刚体形状：</strong>
           {{DT.rigidShape.constructor.name}}
         </div>
+
         <!--刚体-->
-        <div v-if="DT.rigid">
-          <strong>刚体：</strong>
-          {{ DT.rigid ? "是" : "否" }}
+        <div v-if="DT.rigid" class="row">
+          <strong>刚体：</strong>{{ DT.rigid ? "是" : "否" }}
         </div>
+
         <!--质量-->
-        <div v-if="DT.mass">
+        <span :title="helpChange" v-for="prop in hasProp('mass')" class="row">
           <strong>质量：</strong>
-          <a-input :disabled="DT.mass==0" style="width:80px" type="number" :value="DT.mass.toFixed(2)" 
-          @wheel="(e)=>{DT.mass = Math.max(1e-10, DT.mass + 0.1*scroll(e));}"/>
-        </div>
+          <a-input class="input" :style="propStyle(prop[0], 80)"
+            v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+            @keydown="(e)=>setProp({e:e, min:0.1, max:5, fixed:2})" @mouseout="chosenDOM=null"
+          />
+          <a-input :style="propStyle(prop[0], 80)" v-else
+            :value="prop[1].toFixed(2)"
+            @wheel="(e)=>setProp({e:e, delta:0.1, min:0.1, max:5, fixed:2})"
+          />
+        </span>
+
         <!--静摩擦系数-->
-        <div v-if="DT.friction0">
+        <span :title="helpChange" v-for="prop in hasProp('friction0')" class="row">
           <strong>静摩擦系数：</strong>
-          <a-input style="width:80px" type="number" :value="DT.friction0.toFixed(2)" 
-          @wheel="(e)=>{DT.friction0 = clamp(DT.friction0 + 0.1*scroll(e), 1e-10, 1);}"/>
-        </div>
+          <a-input class="input" :style="propStyle(prop[0], 80)"
+            v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+            @keydown="(e)=>setProp({e:e, min:0, max:1, fixed:2})" @mouseout="chosenDOM=null"
+          />
+          <a-input :style="propStyle(prop[0], 80)" v-else
+            :value="prop[1].toFixed(2)"
+            @wheel="(e)=>setProp({e:e, delta:0.1, min:0, max:1, fixed:2})"
+          />
+        </span>
+
         <!--滑动摩擦系数-->
-        <div v-if="DT.friction">
+        <span :title="helpChange" v-for="prop in hasProp('friction')" class="row">
           <strong>滑动摩擦系数：</strong>
-          <a-input style="width:80px" type="number" :value="DT.friction.toFixed(2)" 
-          @wheel="(e)=>{DT.friction = clamp(DT.friction + 0.1*scroll(e), 1e-10, 1);}"/>
-        </div>
+          <a-input class="input" :style="propStyle(prop[0], 80)"
+            v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+            @keydown="(e)=>setProp({e:e, min:0, max:1, fixed:2})" @mouseout="chosenDOM=null"
+          />
+          <a-input :style="propStyle(prop[0], 80)" v-else
+            :value="prop[1].toFixed(2)"
+            @wheel="(e)=>setProp({e:e, delta:0.1, min:0, max:1, fixed:2})"
+          />
+        </span>
+
+        <!--传送带速度-->
+        <span :title="helpChange" v-for="prop in hasProp('v0')" class="row">
+          <strong>传送带速度：</strong>
+          <a-input class="input" :style="propStyle(prop[0], 80)"
+            v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+            @keydown="(e)=>setProp({e:e, min:0.1, max:5, fixed:2})" @mouseout="chosenDOM=null"
+          />
+          <a-input :style="propStyle(prop[0], 80)" v-else
+            :value="prop[1].toFixed(2)"
+            @wheel="(e)=>setProp({e:e, delta:0.1, min:0.1, max:5, fixed:2})"
+          />m/s
+        </span>
+
+        <!--发生时间间隔-->
+        <span :title="helpChange" v-for="prop in hasProp('timeInterval')" class="row">
+          <strong>发生时间间隔：</strong>
+          <a-input class="input" :style="propStyle(prop[0], 80)"
+            v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+            @keydown="(e)=>setProp({e:e, min:1, max:10, fixed:2})" @mouseout="chosenDOM=null"
+          />
+          <a-input :style="propStyle(prop[0], 80)" v-else
+            :value="prop[1].toFixed(2)"
+            @wheel="(e)=>setProp({e:e, delta:0.1, min:1, max:10, fixed:2})"
+          />s
+        </span>
+
       </a-collapse-panel>
+      <a-collapse-panel v-else disabled header="物理属性（无）"/>
+
       <!--材质属性-->
       <a-collapse-panel v-if="DT.mesh.material" header="材质属性" key="材质属性">
+
         <!--材质类型-->
-        <div v-if="DT.mesh.material.type">
+        <div v-if="DT.mesh.material.type" class="row">
           <strong>材质类型：</strong>
           {{ DT.mesh.material.type }}
         </div>
+
         <!--材质颜色-->
-        <div v-if="DT.mesh.material.color">
+        <div v-if="DT.mesh.material.color" class="row">
           <strong>材质颜色：</strong><br/>
-          <strong>R:</strong><a-input style="width:80px" type="number" 
-          :value="parseInt(DT.mesh.material.color.r * 255)"
-          @wheel="(e)=>{
-            DT.set('R', scroll(e)/255);
-            DT.mesh.material.color.r = clamp(DT.mesh.material.color.r, 0, 1);
-          }"/>&nbsp;
-          <strong>G:</strong><a-input style="width:80px" type="number" 
-          :value="parseInt(DT.mesh.material.color.g * 255)"
-          @wheel="(e)=>{
-            DT.set('G', scroll(e)/255);
-            DT.mesh.material.color.g = clamp(DT.mesh.material.color.g, 0, 1);
-          }"/>&nbsp;
-          <strong>B:</strong><a-input style="width:80px" type="number" 
-          :value="parseInt(DT.mesh.material.color.b * 255)"
-          @wheel="(e)=>{
-            DT.set('B', scroll(e)/255);
-            DT.mesh.material.color.b = clamp(DT.mesh.material.color.b, 0, 1);
-          }"/>
+
+          <span :title="helpChange" v-for="prop in hasProp('mesh.material.color.r')">
+            <strong>R:</strong>
+            <a-input class="input" :style="propStyle(prop[0], 80)"
+              v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+              @keydown="(e)=>setProp({e:e, unit:1/255, min:0, max:255})" 
+              @mouseout="chosenDOM=null"
+            />
+            <a-input :style="propStyle(prop[0], 80)" v-else
+              :value="parseInt(prop[1]*255)"
+              @wheel="(e)=>setProp({e:e, unit:1/255, min:0, max:255})"
+            />&nbsp;
+          </span>
+
+          <span :title="helpChange" v-for="prop in hasProp('mesh.material.color.g')">
+            <strong>G:</strong>
+            <a-input class="input" :style="propStyle(prop[0], 80)"
+              v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+              @keydown="(e)=>setProp({e:e, unit:1/255, min:0, max:255})" 
+              @mouseout="chosenDOM=null"
+            />
+            <a-input :style="propStyle(prop[0], 80)" v-else
+              :value="parseInt(prop[1]*255)"
+              @wheel="(e)=>setProp({e:e, unit:1/255, min:0, max:255})"
+            />&nbsp;
+          </span>
+
+          <span :title="helpChange" v-for="prop in hasProp('mesh.material.color.b')">
+            <strong>B:</strong>
+            <a-input class="input" :style="propStyle(prop[0], 80)"
+              v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+              @keydown="(e)=>setProp({e:e, unit:1/255, min:0, max:255})"
+              @mouseout="chosenDOM=null"
+            />
+            <a-input :style="propStyle(prop[0], 80)" v-else
+              :value="parseInt(prop[1]*255)"
+              @wheel="(e)=>setProp({e:e, unit:1/255, min:0, max:255})"
+            />&nbsp;
+          </span>
         </div>
+
         <!--透明度-->
-        <div v-if="DT.mesh.material.opacity">
+        <span :title="helpChange" v-for="prop in hasProp('mesh.material.opacity')" class="row">
           <strong>透明度：</strong>
-          <a-input style="width:80px" suffix="%" type="number" 
-          :value="parseInt(DT.mesh.material.opacity * 100)"
-          @wheel="(e)=>{
-            DT.set('A', scroll(e)/100);
-            DT.mesh.material.opacity = clamp(DT.mesh.material.opacity, 0, 1);
-          }"/>
-        </div>
+          <a-input class="input" :style="propStyle(prop[0], 80)"
+            v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+            @keydown="(e)=>setProp({e:e, unit:0.01, min:0, max:100})" @mouseout="chosenDOM=null"
+          />
+          <a-input :style="propStyle(prop[0], 80)" v-else
+            :value="parseInt(prop[1]*100)"
+            @wheel="(e)=>setProp({e:e, unit:0.01, min:0, max:100})"
+          />%
+        </span>
+
       </a-collapse-panel>
+      <a-collapse-panel v-else disabled header="材质属性（无）"/>
+
+      <!--自定义属性-->
+      <a-collapse-panel v-if="DT.custom" header="自定义属性" key="自定义属性">
+        <a-button @click="editCustomProp()">
+          编辑自定义属性
+        </a-button>  
+      </a-collapse-panel>
+
     </a-collapse>
   </div>
+  <!--自定义属性编辑窗口-->
+  <div id="popup" class="popup" >
+    <!--头部拖动栏-->  
+    <div id="popup-header" class="popup-header">  
+      <strong style="color:white">自定义属性</strong>  
+      <a-button id="popup-quit" danger type="primary" @click="
+        clearNewProp(); popup.style.display = 'none';
+      ">
+        <CloseOutlined/>
+      </a-button>  
+    </div>  
+
+    <div class="popup-content" id="popup-content">  
+      <!--工具栏-->  
+      <span style="display:flex; margin:10px">
+        <a-button @click="addCustomProp=true; editProp = '';" 
+        :disabled="addCustomProp">点此添加属性</a-button>&nbsp;
+        <div v-if="addCustomProp">
+          <a-input
+            v-model:value="newProp"
+            placeholder="属性名"
+            style="width:200px"
+            @keydown="(e)=>{if(e.key=='Enter') createCustomProp(e)}"
+          />&nbsp;
+          <a-button style="border:#0B0 solid 1px; color:#0B0" @click="createCustomProp(e);">
+            <CheckOutlined/>
+          </a-button>&nbsp;
+          <a-button danger @click="clearNewProp"><CloseOutlined/></a-button>
+        </div>
+      </span>
+
+      <!--属性表--> 
+      <a-table bordered :data-source="obj2table(DT.custom)">
+        <a-table-column title="属性" data-index="prop">
+          <template #default="{ value:prop }">
+            <div>{{ prop }}</div>
+          </template>
+        </a-table-column>
+        <a-table-column title="值" data-index="prop">
+          <template #default="{ value:prop }">
+            <a-input v-if="editProp==prop" v-model:value="editValue"
+            size="small" style="width:120px"
+            @keydown="(e)=>{if(e.key=='Enter') setCustomProp(editValue, prop)}">
+            <template #suffix>
+              <CheckCircleOutlined @click="setCustomProp(editValue, prop)"
+            />
+            </template>
+            </a-input>
+            <div v-else>{{ DT.custom[prop] }}</div>
+          </template>
+        </a-table-column>
+        <a-table-column title="类型" data-index="value">
+          <template #default="{ value }">
+            <div>{{ typeof value }}</div>
+          </template>
+        </a-table-column>
+        <a-table-column title="操作" data-index="prop" >
+          <template #default="{ value:prop }">
+            <a v-if="editProp!=prop" @click="
+              editProp=prop; editValue=DT.custom[prop];
+            ">编辑</a>
+            <a v-else @click="editProp=null">取消</a>
+            <a @click="delete DT.custom[prop]" style="margin-left:10px">删除</a>
+          </template>
+        </a-table-column>
+      </a-table>
+    </div>  
+
+  </div>  
 </template>
