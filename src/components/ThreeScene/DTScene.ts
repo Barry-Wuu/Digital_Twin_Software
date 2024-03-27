@@ -48,6 +48,7 @@ BUS.on("clearTemp", ()=>{SCENE.DT.clearTemp()});
 
 class DTObject {  // 用DTObject类包裹场景中的对象
     children  // 子物体（自动计算）
+    code: string  // 自定义脚本
     custom: object  // 自定义属性
     friction0: number  // 静摩擦力
     friction: number  // 滑动摩擦力
@@ -57,6 +58,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
     material: object  // 材质属性
     mesh: THREE.object  // 模型网格
     name: string  // 名称
+    rb: Ammo.object  // 刚体
     rigid: boolean  // 是否为刚体
     rigidShape: Ammo.object  // 刚体网格（自动计算）
     scale: number  // 尺寸
@@ -105,6 +107,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
         shape.calculateLocalInertia( mass, localInertia );
         const rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, shape, localInertia );
         const rb = new Ammo.btRigidBody( rbInfo );
+        this.rb = rb;
         this.mesh.userData.physicsBody = rb;
         SCENE.add( this.mesh );
         if (mass > 0) {rb.setActivationState( 4 );}  // 质量为0代表为固定的刚体
@@ -609,9 +612,7 @@ export default class SceneBuilder{
         let now = performance.now();     
         let pause = emulateMode == "pause", stop = emulateMode == "stop";  // 是否暂停或停止
         this.updateFPSandTime(now, pause, stop);
-        if(stop){
-            T0 = performance.now();
-        }
+        if(stop){T0 = performance.now();}  // 暂停后停止计时
         if(pause || stop)return;  // 未暂停时更新刚体
         if(emulateMode == "step") physicsWorld.stepSimulation( deltaTime );
         else{
@@ -619,6 +620,8 @@ export default class SceneBuilder{
         }
         for(let DT of DTObjects.value){  // 让网格位置等于刚体位置
             const mesh = DT.mesh;
+            try{ if(DT.code != '') eval(DT.code) }  // 若物体有自定义脚本则执行 
+            catch(e) {console.log(e)}
             if(!DT.rigid){
                 if(!stop && DT.name == "发生器"){  // 未暂停时制造货物
                     if(now - DT.timer >= DT.timeInterval * 1000){  // 秒变毫秒

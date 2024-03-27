@@ -100,31 +100,33 @@
 </script>
 
 <template>
-  <div :DTScene="{}" id="main" ref="main" style = "
-    border: 0px solid grey;
-    display: block;
-    margin-left: 0px;
-    position: absolute;  
-    top: 0;  
-    left: 0;  
-    width: 100vw;  
-    height: 100vh;
-  ">
-    <a-button v-if="showQuitFullscreen" danger style="
-      position: absolute; 
-      top: 10px; 
-      right: 10px;
-      z-index: 1919810;    
-    " 
-    :type="quitFullscreenStyle"
-    @mouseenter = "quitFullscreenStyle = 'primary'"
-    @mousedown = "BUS.emit('canvasFullscreen'); quitFullscreenStyle = 'default'"
-    @mouseleave = "quitFullscreenStyle = 'default'"
-    >
-      <FullscreenExitOutlined/>退出全屏&nbsp;(Esc)
-    </a-button>
-    <Topbar/>
-    <Layout style="height: calc(100vh - 186px);" :item="layout" parent="none"/>
-    <BottomBar style=""/>
-  </div>
+  <a-config-provider :autoInsertSpaceInButton="false"><!--禁止ant自动在两字按钮之间加空格-->
+    <div :DTScene="{}" id="main" ref="main" style = "
+      border: 0px solid grey;
+      display: block;
+      margin-left: 0px;
+      position: absolute;  
+      top: 0;  
+      left: 0;  
+      width: 100vw;  
+      height: 100vh;
+    ">
+      <a-button v-if="showQuitFullscreen" danger style="
+        position: absolute; 
+        top: 10px; 
+        right: 10px;
+        z-index: 1919810;    
+      " 
+      :type="quitFullscreenStyle"
+      @mouseenter = "quitFullscreenStyle = 'primary'"
+      @mousedown = "BUS.emit('canvasFullscreen'); quitFullscreenStyle = 'default'"
+      @mouseleave = "quitFullscreenStyle = 'default'"
+      >
+        <FullscreenExitOutlined/>退出全屏&nbsp;(Esc)
+      </a-button>
+      <Topbar/>
+      <Layout style="height: calc(100vh - 186px);" :item="layout" parent="none"/>
+      <BottomBar style=""/>
+    </div>
+  </a-config-provider>
 </template>
