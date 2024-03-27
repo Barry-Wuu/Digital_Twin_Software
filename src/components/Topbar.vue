@@ -231,7 +231,7 @@
             </span>
             <span style="display:inline-flex">
                 <div style="margin-top:10px">仿真速度：</div>
-                <a-slider @change="changeSpeed" :marks="marks" step=25 :tooltipVisible="false" 
+                <a-slider @change="changeSpeed" :marks="marks" :step="25" :tooltipVisible="false" 
                 :value="speed" class="marginLR10" style="width: 200px; margin-bottom: 20px"/>
             </span>
             <div class="bottomBorder">仿真动画</div>
