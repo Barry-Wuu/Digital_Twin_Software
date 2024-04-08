@@ -1,6 +1,12 @@
 <script lang="ts">
+    const JSZip = require("jszip");  // 用于压缩解压文件的库
     import BUS from "./EventBus"
-    import { defineComponent, ref} from 'vue';
+    const electron = require("electron");
+    var fs = require("fs");
+    var path = require("path");
+    import { defineComponent, ref} from "vue";
+    import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+    import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
     import { 
         CameraOutlined,
         CaretDownOutlined,
@@ -13,21 +19,25 @@
         PauseOutlined,
         ReloadOutlined,
         StepForwardOutlined,
-    } from '@ant-design/icons-vue';
+    } from "@ant-design/icons-vue";
+
     var BottomMessage;
     var BottomSpeed;
     const emulateMode = ref("stop");  // 仿真状态
     var fast = ref(25);  // 快进速度
-    const fullscreen = ref(false);  // 是否全屏
+    var fileInput;  // 文件选择器
+    var fileOutput;  // 文件保存器
+    const GLTFexporter = new GLTFExporter();
+    const GLTFloader = new GLTFLoader();
     const marks = {0:'1x', 25: '2x', 50: '4x', 
         75: {style: {color: 'lightgrey', textDecoration: "line-through"}, label: '8x'}, 
         100: {style: {color: 'lightgrey', textDecoration: "line-through"}, label: '10x'}
     };
     var menu = [
         ["文件", [
-            "新建",
-            "导入",
-            "导出",
+            "新建场景",
+            "载入场景",
+            "保存场景",
             "——",
             "设置",
             "——",
@@ -37,6 +47,7 @@
         "可视化"
     ]
     const mode = ref("edit");  // 编辑模式（edit）或浏览模式（view）
+    const reader = new FileReader();
     const speed = ref(0);
     const tab = ref("主要功能");  // 栏目
 
@@ -56,6 +67,11 @@
             StepForwardOutlined,
         },
         methods:{
+            action(option){  // 场景操作
+                if(option == "新建场景") this.loadScene(null, "src/temp/New.DTScene");
+                if(option == "载入场景") fileInput.click();
+                if(option == "保存场景") this.saveScene();
+            },
             changeFullscreen(){  // 切换全屏显示
                 BUS.emit("canvasFullscreen");
             },
@@ -81,8 +97,63 @@
             },
             changeTab(key){tab.value = key;},  // 切换顶部栏目
             clearTemp(){BUS.emit('clearTemp')},  // 清除临时实体
-            ipcRenderer(data){ require("electron").ipcRenderer.send(data); },  // 刷新页面
+            ipcRenderer(data){ electron.ipcRenderer.send(data); },  // 刷新页面
+            loadScene(e=null, target=null){
+                // 解压
+                let DTFile = e ? e.target.files[0].path : target;  // 新场景
+                let zip = new JSZip();
+                const zipFile = fs.readFileSync(DTFile), promises = [];  
+                zip.loadAsync(zipFile).then(() => {  
+                    zip.forEach((relativePath, zipEntry) => {  
+                        const writePath = "src/temp/" + relativePath;  
+                        let promise = zipEntry.async('nodebuffer');
+                        promises.push(promise);
+                        promise.then((buffer) => {  
+                            fs.writeFileSync(writePath, buffer);
+                        });  
+                    });  
+                    Promise.all(promises).then(()=>{  // 文件全部解压完后读取解压文件  
+                        GLTFloader.load("src/temp/Scene.txt", (file)=>{
+                            let DTScene = BUS.getDTScene();
+                            let obj = fs.readFileSync("src/temp/DTObjects.txt", "utf-8");
+                            DTScene.copyFrom(JSON.parse(obj));
+                            DTScene.mesh = file.scene;
+                            DTScene.mesh.DT = DTScene;
+                            DTScene.newScene();
+                        });                  
+                    })
+                }) 
+            },
             message(data){ BottomMessage.textContent = data; },
+            saveScene(target=null, DTObjects="src/temp/DTObjects.txt", Scene="src/temp/Scene.txt"){
+                // 保存DTObject
+                let DTScene = BUS.getDTScene();
+                let data = JSON.stringify(DTScene.clone());
+                try {fs.readdirSync("src/temp");}  // 无临时文件夹则创建临时文件夹
+                catch {fs.mkdirSync("src/temp");}
+                fs.writeFileSync(DTObjects, data);
+                // 保存GLTF场景文件，克隆场景并自动去除其中的DT，以节省文件大小
+                GLTFexporter.parse(DTScene.mesh.clone(), function (scene) {
+                    const file = JSON.stringify(scene);
+                    fs.writeFileSync(Scene, file);
+                    // 压缩
+                    const zip = new JSZip(), zipFile = "src/temp/DTScene.DTScene";  
+                    zip.file(path.basename(DTObjects), fs.readFileSync(DTObjects)); 
+                    zip.file(path.basename(Scene), fs.readFileSync(Scene));
+                    zip.generateAsync({type: "nodebuffer"}).then(data => {
+                        if(target){
+                            fs.writeFileSync(target, data); 
+                            return;
+                        }
+                        fs.writeFileSync(zipFile, data);
+                    }).then(()=>{  // 选择目录并下载
+                        if(target) return;
+                        fileOutput.href = zipFile;  // 被下载的文件
+                        fileOutput.download = "场景.DTScene";  // 默认文件名
+                        fileOutput.click();
+                    });
+                }, null, {onlyVisible: false});           
+            },
             setFast(e){  // 设置快进速度
                 let value = e.key;
                 fast.value = parseInt(value);
@@ -91,15 +162,32 @@
         setup() {
             const selectedKey = ref([]);
             return {
-                BUS, emulateMode, fast, marks, menu, mode, selectedKey, speed, tab
+                BUS, emulateMode, fast, marks, menu, mode, savepath:"", selectedKey, speed, tab,
             };
         },
         mounted(){
             this.ipcRenderer("closeDevTools");  // 默认关闭开发人员工具
-            BottomSpeed = document.getElementById("BottomSpeed");
             BottomMessage = document.getElementById("BottomMessage");
+            BottomSpeed = document.getElementById("BottomSpeed");
+            fileInput = document.getElementById("fileInput");
+            fileOutput = document.getElementById("fileOutput");
+            fileOutput.download = this.savepath;
+            BUS.on("saveInitScene", ()=>{this.saveScene("src/temp/New.DTScene")});
+        },
+        destroyed(){  // 退出时清理临时文件（src/temp文件夹）
+            function deleteFolder(path) {
+                if (fs.existsSync(path)) {
+                    fs.readdirSync(path).forEach(function(file) {
+                        const curPath = path + '/' + file;
+                        if (fs.lstatSync(curPath).isDirectory()) deleteFolder(curPath); // 递归删除文件夹
+                        else fs.unlinkSync(curPath); // 删除文件
+                    });
+                    fs.rmdirSync(path); // 删除空文件夹
+                }
+            }
+            deleteFolder("src/temp");
         }
-  });
+    });
 </script>
 
 <style>
@@ -115,18 +203,29 @@
 </style>
 
 <template>
+    <!--隐藏的文件选择器input和下载器a，用于导入和导出文件-->
+    <div style="display: none;">   
+        <input id="fileInput" type="file" accept=".DTScene" @change="loadScene"/>
+        <a id="fileOutput"/>
+    </div>
+    
+
     <!--顶部选择栏-->
-    <a-menu v-model:selectedKeys="selectedKey" mode="horizontal">
-      <a-sub-menu v-for="(key) in menu">
+    <a-menu mode="horizontal">
+      <a-sub-menu v-for="key in menu">
         <template #title>
             <div v-if="typeof key == 'object'">{{key[0]}}</div>
             <div v-else @click="changeTab(key)">{{key}}</div>
         </template>
+
         <!--文件-->
-        <li v-for="(option) in key[1]" v-if="typeof key == 'object'">  
-            <a-menu-item v-if="option!='——'" :title="{option}">{{option}}</a-menu-item>  
+        <a-list v-for="option in key[1]" v-if="typeof key=='object'">  
+            <a-menu-item v-if="option!='——'" :key="option" :title="{option}" 
+            @click="action(option)">
+                {{option}}
+            </a-menu-item>  
             <div v-else style="border:solid lightgrey 1px; height:0px"/>  
-        </li>  
+        </a-list>  
       </a-sub-menu>
     </a-menu>
 

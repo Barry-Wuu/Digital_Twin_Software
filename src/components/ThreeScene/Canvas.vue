@@ -8,13 +8,13 @@
         @dragleave = "onDragleave"
         @dragover = "onDragover" 
         @drop = "onDrop"
-        @keydown = "onKeyup"
-        @keyup = "onKeydown"
+        @keydown = "onKeydown"
+        @keyup = "onKeyup"
         @mousedown = "onMousedown"
         @mousemove = "onMousemove"
         @mouseup = "onMouseup"
         @wheel = "onWheel"
         style="outline:none; "
         tabindex="0"
-    />
+    ></div>
 </template>

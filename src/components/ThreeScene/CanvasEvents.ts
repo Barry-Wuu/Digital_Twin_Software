@@ -119,6 +119,9 @@ export default defineComponent({
             dragModel.isDrag = false;
             dragModel.material.opacity = tempOpacity;
             if(dragModel.DT.rigid){dragModel.DT.createRigidBody()}
+            if(!this.scene.DTObjects.value.includes(dragModel.DT)){
+              this.scene.DTObjects.value.push(dragModel.DT);
+            }
             dragModel = null;
             if(dragName) dragName.data.modeltype = null;
             tempModel.clear();
@@ -135,13 +138,13 @@ export default defineComponent({
         onMousedown(e){
           mouseType[e.button] = true;
           if(mouseType[0]){
-            if(mouseType[2]){  // 双击左右键则移动
-            } else if(mode == "edit"){  // 左键点击
+            if(mouseType[2]){}  // 双击左右键则移动
+            else if(mode == "edit"){  // 左键点击
               let choice = this.event2face(e)[0];
-              if(choice.geometry.type == "ShapeGeometry") choice = choice.parent;
-              if(choice.DT && choice != this.scene.ground){
+              if(choice.userData.indicator) choice = choice.parent;  // 点击指示箭头
+              if(choice.DT && !choice.userData.ground){
                 if(choice){
-                  BUS.emit("clickModel", choice.id +','+shift);
+                  BUS.emit("clickModel", choice.id + ',' + shift);
                 }
                 dragModel = choice;
                 dragModel.isDrag = true;
@@ -151,7 +154,7 @@ export default defineComponent({
                 if(dragModel.DT.rigid){
                   this.scene.removeRigidBody(dragModel);
                 }
-              } else{
+              } else {
                 BUS.emit("deselect")
               }
             }
@@ -238,8 +241,7 @@ export default defineComponent({
     mounted(){
       canvas = document.getElementById("canvas");  
       app = document.getElementById("app"); 
-      let main = document.getElementById("main"); 
-      this.scene = new DTScene(canvas, main);
+      this.scene = new DTScene(canvas);
       this.scene.init();
       this.rendered = true;
       this.resizeCanvas();
