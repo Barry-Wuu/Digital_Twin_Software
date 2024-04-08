@@ -2,12 +2,18 @@
     import { defineComponent, ref } from 'vue'
     import BUS from "./EventBus"
     import * as THREE from 'three';  // 导入库以便在控制台中执行相应命令
-    var Console;
+    var Console = document.createElement("div");
     var command = ref('')
-    var DTScene;
+
+    // 下列未使用函数为控制台专用指令
+    function DT(){
+      let DT = BUS.getDTScene();
+      console.log(DT)
+      return DT;
+    };
+    function print(s){BUS.emit("print", s)};
 
     function pad(x, n=2){return x.toString().padStart(n, '0')};
-    function print(s){BUS.emit("print", s)};
     BUS.on("print", (data)=>{
       Console.innerHTML += "<br>";
       let date = new Date();
@@ -20,6 +26,7 @@
         + pad(date.getMilliseconds(), 3) + ' —— ';
       Console.innerHTML += data;
     });
+
     export default{
       methods:{
         run(str){
@@ -33,7 +40,6 @@
       mounted(){
         Console = document.getElementById("console");
         BUS.emit("print", "程序启动")
-        DTScene = window.DTScene;
       }
     }
 </script>

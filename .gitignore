@@ -29,3 +29,6 @@ package-lock.json
 pnpm-lock.yaml
 yarn.lock
 out/
+
+# 临时文件
+src/temp

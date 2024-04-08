@@ -66,13 +66,15 @@
       },
       selectDOM(e){  // 点击属性进行编辑
         let DOM = e.target;
-        if(DOM.style.editable){
-          chosenDOM_value.value = DOM.value;
-          chosenDOM.value = DOM.style.prop;
-        } else {
-          chosenDOM_value.value = null;
-          chosenDOM.value = null;
-        }
+        try{
+          if(DOM.style.editable){
+            chosenDOM_value.value = DOM.value;
+            chosenDOM.value = DOM.style.prop;
+          } else {
+            chosenDOM_value.value = null;
+            chosenDOM.value = null;
+          }
+        } catch {}
       },
       setCustomCodeFont(size){  // 更改自定义脚本字体
         let rule = ['xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large'];
@@ -133,15 +135,8 @@
     },
     mounted(){
       BUS.on("showProperty", (data:string)=>{
-        if(!'未已'.includes(data[0])){
-          DT.value = window.DTScene.findDTObjectById(data);
-          //if(status == "play") updateProperty(); 
-        }
-        else if(data == "asset"){
-          DT.value = this.$refs.main.asset;
-          console.log(this.$refs.main.asset);
-        }
-        else DT.value = data;
+        if('未已'.includes(data[0])) DT.value = data;
+        else DT.value = BUS.getDTScene().findDTObjectById(data);
       })
       main = document.getElementById("main");
       popup = document.getElementById("popup"); 
@@ -315,7 +310,7 @@
           <strong>z:</strong>
           <a-input class="input" :style="propStyle(prop[0], 80)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
-            @keydown="setProp({e:e, unit:angle, min:0, max:360, fixed:2, loop:true})" 
+            @keydown="(e)=>setProp({e:e, unit:angle, min:0, max:360, fixed:2, loop:true})" 
             @mouseout="chosenDOM=null"
           />
           <a-input :style="propStyle(prop[0], 80)" v-else
@@ -328,6 +323,21 @@
         <div v-if="DT.scale" class="row">
           <strong>比例：</strong>{{DT.scale}}
         </div>
+
+        <!--发生时间间隔-->
+        <span :title="helpChange" v-for="prop in hasProp('timeInterval')" class="row">
+          <strong>发生时间间隔：</strong>
+          <a-input class="input" :style="propStyle(prop[0], 80)"
+            v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+            @keydown="(e)=>setProp({e:e, min:1, max:10, fixed:2})" @mouseout="chosenDOM=null"
+          />
+          <a-input :style="propStyle(prop[0], 80)" v-else
+            :value="(prop[1]/1000).toFixed(3)"
+            @wheel="(e)=>setProp({e:e, delta:0.001, unit:1000, min:1, max:10, fixed:3})"
+          />s
+        </span>
+
+        <div v-if="DT.timer">{{DT.timer}}</div>
 
         <!--天空颜色-->
         <span :title="helpChange" v-for="prop in hasProp('skybox.skyColor')" class="row">
@@ -364,47 +374,47 @@
       </a-collapse-panel>
 
       <!--几何属性-->
-      <a-collapse-panel v-if="DT.mesh.geometry" header="几何属性" key="几何属性">
+      <a-collapse-panel v-if="DT.geometry" header="几何属性" key="几何属性">
         <!--几何体类型-->
-        <div v-if="DT.mesh.geometry.type">
+        <div v-if="DT.geometry.type">
           <strong>几何体类型：</strong>
-          {{DT.mesh.geometry.type}}
+          {{DT.geometry.type}}
         </div>
 
         <!--模型路径-->
-        <div v-if="typeof DT.mesh.geometry.userData == 'string'" class="row">
+        <div v-if="typeof DT.geometry.userData == 'string'" class="row">
           <strong>模型路径：</strong>
-          {{DT.mesh.geometry.userData}}
+          {{DT.geometry.userData}}
         </div>
 
         <!--顶点数-->
-        <div v-if="DT.mesh.geometry.attributes.position" class="row">
+        <div v-if="DT.geometry.attributes.position" class="row">
           <strong>顶点数：</strong>
-          {{DT.mesh.geometry.attributes.position.count}}
+          {{DT.geometry.attributes.position.count}}
         </div>
 
         <!--法向量数-->
-        <div v-if="DT.mesh.geometry.attributes.normal" class="row">
+        <div v-if="DT.geometry.attributes.normal" class="row">
           <strong>法向量数：</strong>
-          {{DT.mesh.geometry.attributes.normal.count}}
+          {{DT.geometry.attributes.normal.count}}
         </div>
 
         <!--UV坐标数-->
-        <div v-if="DT.mesh.geometry.attributes.uv" class="row">
+        <div v-if="DT.geometry.attributes.uv" class="row">
           <strong>UV坐标数：</strong>
-          {{DT.mesh.geometry.attributes.uv.count}}
+          {{DT.geometry.attributes.uv.count}}
         </div>
 
         <!--包围盒-->
-        <div v-if="DT.mesh.geometry.boundingBox" class="row">
+        <div v-if="DT.geometry.boundingBox" class="row">
           <strong>包围盒最小值：</strong>
-          x:&nbsp{{DT.mesh.geometry.boundingBox.min.x.toFixed(2)}},
-          y:&nbsp{{DT.mesh.geometry.boundingBox.min.y.toFixed(2)}},
-          z:&nbsp{{DT.mesh.geometry.boundingBox.min.z.toFixed(2)}}
+          x:&nbsp{{(DT.geometry.boundingBox.min.x * DT.scale).toFixed(2)}},
+          y:&nbsp{{(DT.geometry.boundingBox.min.y * DT.scale).toFixed(2)}},
+          z:&nbsp{{(DT.geometry.boundingBox.min.z * DT.scale).toFixed(2)}}
           <br><strong>包围盒最大值：</strong>
-          x:&nbsp{{DT.mesh.geometry.boundingBox.max.x.toFixed(2)}},
-          y:&nbsp{{DT.mesh.geometry.boundingBox.max.y.toFixed(2)}},
-          z:&nbsp{{DT.mesh.geometry.boundingBox.max.z.toFixed(2)}}
+          x:&nbsp{{(DT.geometry.boundingBox.max.x * DT.scale).toFixed(2)}},
+          y:&nbsp{{(DT.geometry.boundingBox.max.y * DT.scale).toFixed(2)}},
+          z:&nbsp{{(DT.geometry.boundingBox.max.z * DT.scale).toFixed(2)}}
         </div>
       </a-collapse-panel>
       <a-collapse-panel v-else disabled header="几何属性（无）"/>
@@ -415,7 +425,7 @@
         <!--刚体类型-->
         <div v-if="DT.rigidShape" class="row">
           <strong>刚体形状：</strong>
-          {{DT.rigidShape.constructor.name}}
+          {{DT.rb.constructor.name}}
         </div>
 
         <!--刚体-->
@@ -474,20 +484,6 @@
             @wheel="(e)=>setProp({e:e, delta:0.1, min:0.1, max:5, fixed:2})"
           />m/s
         </span>
-
-        <!--发生时间间隔-->
-        <span :title="helpChange" v-for="prop in hasProp('timeInterval')" class="row">
-          <strong>发生时间间隔：</strong>
-          <a-input class="input" :style="propStyle(prop[0], 80)"
-            v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
-            @keydown="(e)=>setProp({e:e, min:1, max:10, fixed:2})" @mouseout="chosenDOM=null"
-          />
-          <a-input :style="propStyle(prop[0], 80)" v-else
-            :value="prop[1].toFixed(2)"
-            @wheel="(e)=>setProp({e:e, delta:0.1, min:1, max:10, fixed:2})"
-          />s
-        </span>
-
       </a-collapse-panel>
       <a-collapse-panel v-else disabled header="物理属性（无）"/>
 
@@ -674,7 +670,7 @@
         清空
       </a-button>
       <span style="display:flex;" class="buttonCustomCode">
-        <div style="margin-top:4px">字体大小：</div>
+        <div v-if="popupContent=='code'" style="margin-top:4px">字体大小：</div>
         <a-slider v-if="popupContent=='code'" :min=0 :max=6 :step=1 :tooltipVisible="false" 
         @change="(e)=>{customCodeFont=e;}" 
         :value="customCodeFont" style="width: 100px"/>

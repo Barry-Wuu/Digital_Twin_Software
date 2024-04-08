@@ -10,8 +10,6 @@
         CarryOutOutlined, 
         FormOutlined 
     } from '@ant-design/icons-vue';
-    import { contentQuotesLinter } from "ant-design-vue/es/_util/cssinjs/linters";
-    import { titleProps } from "ant-design-vue/es/typography/Title";
     import { defineComponent, ref, watch } from 'vue';
 
     var choices = ref([]);  // 已选项，内为各个被选中模型的ID
@@ -54,7 +52,7 @@
           }
           else{
             choices.value = [selection]; 
-            console.log(window.DTScene.findDTObjectById(selection))
+            console.log(BUS.getDTScene().findDTObjectById(selection))
           }  // 单选
           //BUS.emit("BottomMessage", choices.value.length>0 ? `选择${choices.value.length}个物体` : "无");
         });
@@ -65,7 +63,7 @@
         BUS.on("deleteChoices", ()=>{this.deleteChoices()});
         BUS.on("updateSearch", ()=>{this.search(TREE.value)});
         BUS.on("updateTree", ()=>{
-          let DTScene = window.DTScene;
+          let DTScene = BUS.getDTScene();
           DTObjects = DTScene.getDTObjects();         
           TREE.value = [DTScene];
         });
@@ -74,7 +72,7 @@
       methods: {
         deleteChoices(){
           for(let id of choices.value){
-            let DTObject = window.DTScene.findDTObjectById(id);
+            let DTObject = BUS.getDTScene().findDTObjectById(id);
             if(DTObject) DTObject.destroy();
           }
           BUS.emit("updateTree");
@@ -149,14 +147,10 @@
         function onExpand(k){
           expanded = k;
         };
-        watch(choices, (x)=>{  // 根据选项变化来确定被选物体，并展示或隐藏物体边框
+        watch(choices, (choices)=>{  // 根据选项变化来确定被选物体，并展示或隐藏物体边框
           emitProperty();
-          for(let DT of window.DTScene.getDTObjects()){
-            for(let child of DT.mesh.children){
-              if(child.type == "BoxHelper"){
-                child.visible = x.includes(DT.id);
-              }
-            };
+          for(let DT of BUS.getDTScene().getDTObjects()){
+            if(DT.wireframe) DT.wireframe.visible = choices.includes(DT.id);
           };
         });
         watch(TREE, ()=>{BUS.emit('updateSearch');});
@@ -176,7 +170,6 @@
     <div tabindex="0" @keydown = "onKeydown" style="outline: none">
       <!--层级树-->
       <a-tree v-if="!searchValue" :tree-data="TREE" multiple selectable :show-icon="false"
-          @expand = "(k)=>{console.log(k)}" 
           @select="onClick" :selectedKeys = "choices">
         <template #title="DT">
           <span>
