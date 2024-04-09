@@ -20,20 +20,24 @@
   const newCode = ref('');
   const newProp = ref('');
   var popup;
+  var popupMask;
   const popupContent = ref();
 
   export default{
     components:{CheckCircleOutlined, CheckOutlined, CloseOutlined},
     methods:{
-      clearNewProp(){  // 清空并隐藏新增属性输入栏
+      closePopup(quit=true){  // 清空并隐藏新增属性输入栏，关闭弹窗
+        if(quit){
+          popupContent.value = null; 
+          popup.style.display = popupMask.style.display="none";
+        }
         addCustomProp.value = false;
-        editProp.value = '';
-        newProp.value = '';
+        editProp.value = newProp.value = '';
       },
-      createCustomProp(e){
+      createCustomProp(){
         if(DT.value.custom[newProp.value] == undefined) {
           DT.value.custom[newProp.value] = null;
-          this.clearNewProp();
+          this.closePopup(false);
         };
       },
       hasProp(prop){  // DT对象有某属性则显示，无则不显示
@@ -113,11 +117,10 @@
         } 
       },
       showPopup(content){  // 显示自定义属性和脚本弹出窗口
-        if(popupContent.value == content){
-          this.clearNewProp(); popupContent.value=null; popup.style.display = "none"
-        } else {
+        if(popupContent.value == content) this.closePopup();
+        else {
           popupContent.value = content;
-          popup.style.display = "block";
+          popup.style.display = popupMask.style.display = "block";
           this.$nextTick(()=>{  // 异步更新窗口位置
             let rect = popup.getBoundingClientRect();
             popup.style.top = (main.offsetHeight - rect.height)/2 + "px";
@@ -131,7 +134,7 @@
     },
     setup(){
       return {addCustomProp, angle, BUS, chosenDOM, chosenDOM_value, customCodeFont, DT, 
-        editProp, editValue, helpChange, newCode, newProp, popup, popupContent}
+        editProp, editValue, helpChange, newCode, newProp, popup, popupContent, popupMask}
     },
     mounted(){
       BUS.on("showProperty", (data:string)=>{
@@ -140,8 +143,9 @@
       })
       main = document.getElementById("main");
       popup = document.getElementById("popup"); 
-
       main.appendChild(popup);  
+      popupMask = document.getElementById("popupMask");
+      main.appendChild(popupMask);  
       var popupHeader = document.getElementById("popup-header");  
       var startM, startP;
       // 点击属性进行编辑
@@ -336,8 +340,6 @@
             @wheel="(e)=>setProp({e:e, delta:0.001, unit:1000, min:1, max:10, fixed:3})"
           />s
         </span>
-
-        <div v-if="DT.timer">{{DT.timer}}</div>
 
         <!--天空颜色-->
         <span :title="helpChange" v-for="prop in hasProp('skybox.skyColor')" class="row">
@@ -577,9 +579,8 @@
         <div v-if="popupContent=='prop'">自定义属性</div>
         <div v-if="popupContent=='code'">自定义脚本</div>
       </strong>  
-      <a-button id="popup-quit" danger type="primary" @click="
-        clearNewProp(); popupContent=null; popup.style.display='none';
-      ">
+      <!--退出-->
+      <a-button id="popup-quit" danger type="primary" @click="closePopup">
         <CloseOutlined/>
       </a-button>  
     </div>  
@@ -596,10 +597,10 @@
             style="width:200px"
             @keydown="(e)=>{if(e.key=='Enter') createCustomProp(e)}"
           />&nbsp;
-          <a-button style="border:#0B0 solid 1px; color:#0B0" @click="createCustomProp(e);">
+          <a-button style="border:#0B0 solid 1px; color:#0B0" @click="createCustomProp();">
             <CheckOutlined/>
           </a-button>&nbsp;
-          <a-button danger @click="clearNewProp"><CloseOutlined/></a-button>
+          <a-button danger @click="closePopup(false)"><CloseOutlined/></a-button>
         </div>
       </span>
 
@@ -662,7 +663,7 @@
         textarea.selectionStart = textarea.selectionEnd = start + insert.length;  
       }"/>
       <a-button v-if="popupContent=='code'" class="buttonCustomCode"
-      @click="DT.code=newCode" :disabled="newCode==DT.code">
+      @click="DT.code=newCode; closePopup()" :disabled="newCode==DT.code">
         保存
       </a-button>
       <a-button v-if="popupContent=='code'" class="buttonCustomCode"
@@ -677,4 +678,17 @@
       </span>
     </div>  
   </div>  
+
+  <!--弹窗时显示遮罩，禁止在弹窗外的操作-->
+  <span id="popupMask" style="
+    background-color: grey;
+    display: none;
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    width: 100%;
+    height: 100%;
+    opacity: 50%;
+    z-index: 100;
+  "/>
 </template>
