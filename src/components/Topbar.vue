@@ -35,9 +35,7 @@
     };
     var menu = [
         ["文件", [
-            "新建场景",
-            "载入场景",
-            "保存场景",
+            "新建场景", "载入场景", "保存场景", "最近打开",
             "——",
             "设置",
             "——",
@@ -47,7 +45,7 @@
         "可视化"
     ]
     const mode = ref("edit");  // 编辑模式（edit）或浏览模式（view）
-    const reader = new FileReader();
+    const recentOpened = ref([]);  // 最近打开的场景文件
     const speed = ref(0);
     const tab = ref("主要功能");  // 栏目
 
@@ -99,11 +97,13 @@
             clearTemp(){BUS.emit('clearTemp')},  // 清除临时实体
             ipcRenderer(data){ electron.ipcRenderer.send(data); },  // 刷新页面
             loadScene(e=null, target=null){
-                // 解压
-                let DTFile = e ? e.target.files[0].path : target;  // 新场景
+                let DTFilePath  // 选择路径
+                if(e) DTFilePath = e.target.files[0].path;  // 从input选择路径导入
+                else DTFilePath = target;  // 从指定路径导入
+                if(DTFilePath.slice(0,3)!="src") this.setHistory(DTFilePath);  // 若从绝对路径导入则修改文件打开记录
                 let zip = new JSZip();
-                const zipFile = fs.readFileSync(DTFile), promises = [];  
-                zip.loadAsync(zipFile).then(() => {  
+                const zipFile = fs.readFileSync(DTFilePath), promises = [];  
+                zip.loadAsync(zipFile).then(() => {  // 解压  
                     zip.forEach((relativePath, zipEntry) => {  
                         const writePath = "src/temp/" + relativePath;  
                         let promise = zipEntry.async('nodebuffer');
@@ -116,7 +116,7 @@
                         GLTFloader.load("src/temp/Scene.txt", (file)=>{
                             let DTScene = BUS.getDTScene();
                             let obj = fs.readFileSync("src/temp/DTObjects.txt", "utf-8");
-                            DTScene.copyFrom(JSON.parse(obj));
+                            DTScene.copyFrom(JSON.parse(obj), true);
                             DTScene.mesh = file.scene;
                             DTScene.mesh.DT = DTScene;
                             DTScene.newScene();
@@ -157,12 +157,26 @@
             setFast(e){  // 设置快进速度
                 let value = e.key;
                 fast.value = parseInt(value);
+            },
+            setHistory(path){  // 设置文件打开记录，最多十条
+                let recent = recentOpened.value;
+                if(path == "clear") recentOpened.value = [];  // 清空历史记录
+                else if(!recent.includes(path)){
+                    recent.push(path);
+                    if(recent.length>10) recent.splice(0, 1);
+                }
+                else{  // 若打开的文件在记录中，则将其改为最新的记录
+                    let newest = recent.splice(recent.indexOf(path), 1);
+                    recent.push(path);
+                }
+                fs.writeFileSync("src/recentOpened.txt", JSON.stringify(recent));
             }
         },
         setup() {
             const selectedKey = ref([]);
             return {
-                BUS, emulateMode, fast, marks, menu, mode, savepath:"", selectedKey, speed, tab,
+                BUS, emulateMode, fast, marks, menu, mode, recentOpened, 
+                savepath:"", selectedKey, speed, tab,
             };
         },
         mounted(){
@@ -172,6 +186,11 @@
             fileInput = document.getElementById("fileInput");
             fileOutput = document.getElementById("fileOutput");
             fileOutput.download = this.savepath;
+            try {  // 有历史打开记录则加载
+                let history = fs.readFileSync("src/recentOpened.txt", "utf-8"); 
+                recentOpened.value = JSON.parse(history);
+            } 
+            catch {}
             BUS.on("saveInitScene", ()=>{this.saveScene("src/temp/New.DTScene")});
         },
         destroyed(){  // 退出时清理临时文件（src/temp文件夹）
@@ -197,7 +216,7 @@
     .logoBig {font-size:36px;}
     .marginLR5 {margin-left:5px; margin-right:5px;}
     .marginLR10 {margin-left:10px; margin-right:10px;}
-    .split {border:1px solid grey;}
+    .split {border:1px solid lightgrey;}
     .top {margin-top:10px;}
     .top16 {margin-top:16px;}
 </style>
@@ -209,24 +228,32 @@
         <a id="fileOutput"/>
     </div>
     
-
     <!--顶部选择栏-->
     <a-menu mode="horizontal">
-      <a-sub-menu v-for="key in menu">
+        <a-sub-menu v-for="key in menu">
         <template #title>
             <div v-if="typeof key == 'object'">{{key[0]}}</div>
             <div v-else @click="changeTab(key)">{{key}}</div>
         </template>
 
         <!--文件-->
-        <a-list v-for="option in key[1]" v-if="typeof key=='object'">  
-            <a-menu-item v-if="option!='——'" :key="option" :title="{option}" 
+        <a-list v-if="typeof key == 'object'" v-for="option in key[1]">  
+            <a-sub-menu v-if="option=='最近打开'" title="最近打开">
+                <a-menu-item v-for="(path, index) in recentOpened.slice().reverse()" :key="path" 
+                @click="loadScene(null, path)">
+                    {{ index + 1 + '：' + path }}
+                </a-menu-item>
+                <a-menu-item v-if="!recentOpened[0]" disabled>无</a-menu-item>
+                <hr class="split"/>          
+                <a-menu-item @click="setHistory('clear')">清空历史记录</a-menu-item>
+            </a-sub-menu>
+            <a-menu-item v-else-if="option!='——'" :key="option" :title="{option}" 
             @click="action(option)">
                 {{option}}
             </a-menu-item>  
-            <div v-else style="border:solid lightgrey 1px; height:0px"/>  
+            <hr v-else class="split"/>  
         </a-list>  
-      </a-sub-menu>
+        </a-sub-menu>
     </a-menu>
 
     <!--主要功能-->

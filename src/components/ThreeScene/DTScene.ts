@@ -19,13 +19,13 @@ var frames = 0;  // 帧率计算
 var groundColor = "azure";
 var groundSize = 250;  // 地面范围：-groundSize ≤ x ≤ groundSize，-groundSize ≤ y ≤ groundSize
 var loader = new STLLoader();
+var loading = false;
 var origin = new THREE.Vector3(0, 0, 0);
 var protectedObjects = [];
 var speed = 1;
 var SCENE = new THREE.Scene();
 var temp = false;
 var UP = new THREE.Vector3(0, 0, 1);  // z轴朝上
-var watchDTObjects;  // 只检测DTObjects的长度变化
 // 物理量
 var animate;
 const clock = new THREE.Clock();
@@ -122,7 +122,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
         }
     }
     clone() {  // 保存时返回去除一些属性的DTObject，以节省DTObject文件大小
-        let newDTObject = new DTObject();
+        let newDTObject = new DTObject(null);
         for(let prop in this){
             if(this[prop] == undefined) continue;
             else if(prop == "children"){
@@ -135,7 +135,9 @@ class DTObject {  // 用DTObject类包裹场景中的对象
         }
         return newDTObject;
     }
-    copyFrom(obj){  // 将读取的普通对象变回DT对象
+    copyFrom(obj, clearDTObjects = false){  // 将读取的普通对象变回DT对象
+        if(clearDTObjects) DTObjects.value = [];  // 清理旧的场景
+        DTObjects.value.push(this);
         for(let prop in obj){
             if(prop == "children"){
                 this.children = [];
@@ -201,7 +203,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
     }
     getDTObjects() {return DTObjects.value;}
     newScene(){  // 新的场景
-        DTObjects.value = [];  // 清理旧的场景
+        loading = true;
         for(let ptr in rb_mesh) physicsWorld.removeRigidBody(rb_mesh[ptr].rb);
         rb_mesh = {};
         // 相机绑定的SCENE是Three.Scene，导入的场景this.mesh是Three.Group，将Group克隆到SCENE中
@@ -299,8 +301,8 @@ export default class SceneBuilder{
         T0 = performance.now();
         this.canvas = canvas;
         // 物体数量变化时
-        watchDTObjects = computed(()=>{return DTObjects.value.length});
-        watch(watchDTObjects, ()=>{
+        watch(computed(()=>{return DTObjects.value.length}), ()=>{  // 只检测DTObjects的长度变化
+            if(loading) return;
             BUS.getDTScene().updateChildren();
             BUS.emit("updateTree");
             if(!temp) BUS.emit("saveInitScene");
@@ -400,6 +402,7 @@ export default class SceneBuilder{
         // 远处雾化
         SCENE.fog = new THREE.Fog(groundColor, 5, 200);
         emulateMode = "stop";
+        loading = false;
         if(!animate){
             animate = () => {
                 requestAnimationFrame(animate);  
