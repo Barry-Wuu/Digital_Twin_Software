@@ -130,7 +130,10 @@ export default defineComponent({
           let box = new THREE.Box3().setFromObject(tempModel);
           if(!dragFromOutside){  // 拖动时，物体位置 = 鼠标与平面z=H的交点坐标 + Δp
             let point;
-            if(keys.shift) point = this.event2planeV(e, dragPoint);  // 左键+shift拖动物体以改变其高度
+            if(keys.shift) {  // 左键+shift拖动物体以改变其高度
+              point = dragPoint.clone();
+              point.z = this.event2planeV(e, dragPoint).z;
+            }
             else point = this.event2planeH(e, dragPoint);  // 左键拖动物体在同一高度内移动
             point.add(delta);
             tempModel.position.copy(point);
