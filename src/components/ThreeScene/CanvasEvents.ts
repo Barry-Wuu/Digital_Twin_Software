@@ -12,7 +12,6 @@ var dragName;
 var dragPoint;  // 拖动开始时的拖动点
 var fullscreen = false;
 var isDrag = false;  // 是否在用鼠标移动模型
-var keys = {shift: false};  // 按下的按键
 var mode = "edit";  // 编辑模式（edit）或浏览模式（view）
 var moveStart = null;  // 用左键移动镜头之前，射线检测器与地面的交点
 var mouseType = [false, false, false];  // 左、中、右键是否按下
@@ -67,32 +66,33 @@ export default defineComponent({
         const mouse = new THREE.Vector2(e.offsetX*2/e.target.width-1, 1-e.offsetY*2/e.target.height);
         ray.setFromCamera(mouse, this.scene.camera);
       },
-      event2face(e){  // 求鼠标发出的射线与物体的交点
+      intersectObject(e){  // 求鼠标发出的射线与物体的交点
         this.castRay(e);  // 射线检测
         for(let intersect of ray.intersectObject(this.scene.SCENE)){
-          if(intersect.object.type == "Mesh" && intersect.object != dragModel 
-          && intersect.object != tempModel){
-            return [intersect.object, intersect.point];
+          let mesh = intersect.object;
+          if(mesh.isTransformControlsPlane) continue;
+          if(mesh.isMesh && mesh != dragModel && mesh != tempModel){
+            return [mesh, intersect.point];
           }
         }
         return new THREE.Vector3( 999, 999, 999 )  // 若无交点
       },
-      event2ground(e){  // 求鼠标发出的射线与地面的交点
+      intersectGround(e){  // 求鼠标发出的射线与地面的交点
         this.castRay(e);  // 射线检测
         for(let intersect of ray.intersectObject(this.scene.ground)){
-          if(intersect.object.type == "Mesh")
+          if(intersect.object.isMesh)
             {return [intersect.object, intersect.point];}
         }
         return new THREE.Vector3( 999, 999, 999 )  // 若无交点
       },
-      event2planeH(e, P){  // 求鼠标发出的射线与平面z=P.z的交点
+      intersectPlaneH(e, P){  // 求鼠标发出的射线与平面z=P.z的交点
         this.castRay(e);  // 射线检测
         let plane = new THREE.Plane(), result = new THREE.Vector3();
         plane.setFromNormalAndCoplanarPoint(UP, P);  // 作过点P且法向量朝上的水平平面
         ray.ray.intersectPlane(plane, result);  // 返回射线检测器与该平面的交点
         return result;
       },
-      event2planeV(e, P){  // 求鼠标发出的射线与过点P且与视野正前方垂直的平面的交点
+      intersectPlaneV(e, P){  // 求鼠标发出的射线与过点P且与视野正前方垂直的平面的交点
         this.castRay(e);  // 射线检测
         let front = FRONT.clone();  // 求视野的正前方的方向向量
         front.applyEuler(this.scene.camera.rotation);
@@ -113,13 +113,12 @@ export default defineComponent({
           }
         }
         findImg(e.fromElement);
-        console.log(document.createElement("img"))
         e.dataTransfer.setDragImage(document.createElement("img"), 0 ,0);
         // 拖入模型
         let modelName = dragName.data;
         if(dragName.type != "modelName") return;
         dragFromOutside = true;
-        dragModel = this.scene.createGeometry(modelName, this.event2face(e)[1]);
+        dragModel = this.scene.createGeometry(modelName, this.intersectObject(e)[1]);
         dragModel.isDrag = true;
         dragModel.material.transparent = true;
         tempOpacity = dragModel.material.opacity;
@@ -142,17 +141,17 @@ export default defineComponent({
           tempModel.position.set(0, 0, 0);
           let box = new THREE.Box3().setFromObject(tempModel);
           if(!dragFromOutside){  // 拖动时，物体位置 = 鼠标与平面z=H的交点坐标 + Δp
-            let point;
-            if(keys.shift) {  // 左键+shift拖动物体以改变其高度
+            let point;console.log(e)
+            if(e.shiftKey) {  // 左键+shift拖动物体以改变其高度
               point = dragPoint.clone();
-              point.z = this.event2planeV(e, dragPoint).z;
+              point.z = this.intersectPlaneV(e, dragPoint).z;
             }
-            else point = this.event2planeH(e, dragPoint);  // 左键拖动物体在同一高度内移动
+            else point = this.intersectPlaneH(e, dragPoint);  // 左键拖动物体在同一高度内移动
             point.add(delta);
             tempModel.position.copy(point);
           }
           else{  // 从外部拖入模型时将其包围盒中心移到鼠标
-            let intersect = this.event2face(e);
+            let intersect = this.intersectObject(e);
             tempModel.position.copy(intersect[1]);
             tempModel.position.x -= (box.max.x+box.min.x)/2;
             tempModel.position.y -= (box.max.y+box.min.y)/2;
@@ -178,25 +177,23 @@ export default defineComponent({
         BUS.emit("updateTree");
       },
       onKeyup(k){
-        if(k.code == "ShiftLeft") keys.shift = false;
+        // 按键抬起
       },
       onKeydown(k){
         if(k.code == "Delete") BUS.emit("deleteChoices");
-        else if(k.code == "ShiftLeft") keys.shift = true;
       },
       onMousedown(e){
         mouseType[e.button] = true;
         if(mouseType[0]){
           if(mouseType[2]){}  // 双击左右键则移动
           else if(mode == "edit"){  // 左键点击
-            let result = this.event2face(e);
+            let result = this.intersectObject(e);
             let choice = result[0];
+            if(choice.userData.controller) return;  // 点击控制器则忽略后文
             dragPoint = result[1];
             if(choice.userData.indicator) choice = choice.parent;  // 点击指示箭头
             if(choice.DT && !choice.userData.ground){
-              if(choice){
-                BUS.emit("clickModel", choice.id + ',' + keys.shift);
-              }  
+              BUS.emit("clickModel", choice.id + ',' + e.shiftKey); 
               delta.subVectors(result[0].position, result[1]);  // Δp = 选中物体的坐标 - 物体上点击处的坐标
               dragModel = choice;
               dragModel.isDrag = true;
@@ -218,19 +215,19 @@ export default defineComponent({
       },
       onMousemove(e){
         if(mouseType[0] && mouseType[2]){
-          this.scene.cameraControls.mouseButtons = {
+          this.scene.cameraControl.mouseButtons = {
             LEFT: MOVE, MIDDLE: -1, RIGHT: MOVE
           };
         } else if(mouseType[0]){
-          this.scene.cameraControls.mouseButtons = {
+          this.scene.cameraControl.mouseButtons = {
             LEFT: mode == "edit" ? -1 : ROTATE, MIDDLE: isDrag ? -1 : ZOOM, RIGHT: -1
           };
         } else if(mouseType[1]){
-          this.scene.cameraControls.mouseButtons = {
+          this.scene.cameraControl.mouseButtons = {
             LEFT: -1, MIDDLE: MOVE, RIGHT: -1
           };
         } else if(mouseType[2]){
-          this.scene.cameraControls.mouseButtons = {
+          this.scene.cameraControl.mouseButtons = {
             LEFT: -1, MIDDLE: -1, RIGHT: ROTATE
           };
         }
@@ -253,10 +250,10 @@ export default defineComponent({
       },
       onWheel(e){  // 滚轮事件
         if(dragModel){  // 拖动物体+滚轮=旋转物体
-          this.scene.cameraControls.enableZoom = false;     
+          this.scene.cameraControl.enableZoom = false;     
           dragModel.rotateOnWorldAxis(UP, e.deltaY*Math.PI/1200);
         } else {  // 滚轮放缩镜头
-          this.scene.cameraControls.enableZoom = true;
+          this.scene.cameraControl.enableZoom = true;
         }
       },
       remove(){this.scene.SCENE.remove(dragModel)},
@@ -280,7 +277,7 @@ export default defineComponent({
           "DOLLY": THREE.MOUSE.DOLLY,  // 放缩
         }
         let act = map[action];
-        let button = this.scene.cameraControls.mouseButtons;
+        let button = this.scene.cameraControl.mouseButtons;
         if(key == "LEFT") button.LEFT = act;  // 左键
         else if(key == "MIDDLE") button.MIDDLE = act;  // 中键
         else if(key == "RIGHT") button.RIGHT = act;  // 右键

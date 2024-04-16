@@ -4,7 +4,7 @@
     const electron = require("electron");
     var fs = require("fs");
     var path = require("path");
-    import { defineComponent, ref} from "vue";
+    import { defineComponent, ref } from "vue";
     import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
     import { 
@@ -129,18 +129,11 @@
             },
             message(data){ BottomMessage.textContent = data; },
             saveScene(target=null, DTObjects="src/temp/DTObjects.txt", Scene="src/temp/Scene.txt"){
-                let controller, DTScene = BUS.getDTScene(), parent;
+                let DTScene = BUS.getDTScene();
                 // 暂时移除姿态控制器
-                if(false){
-                    DTScene.mesh.traverse((mesh)=>{
-                        if(mesh.isTransformControls || mesh.isTransformControlsGizmo){
-                            controller = mesh;
-                            parent = mesh.parent;
-                            mesh.removeFromParent();
-                            return;
-                        }
-                    })
-                }
+                let children = DTScene.mesh.children;
+                let controller = children.filter(mesh => mesh.isTransformControls)[0];
+                DTScene.mesh.remove(controller);
                 // 保存DTObject
                 let data = JSON.stringify(DTScene.clone());
                 try {fs.readdirSync("src/temp");}  // 无临时文件夹则创建临时文件夹
@@ -149,8 +142,7 @@
                 // 保存GLTF场景文件，克隆场景并自动去除其中的DT，以节省文件大小
                 let clone = DTScene.mesh.clone();
                 GLTFexporter.parse(clone, function (scene) {
-                    // 恢复姿态控制器
-                    if(false) parent.add(controller);
+                    DTScene.mesh.add(controller);  // 恢复控制器
                     // 压缩
                     const file = JSON.stringify(scene);
                     fs.writeFileSync(Scene, file);
@@ -247,7 +239,7 @@
     </div>
     
     <!--顶部选择栏-->
-    <a-menu mode="horizontal">
+    <a-menu mode="horizontal" style="user-select: none">
         <a-sub-menu v-for="key in menu">
             <template #title>
                 <div v-if="typeof key == 'object'">{{key[0]}}</div>
