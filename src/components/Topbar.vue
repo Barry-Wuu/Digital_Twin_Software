@@ -117,26 +117,43 @@
                             let DTScene = BUS.getDTScene();
                             let obj = fs.readFileSync("src/temp/DTObjects.txt", "utf-8");
                             DTScene.copyFrom(JSON.parse(obj), true);
-                            DTScene.mesh = file.scene;
+                            let scene = file.scene;
+                            if(!scene.userData.id) scene = scene.children[0];
+                            DTScene.mesh = scene;
                             DTScene.mesh.DT = DTScene;
                             DTScene.newScene();
+                            BUS.emit("foldAll");  // 折叠层级树
                         });                  
                     })
                 }) 
             },
             message(data){ BottomMessage.textContent = data; },
             saveScene(target=null, DTObjects="src/temp/DTObjects.txt", Scene="src/temp/Scene.txt"){
+                let controller, DTScene = BUS.getDTScene(), parent;
+                // 暂时移除姿态控制器
+                if(false){
+                    DTScene.mesh.traverse((mesh)=>{
+                        if(mesh.isTransformControls || mesh.isTransformControlsGizmo){
+                            controller = mesh;
+                            parent = mesh.parent;
+                            mesh.removeFromParent();
+                            return;
+                        }
+                    })
+                }
                 // 保存DTObject
-                let DTScene = BUS.getDTScene();
                 let data = JSON.stringify(DTScene.clone());
                 try {fs.readdirSync("src/temp");}  // 无临时文件夹则创建临时文件夹
                 catch {fs.mkdirSync("src/temp");}
                 fs.writeFileSync(DTObjects, data);
                 // 保存GLTF场景文件，克隆场景并自动去除其中的DT，以节省文件大小
-                GLTFexporter.parse(DTScene.mesh.clone(), function (scene) {
+                let clone = DTScene.mesh.clone();
+                GLTFexporter.parse(clone, function (scene) {
+                    // 恢复姿态控制器
+                    if(false) parent.add(controller);
+                    // 压缩
                     const file = JSON.stringify(scene);
                     fs.writeFileSync(Scene, file);
-                    // 压缩
                     const zip = new JSZip(), zipFile = "src/temp/DTScene.DTScene";  
                     zip.file(path.basename(DTObjects), fs.readFileSync(DTObjects)); 
                     zip.file(path.basename(Scene), fs.readFileSync(Scene));
@@ -216,7 +233,8 @@
     .logoBig {font-size:36px;}
     .marginLR5 {margin-left:5px; margin-right:5px;}
     .marginLR10 {margin-left:10px; margin-right:10px;}
-    .split {border:1px solid lightgrey;}
+    .splitH {border:1px solid lightgrey;}
+    .splitV {border:1px solid lightgrey;}
     .top {margin-top:10px;}
     .top16 {margin-top:16px;}
 </style>
@@ -231,28 +249,28 @@
     <!--顶部选择栏-->
     <a-menu mode="horizontal">
         <a-sub-menu v-for="key in menu">
-        <template #title>
-            <div v-if="typeof key == 'object'">{{key[0]}}</div>
-            <div v-else @click="changeTab(key)">{{key}}</div>
-        </template>
+            <template #title>
+                <div v-if="typeof key == 'object'">{{key[0]}}</div>
+                <div v-else @click="changeTab(key)">{{key}}</div>
+            </template>
 
-        <!--文件-->
-        <a-list v-if="typeof key == 'object'" v-for="option in key[1]">  
-            <a-sub-menu v-if="option=='最近打开'" title="最近打开">
-                <a-menu-item v-for="(path, index) in recentOpened.slice().reverse()" :key="path" 
-                @click="loadScene(null, path)">
-                    {{ index + 1 + '：' + path }}
-                </a-menu-item>
-                <a-menu-item v-if="!recentOpened[0]" disabled>无</a-menu-item>
-                <hr class="split"/>          
-                <a-menu-item @click="setHistory('clear')">清空历史记录</a-menu-item>
-            </a-sub-menu>
-            <a-menu-item v-else-if="option!='——'" :key="option" :title="{option}" 
-            @click="action(option)">
-                {{option}}
-            </a-menu-item>  
-            <hr v-else class="split"/>  
-        </a-list>  
+            <!--文件-->
+            <a-list v-if="typeof key == 'object'" v-for="option in key[1]">  
+                <a-sub-menu v-if="option=='最近打开'" title="最近打开">
+                    <a-menu-item v-for="(path, index) in recentOpened.slice().reverse()" :key="path" 
+                    @click="loadScene(null, path)">
+                        {{ index + 1 + '：' + path }}
+                    </a-menu-item>
+                    <a-menu-item v-if="!recentOpened[0]" disabled>无</a-menu-item>
+                    <hr class="splitH"/>          
+                    <a-menu-item @click="setHistory('clear')">清空历史记录</a-menu-item>
+                </a-sub-menu>
+                <a-menu-item v-else-if="option!='——'" :key="option" :title="{option}" 
+                @click="action(option)">
+                    {{option}}
+                </a-menu-item>  
+                <hr v-else class="splitH"/>  
+            </a-list>  
         </a-sub-menu>
     </a-menu>
 
@@ -283,7 +301,7 @@
             </span>
             <div class="bottomBorder">模式选择</div>
         </div>
-        <div class="split"/><!--分隔符-->
+        <vr class="splitV"/><!--分隔符-->
 
         <!--动画-->
         <div style="align-items:center; height:100%;" class="bottom marginLR5">
@@ -362,7 +380,7 @@
             </span>
             <div class="bottomBorder">仿真动画</div>
         </div>
-        <div class="split"/><!--分隔符-->
+        <vr class="splitV"/><!--分隔符-->
     </span>
 
     <!--可视化-->
@@ -381,7 +399,7 @@
             </span>
             <div class="bottomBorder">屏幕</div>
         </div>
-        <div class="split"/><!--分隔符-->
+        <vr class="splitV"/><!--分隔符-->
 
         <!--系统操作-->
         <div style="align-items:center; display:inline; height:100%" class="bottom marginLR5">
@@ -398,7 +416,7 @@
             </span>
             <div class="bottomBorder">系统操作</div>
         </div>
-        <div class="split"/><!--分隔符-->
+        <vr class="splitV"/><!--分隔符-->
     </span>
 </template>
   

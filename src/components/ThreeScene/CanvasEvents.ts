@@ -1,6 +1,6 @@
-import { defineComponent, ref, watch } from "vue";
-import * as THREE from 'three';
-import DTScene from './DTScene';
+import { defineComponent, ref, watch } from "vue"
+import * as THREE from "three"
+import DTScene from "./DTScene"
 import BUS from "../EventBus"
 
 var app;
@@ -19,6 +19,7 @@ var mouseType = [false, false, false];  // 左、中、右键是否按下
 const ray = new THREE.Raycaster();  // 从鼠标发出的射线检测器
 var resizeObserver;
 var style;
+var tempImg;  // 临时隐藏拖动图标
 var tempModel;
 var tempOpacity;
 
@@ -27,7 +28,6 @@ var ROTATE = THREE.MOUSE.ROTATE;
 var ZOOM = THREE.MOUSE.DOLLY;
 var FRONT = new THREE.Vector3(0, 1, 0);
 var UP = new THREE.Vector3(0, 0, 1);  // z轴朝上
-var DOWN = new THREE.Vector3(0, 0, -1);
 
 export default defineComponent({
     name:"ThreeScene",
@@ -104,6 +104,18 @@ export default defineComponent({
         return result;
       },
       onDragenter(e){
+        console.log(e.dataTransfer)
+        // 隐藏拖动图像
+        function findImg(DOM){
+          for(let child of DOM.children){
+            if(child.localName == "img") {tempImg = child; return;}
+            findImg(child);
+          }
+        }
+        findImg(e.fromElement);
+        console.log(document.createElement("img"))
+        e.dataTransfer.setDragImage(document.createElement("img"), 0 ,0);
+        // 拖入模型
         let modelName = dragName.data;
         if(dragName.type != "modelName") return;
         dragFromOutside = true;
@@ -115,13 +127,14 @@ export default defineComponent({
         tempModel = dragModel.clone();
         tempModel.visible = false;
       },
-      onDragleave(){
+      onDragleave(e){
         if(dragModel){
           dragFromOutside = false;
           dragModel.DT.destroy();
           dragModel = null;
         }     
         tempModel.remove();
+        e.dataTransfer.setDragImage(tempImg, 0 ,0);
       },
       onDragover(e){
         e.preventDefault();

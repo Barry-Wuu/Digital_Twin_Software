@@ -14,7 +14,7 @@
         @mousemove = "onMousemove"
         @mouseup = "onMouseup"
         @wheel = "onWheel"
-        style="outline:none; "
+        style="outline:none;"
         tabindex="0"
-    ></div>
+    />
 </template>

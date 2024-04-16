@@ -1,31 +1,34 @@
-import * as Ammo from 'ammo.js';  
+import * as Ammo from "ammo.js"
 import BUS from "../EventBus"
-import * as fs from 'fs';  
-import * as THREE from 'three';
-import { ColladaLoader } from 'three/examples/jsm/loaders/COLLADALoader.js';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { computed, ref,  toRaw, watch } from 'vue';
-import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
-import { contentQuotesLinter } from 'ant-design-vue/es/_util/cssinjs/linters';
-import Models from '../Models.vue';
-const path = require("path");
+import * as fs from "fs";
+import * as THREE from "three"
+import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js"
+import { ColladaLoader } from "three/examples/jsm/loaders/COLLADALoader.js"
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
+import { computed, ref,  toRaw, watch } from 'vue'
+import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js"
+import { ViewHelper } from "three/examples/jsm/helpers/ViewHelper.js"
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
+const path = require("path")
 
-const angle =  180/Math.PI;
 var BottomFPS, BottomTimer;
 let customModels = {};
 var DTObjects = ref([]);
 var emulateMode = "stop";  // 仿真模式
 var frames = 0;  // 帧率计算
+var gizmo;
 var groundColor = "azure";
 var groundSize = 250;  // 地面范围：-groundSize ≤ x ≤ groundSize，-groundSize ≤ y ≤ groundSize
 var loader = new STLLoader();
 var loading = false;
 var origin = new THREE.Vector3(0, 0, 0);
 var protectedObjects = [];
+var rowCounter = 0;  // 层级树行计数器
 var speed = 1;
 var SCENE = new THREE.Scene();
 var temp = false;
 var UP = new THREE.Vector3(0, 0, 1);  // z轴朝上
+
 // 物理量
 var animate;
 const clock = new THREE.Clock();
@@ -74,6 +77,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
     children  // 子物体（自动计算）
     code: string  // 自定义脚本
     custom: object  // 自定义属性
+    expanded: boolean  // 是否在层级树中展开
     friction0: number  // 静摩擦力
     friction: number  // 滑动摩擦力
     geometry: THREE.object  // 模型几何体
@@ -86,6 +90,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
     rb: object  // 刚体
     rigid: boolean  // 是否为刚体
     rigidShape: string  // 刚体网格
+    row: number  // 子树在层级树模块中占几行
     scale: number  // 尺寸
     skybox: object  // 天空盒
     temp: boolean  // 临时实体（如货物）
@@ -101,12 +106,12 @@ class DTObject {  // 用DTObject类包裹场景中的对象
         this.friction0 = 0.5;  
         this.friction = 0.8;  
         this.rigid = false;
+        this.row = 0;
         this.scale = 1;
         this.skybox = {};
         this.timer = performance.now(); 
         if(mesh){
-            this.id = mesh.id;
-            this.key = mesh.id;
+            this.id = this.key = mesh.id;
             this.mesh = mesh;
             this.type = mesh.type;
             mesh.DT = this;
@@ -240,12 +245,29 @@ class DTObject {  // 用DTObject类包裹场景中的对象
             rb.setMotionState(motionState);
         }
     }
+    setRow(expanded){
+        let children = this.children, lastRow = 0;
+        this.expanded = expanded.includes(this.key);
+        if(this.expanded){
+            this.row = children.length;
+            for(let i=0; i<children.length; i++){
+                if(i<children.length-1) this.row += children[i].setRow(expanded);
+                else{
+                    try{lastRow = children[children.length-1].setRow(expanded);}
+                    catch{}
+                }
+            }
+        }
+        else this.row = 0;
+        return this.row + lastRow;
+    }
     setTitle(name=null) {  // 物体在树中的标题 = 类型 + 名称 
         let title = '';
-        if(this.name) {
-            title = `【${this.name + (this.name == "地面" ? '' : this.id)}】`;
-        } 
-        else if(name) {title = this.name = name;}
+        if(this.type == "DirectionalLight") {}
+        else if(this.name == "地面") title = "【地面】";
+        else if(this.name) title = `【${this.name + this.id}】`;
+        else if(this.mesh.name) title = `【${this.mesh.name}】`;  // + this.id
+        else if(name) title = this.name = name;
         this.title = this.type + title;
     }
     updateChildren(loadingFile=false) {  // 更新DTObject的父子关系
@@ -289,11 +311,12 @@ class DTObject {  // 用DTObject类包裹场景中的对象
 export default class SceneBuilder{
     camera: THREE.PerspectiveCamera
     cameraControls: OrbitControls
+    canvas: HTMLElement
     DTObjects = DTObjects
     ground
     renderer: THREE.WebGLRenderer
-    canvas: HTMLElement
     SCENE = SCENE
+    transformController
     constructor(canvas: HTMLElement){ 
         // 初始化
         BottomFPS = document.getElementById("BottomFPS");
@@ -314,6 +337,7 @@ export default class SceneBuilder{
         BUS.getDTScene().skybox = {skyColor:"skyblue", skyline:"white", groundColor:"darkkhaki"};
         // 渲染器
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer.autoClear = false;
         this.renderer.shadowMap.enabled = true;
         this.canvas.appendChild( this.renderer.domElement );
         // 相机
@@ -326,17 +350,29 @@ export default class SceneBuilder{
         this.camera.lookAt(0, 0, 0);
         this.camera.up.copy(UP);  // 在相机里让z轴向上
         // 轨道控制器
-        this.cameraControls = new OrbitControls( this.camera, this.renderer.domElement );
+        this.cameraControls = new OrbitControls(this.camera, this.renderer.domElement);
         this.cameraControls.mouseButtons = {  // 设置默认快捷键
             LEFT: -1, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE
         };
-        // 限制相机缩放距离
-        this.cameraControls.minDistance = 1;
+        this.cameraControls.minDistance = 1;  // 限制相机缩放距离
         this.cameraControls.maxDistance = 300;
+        // 姿态控制器 
+        /*
+        this.transformController = new TransformControls(this.camera, this.renderer.domElement);
+        SCENE.add(this.transformController);
+        this.canvas.addEventListener("keydown",(e)=>{
+            if(e.code == "KeyQ") this.transformController.setMode("translate");
+            if(e.code == "KeyW") this.transformController.setMode("rotate");
+            if(e.code == "KeyE") this.transformController.setMode("scale");
+        })
+        window.tC = this.transformController; */
+        // 导向器（Gizmo）
+        gizmo = new ViewHelper(this.camera, this.renderer.domElement);
         // 平行光
         const light = new THREE.DirectionalLight( "white", 3 );
         light.castShadow = true;
-        light.position.set( 0, 0, 1000 );
+        light.position.set(-16, -16, 24);
+        light.shadow.bias = - 0.003;
         light.shadow.camera.left = - 10;
         light.shadow.camera.right = 10;
         light.shadow.camera.top = 10;
@@ -345,7 +381,6 @@ export default class SceneBuilder{
         light.shadow.camera.far = 50;
         light.shadow.mapSize.x = 1024;
         light.shadow.mapSize.y = 1024;
-        light.shadow.bias = - 0.003;
         SCENE.add( light );
         let DTLight = new DTObject(light, true);
         DTLight.setTitle();
@@ -365,6 +400,8 @@ export default class SceneBuilder{
         this.ground.DT.rigidShape = "new Ammo.btBoxShape(new Ammo.btVector3(groundSize, groundSize, margin))";
         this.ground.DT.createRigidBody();
         SCENE.add(this.ground);
+        //transformController.attach(this.ground)
+        //console.log(this.transformController)
         // 网格
         const gridHelper = new THREE.GridHelper(500, 100, groundColor, "#AAAAAA");
         gridHelper.rotateX(Math.PI/2);
@@ -395,6 +432,8 @@ export default class SceneBuilder{
         // 预先载入自定义模型
         this.preloadModels();
         BUS.on("init", ()=>this.init());
+        //
+        //this.importRobot()
     }
     init(){  // 场景更新时的操作
         // 天空
@@ -405,10 +444,45 @@ export default class SceneBuilder{
         loading = false;
         if(!animate){
             animate = () => {
-                requestAnimationFrame(animate);  
+                try{requestAnimationFrame(animate);}
+                catch{return}  
                 this.render();
             };
             animate();
+        }
+    }
+    importRobot(){  // 导入六轴机器人模型
+        //
+        let promises = 0;
+        const loader = new OBJLoader(); /* 从Collada类中声明模型加载参数 */
+        let models = ["src/assets/models/4robot.obj"]
+        for(let i=0; i<=6; i++){
+            models.push(`src/assets/models/Robot${i}.obj`);
+        }
+        for(let model of models){
+            loader.load(model, function (robot) {
+                robot.traverse((mesh)=>{
+                    if(mesh.isGroup || mesh.isMesh) {  // 递归判断dae下的子类标签是否是网格对象
+                        if(model=="src/assets/models/Robot0.obj") {
+                            //let box = new THREE.Box3().setFromObject(mesh), center=UP.clone();
+                            window.tC.attach(mesh.parent)
+                            //if(box) {
+                            //    window.control.setMode('rotate')
+                            //    box.getCenter(window.control.position)
+                            window.tC.position.z += 1;
+                            //}
+                            mesh.material = new THREE.MeshPhongMaterial({ color: "dodgerblue" });
+                        }
+                        mesh.castShadow = mesh.receiveShadow = true;
+                        mesh.name = path.basename(model, path.extname(model))
+                        new DTObject(mesh, true);
+                    }
+                });
+                promises += 1;
+                robot.scale.set(20, 20, 20);
+                robot.rotateX(Math.PI/2);
+                SCENE.add(robot);
+            })
         }
     }
     cameraSetup (){
@@ -521,8 +595,7 @@ export default class SceneBuilder{
             }
         }   
 
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
+        mesh.castShadow = mesh.receiveShadow = true;
         mesh.position.copy(position);
         if(DT.scale != 1){ mesh.scale.set(DT.scale, DT.scale, DT.scale); }
         DT.createRigidBody();
@@ -553,7 +626,7 @@ export default class SceneBuilder{
             });
         }
 
-        searchFiles(modelPath);  // 然后异步载入相应网格（THREE.geometry）
+        searchFiles(modelPath);  // 然后异步载入相应几何体（THREE.geometry）
         for(let modelPath in customModels){
             let load = loader.loadAsync(modelPath);
             load.then((geom)=>{customModels[modelPath] = geom;});   
@@ -568,6 +641,7 @@ export default class SceneBuilder{
     render(){
         this.updatePhysics( clock.getDelta() );
         this.renderer.render(toRaw(SCENE), this.camera)
+        gizmo.render(this.renderer);
         this.cameraControls.update();
     } 
     setSkyboxByColor(DTScene) {  // 根据上中下三种颜色设置天空盒

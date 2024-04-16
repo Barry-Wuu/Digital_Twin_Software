@@ -1,4 +1,4 @@
-import mitt from 'mitt'
+import mitt from "mitt"
 // 组件间通信函数
 const MITT = mitt();
 // 全局变量
