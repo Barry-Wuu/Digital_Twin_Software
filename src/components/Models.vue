@@ -44,16 +44,26 @@
         return new URL(`${path}`, import.meta.url).href
       },
       transfer(e, data) {
-        e.dataTransfer.setDragImage(document.createElement("img"), 0, 0);
-        e.dataTransfer.setData('modelName',data);
-        BUS.emit("dragstart", {type:'modelName', data:data});
+        let result;
+        function findImg(DOM){
+          for(let child of DOM.children){
+            if(child.localName == "img") {result = child; return;}
+            findImg(child);
+          }
+        }
+        findImg(e.srcElement);
+        e.dataTransfer.setDragImage(document.createElement("img"), 0, 0); 
+        //e.dataTransfer.setDragImage(result, 0, 0);
+        e.dataTransfer.setData("type", "model");
+        e.dataTransfer.setData("modelName", data);
+        BUS.emit("dragstart", {type:"modelName", data:data});
       },
       onRightClick(e){
         let option = e.key;
-        if(option == '全部展开'){
+        if(option == "全部展开"){
           activeKeys.value = Object.keys(models.value);
         }
-        else if(option == '全部折叠'){
+        else if(option == "全部折叠"){
           activeKeys.value = [];
         }
       },
@@ -102,8 +112,8 @@
       <a-collapse v-if="!searchValue" v-model:activeKey="activeKeys" id="collapse">
         <a-collapse-panel v-for="(items, key) in models" 
         :header="key" :key="key" style="text-align: left;">
-          <a-card v-for="item in items" hoverable draggable="true" 
-          @dragstart="transfer($event, {modeltype:key, modelname:item[0]})" 
+          <a-card v-for="item in items" :draggable="true" hoverable 
+          @dragstart="(e)=>transfer(e, {modeltype:key, modelname:item[0]})" 
           style="display:flex; width:100%; height:50px; text-align: center;">
             <div style="
               border-right: 1px solid lightgrey; 
@@ -122,7 +132,7 @@
       <!--搜索列表-->
       <div v-else>
         <a-card v-for="item of searchResult" hoverable draggable="true" 
-        @dragstart="transfer($event, {modeltype:item[0], modelname:item[1]})" 
+        @dragstart="(e)=>transfer(e, {modeltype:item[0], modelname:item[1]})" 
         style="display:flex; width:100%; height:50px; text-align: center;">
           <div style="
             border-right: 1px solid lightgrey; 

@@ -31,4 +31,5 @@ yarn.lock
 out/
 
 # 临时文件
+src/recentOpened.txt
 src/temp
