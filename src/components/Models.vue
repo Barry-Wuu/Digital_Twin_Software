@@ -109,7 +109,8 @@
   <a-dropdown :trigger="['contextmenu']">
     <div>
       <!--模型列表-->
-      <a-collapse v-if="!searchValue" v-model:activeKey="activeKeys" id="collapse">
+      <a-collapse v-if="!searchValue" v-model:activeKey="activeKeys" 
+      id="collapse" style="user-select: none">
         <a-collapse-panel v-for="(items, key) in models" 
         :header="key" :key="key" style="text-align: left;">
           <a-card v-for="item in items" :draggable="true" hoverable 

@@ -52,9 +52,18 @@
     });
 </script>
   
+<style>
+    .module-tabs{
+        border:3px solid black; 
+        border-radius: 10px; 
+        flex-grow: 1; 
+        user-select: none;
+    }
+</style>
+
 <template>
     <a-tabs v-model:activeKey="activeTab" :hideAdd="true" type="editable-card" @edit="onEdit"
-    style = "border:3px solid black; border-radius: 10px; flex-grow: 1; "
+    class="module-tabs"
     :style="{'overflowY': activeTab == '场景' ? 'hidden' : 'scroll'}">
         <a-tab-pane v-for="tab in tabs" :key="tab" :tab="tab" :closable="false" 
         style="height:100%; margin-top:-12px; text-align:left">

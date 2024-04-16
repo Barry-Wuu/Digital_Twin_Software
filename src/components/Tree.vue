@@ -12,7 +12,7 @@
         PlusSquareOutlined,
         MinusSquareOutlined
     } from '@ant-design/icons-vue';
-    import { defineComponent, ref, watch } from 'vue';
+    import { computed, defineComponent, ref, watch } from 'vue';
 
     var choices = ref([]);  // 已选项，内为各个被选中模型的ID
     var clipboard;  //  剪贴板，即被复制的选项
@@ -53,15 +53,16 @@
             if(choices.value.includes(selection))  // 多选取消
               choices.value = choices.value.filter(k => k != selection);
             else choices.value.push(selection);  // 多选选择
+            BUS.emit("controlEnd")  // 收起控制器
           }
-          else{
-            choices.value = [selection]; 
-          }  // 单选
-          //BUS.emit("BottomMessage", choices.value.length>0 ? `选择${choices.value.length}个物体` : "无");
+          else{  // 单选
+            choices.value = [selection];
+            BUS.emit("controlStart", selection);  // 选中物体开始控制
+          }
         });
-        BUS.on("deselect", ()=>{
+        BUS.on("deselect", ()=>{  // 取消选择
           this.deselect();
-          //BUS.emit("BottomMessage", "无");
+          BUS.emit("controlEnd")  // 收起控制器
         });
         BUS.on("deleteChoices", ()=>{this.deleteChoices()});
         BUS.on("foldAll", ()=>{this.foldAll()});
@@ -104,7 +105,7 @@
           }
           if(option == "全部折叠") this.expanded = [];
           if(option == "删除") this.deleteChoices();
-          this.update();
+          this.updateLine();
         },
         deleteChoices(){
           for(let id of choices.value){
@@ -113,7 +114,10 @@
           }
           BUS.emit("updateTree");
         },  // 删除所选模型
-        deselect(){choices.value = []},  // 点别处取消点选模型
+        deselect(){  // 点别处取消点选模型
+          choices.value = [];
+          BUS.emit("controlEnd");  // 收起控制器
+        },
         dragFrom(e){  // 开始拖拽
           // console.log(e)
         },
@@ -121,31 +125,37 @@
           let sourceDT = e.dragNode.dataRef, targetDT = e.node.dataRef;
           console.log(targetDT);
           if(!targetDT.children.includes(sourceDT)){
-            targetDT.mesh.add(sourceDT.mesh);
-            sourceDT.mesh.rotation.set(0, 0, 0);
-            sourceDT.mesh.scale.set(1, 1, 1);
+            targetDT.mesh.attach(sourceDT.mesh);  // attach方法既改变父子关系，又不改变物体的绝对坐标
+            //sourceDT.mesh.scale.setScalar(1, 1, 1);
             BUS.getDTScene().updateChildren();
             if(!expanded.value.includes(targetDT.key)) expanded.value.push(targetDT.key);
-            this.update();
+            this.updateLine();
           }
         },
         foldAll(){  // 折叠全部并隐藏连接线
           this.expanded.value = [];
-          this.update();
+          this.updateLine();
         },
         onClick(_, Selection){  // 点击Tree中的项目
+          console.log(_, Selection)
           let selection = Selection.node.key;
           let time = new Date().getTime();
           let dt = time - t0;
-          if(choices.value.length == 1 && selection == lastChoice)  // 取消选择
+          if(choices.value.length == 1 && selection == lastChoice) {  // 取消选择
             choices.value = choices.value.filter(k => k != selection);
-          else if(shift){  // 按shift进入默认的多选模式
-            if(choices.value.includes(selection))  // 多选取消
+            BUS.emit("controlEnd");  // 收起控制器
+          } 
+          else if(shift) {  // 按shift进入默认的多选模式
+            if(choices.value.includes(selection)){  // 多选取消
               choices.value = choices.value.filter(k => k != selection);
-            else choices.value.push(selection);  // 多选选择
+            } else {  // 多选选择
+              choices.value.push(selection);
+            }
+            BUS.emit("controlEnd");  // 收起控制器
           }
-          else{
+          else {
             choices.value = [selection];
+            BUS.emit("controlStart", selection);  // 选中物体开始控制
           }  // 单选
           if(dt < 300) BUS.emit("moveTo", selection);  // 双击拉近
           lastChoice = selection;
@@ -168,9 +178,23 @@
             TREEs.value = result;
           }
         },
-        update(){  // 更新层级树的连接线和内容
+        update(){  // 更新线框和属性栏
+          emitProperty();
+          for(let DT of BUS.getDTScene().getDTObjects()){
+            if(DT.wireframe) DT.wireframe.visible = choices.value.includes(DT.id);
+          };
+          this.updateLine();
+        },
+        updateLine(){  // 更新层级树的连接线和内容
           BUS.emit("updateTree");   
         }
+      },
+      
+      setup() {
+        function onExpand(k){
+          expanded.value = k;
+        };
+        return {choices, onExpand, searchValue};
       },
       mounted(){
         window.addEventListener('click', (k)=>{
@@ -182,19 +206,13 @@
         window.addEventListener('keyup', (k)=>{
           if(k.code == "ShiftLeft") shift = false;
         });  
-      },
-      setup() {
-        function onExpand(k){
-          expanded.value = k;
-        };
-        watch(choices, (choices)=>{  // 根据选项变化来确定被选物体，并展示或隐藏物体边框
-          emitProperty();
-          for(let DT of BUS.getDTScene().getDTObjects()){
-            if(DT.wireframe) DT.wireframe.visible = choices.includes(DT.id);
-          };
+        watch(computed(()=>choices.value[0]), ()=>{  // 根据选项变化来确定被选物体，并展示或隐藏物体边框
+          this.update();
+        });
+        watch(computed(()=>choices.value.length), ()=>{
+          this.update();
         });
         watch(TREE, ()=>{BUS.emit('updateSearch');});
-        return {choices, onExpand, searchValue};
       },
     });
 </script>
@@ -207,7 +225,7 @@
       </template>
   </a-input-search>
   <a-dropdown :trigger="['contextmenu']">
-    <div tabindex="0" @click="choices=[]" @keydown = "onKeydown" style="outline: none">
+    <div tabindex="0" @click="deselect" @keydown = "onKeydown" style="outline: none">
       <!--层级树-->
       <a-tree v-if="!searchValue" @click.stop draggable multiple selectable
       v-model:expandedKeys = "expanded"

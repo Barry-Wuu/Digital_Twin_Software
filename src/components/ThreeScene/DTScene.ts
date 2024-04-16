@@ -213,12 +213,14 @@ class DTObject {  // 用DTObject类包裹场景中的对象
         rb_mesh = {};
         // 相机绑定的SCENE是Three.Scene，导入的场景this.mesh是Three.Group，将Group克隆到SCENE中
         let group = this.mesh;
+        let controller = SCENE.children.filter(child => child.isTransformControls)[0];
         for(let prop in group){
-            try{SCENE[prop] = group[prop]}
+            try{ SCENE[prop] = group[prop] }
             catch(e){
                 if(e instanceof TypeError) SCENE[prop].copy(group[prop]);
             }
         }
+        SCENE.add(controller);
         this.updateChildren(true);
         this.updateWireframes(true);
         BUS.emit("init");
@@ -310,13 +312,13 @@ class DTObject {  // 用DTObject类包裹场景中的对象
 
 export default class SceneBuilder{
     camera: THREE.PerspectiveCamera
-    cameraControls: OrbitControls
+    cameraControl: OrbitControls
     canvas: HTMLElement
+    controller
     DTObjects = DTObjects
     ground
     renderer: THREE.WebGLRenderer
     SCENE = SCENE
-    transformController
     constructor(canvas: HTMLElement){ 
         // 初始化
         BottomFPS = document.getElementById("BottomFPS");
@@ -324,7 +326,7 @@ export default class SceneBuilder{
         T0 = performance.now();
         this.canvas = canvas;
         // 物体数量变化时
-        watch(computed(()=>{return DTObjects.value.length}), ()=>{  // 只检测DTObjects的长度变化
+        watch(computed(()=>DTObjects.value.length), ()=>{  // 只检测DTObjects的长度变化
             if(loading) return;
             BUS.getDTScene().updateChildren();
             BUS.emit("updateTree");
@@ -349,25 +351,6 @@ export default class SceneBuilder{
         this.camera.position.set( 0, -25, 15 );
         this.camera.lookAt(0, 0, 0);
         this.camera.up.copy(UP);  // 在相机里让z轴向上
-        // 轨道控制器
-        this.cameraControls = new OrbitControls(this.camera, this.renderer.domElement);
-        this.cameraControls.mouseButtons = {  // 设置默认快捷键
-            LEFT: -1, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE
-        };
-        this.cameraControls.minDistance = 1;  // 限制相机缩放距离
-        this.cameraControls.maxDistance = 300;
-        // 姿态控制器 
-        /*
-        this.transformController = new TransformControls(this.camera, this.renderer.domElement);
-        SCENE.add(this.transformController);
-        this.canvas.addEventListener("keydown",(e)=>{
-            if(e.code == "KeyQ") this.transformController.setMode("translate");
-            if(e.code == "KeyW") this.transformController.setMode("rotate");
-            if(e.code == "KeyE") this.transformController.setMode("scale");
-        })
-        window.tC = this.transformController; */
-        // 导向器（Gizmo）
-        gizmo = new ViewHelper(this.camera, this.renderer.domElement);
         // 平行光
         const light = new THREE.DirectionalLight( "white", 3 );
         light.castShadow = true;
@@ -384,6 +367,51 @@ export default class SceneBuilder{
         SCENE.add( light );
         let DTLight = new DTObject(light, true);
         DTLight.setTitle();
+        // 轨道控制器
+        this.cameraControl = new OrbitControls(this.camera, this.renderer.domElement);
+        this.cameraControl.mouseButtons = {  // 设置默认快捷键
+            LEFT: -1, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE
+        };
+        this.cameraControl.minDistance = 1;  // 限制相机缩放距离
+        this.cameraControl.maxDistance = 300;
+        // 姿态控制器 
+        this.controller = new TransformControls(this.camera, this.renderer.domElement);
+        this.controller.traverse((child)=>{child.userData.controller = true});  // 对控制器做标记，以在点击时区分它和其它物体
+        SCENE.add(this.controller);
+        this.canvas.addEventListener("keydown",(e)=>{
+            if(e.code == "KeyQ") this.controller.setMode("translate");  // 平移
+            if(e.code == "KeyW") this.controller.setMode("rotate");  // 旋转
+            if(e.code == "KeyE") this.controller.setMode("scale");  // 缩放
+            if(e.code == "KeyR") this.controller.reset();  // 恢复
+            if(e.code == "KeyT") {  // 切换全局坐标系和局部坐标系
+                if(this.controller.space == "world") this.controller.setSpace("local");
+                else this.controller.setSpace("world");
+            }
+            if(e.ctrlKey) {  // 切换全局坐标系和局部坐标系
+                this.controller.setTranslationSnap( 1 );
+			    this.controller.setRotationSnap( THREE.MathUtils.degToRad( 15 ) );
+			    this.controller.setScaleSnap( 0.25 );
+            }
+        })
+        this.canvas.addEventListener("keyup",()=>{
+            this.controller.setTranslationSnap( null );
+			this.controller.setRotationSnap( null );
+			this.controller.setScaleSnap( null );
+        })
+        //window.tC = this.transformController;
+        BUS.on("controlStart", (id)=>{  // 选中物体开始控制
+            let DTObject = SCENE.getObjectById(id);
+            this.controller.attach(DTObject);
+        });
+        BUS.on("controlEnd", ()=>{  // 取消选择时收起控制器
+            const hide = new THREE.Mesh();
+            SCENE.add(hide);
+            hide.position.z = -999;  // 将隐藏的控制器移走
+            this.controller.attach(light);
+            this.controller.detach();
+        });
+        // 导向器（Gizmo）
+        gizmo = new ViewHelper(this.camera, this.renderer.domElement);
         // 地面
         this.ground = new THREE.Mesh( 
             new THREE.PlaneGeometry(500, 500), 
@@ -400,7 +428,6 @@ export default class SceneBuilder{
         this.ground.DT.rigidShape = "new Ammo.btBoxShape(new Ammo.btVector3(groundSize, groundSize, margin))";
         this.ground.DT.createRigidBody();
         SCENE.add(this.ground);
-        //transformController.attach(this.ground)
         //console.log(this.transformController)
         // 网格
         const gridHelper = new THREE.GridHelper(500, 100, groundColor, "#AAAAAA");
@@ -432,7 +459,6 @@ export default class SceneBuilder{
         // 预先载入自定义模型
         this.preloadModels();
         BUS.on("init", ()=>this.init());
-        //
         //this.importRobot()
     }
     init(){  // 场景更新时的操作
@@ -479,7 +505,7 @@ export default class SceneBuilder{
                     }
                 });
                 promises += 1;
-                robot.scale.set(20, 20, 20);
+                robot.scale.setScalar(20);
                 robot.rotateX(Math.PI/2);
                 SCENE.add(robot);
             })
@@ -589,7 +615,7 @@ export default class SceneBuilder{
         DT.updateWireframes();
         if(indicators.length){  // 指示箭头
             for(let i of indicators){
-                i.scale.set(1/DT.scale, 1/DT.scale, 1/DT.scale);
+                i.scale.setScalar(1/DT.scale);
                 i.userData.indicator = true;
                 mesh.add(i);
             }
@@ -597,7 +623,7 @@ export default class SceneBuilder{
 
         mesh.castShadow = mesh.receiveShadow = true;
         mesh.position.copy(position);
-        if(DT.scale != 1){ mesh.scale.set(DT.scale, DT.scale, DT.scale); }
+        if(DT.scale != 1){ mesh.scale.setScalar(DT.scale); }
         DT.createRigidBody();
         SCENE.add(mesh);
         return mesh;
@@ -642,7 +668,7 @@ export default class SceneBuilder{
         this.updatePhysics( clock.getDelta() );
         this.renderer.render(toRaw(SCENE), this.camera)
         gizmo.render(this.renderer);
-        this.cameraControls.update();
+        this.cameraControl.update();
     } 
     setSkyboxByColor(DTScene) {  // 根据上中下三种颜色设置天空盒
         function isColor(color, defaultColor){  // 测试字符串是否能解析成颜色，否则将颜色恢复为默认值
@@ -685,7 +711,8 @@ export default class SceneBuilder{
         uniform vec3 skyCenter;
         varying vec3 vWorldPosition;
         void main() {
-          vec3 position = vec3(vWorldPosition.x - skyCenter.x, vWorldPosition.y - skyCenter.y, vWorldPosition.z - skyCenter.z);
+          vec3 position = vec3(vWorldPosition.x - skyCenter.x, vWorldPosition.y - skyCenter.y, 
+            vWorldPosition.z - skyCenter.z);
           float h = normalize( position + offset ).z;
           vec3 color;
           if (h > 0.0) {
@@ -693,7 +720,7 @@ export default class SceneBuilder{
           } else {
             color = mix( skylineColor, bottomColor, max( pow( max( -h, 0.0 ), exponent ), 0.0 ) );
           }
-          gl_FragColor = vec4(color , 1.0 );
+          gl_FragColor = vec4(color , 1.0);
         }`
         // 着色器材质
         const skyMat = new THREE.ShaderMaterial({
