@@ -2,6 +2,7 @@
   import { ref, onMounted, watch } from 'vue'
   import { 
     CheckOutlined,
+    CloseOutlined,
     CodeOutlined,
     FileTwoTone,
     FolderOpenTwoTone,
@@ -15,18 +16,18 @@
 
   const activeOptions = ref([]);
   const assets = ref(
-    { name: "场景", type: "root", children:[
+    { name: "组件库", type: "root", children:[
       { name: "文件夹", type: "folder", children: [
         { name: "文件夹1", type: "folder", children: [
-          { name: "脚本", type: "code"},
-          { name: "材质", type: "model"},
+          { name: "脚本11", type: "code"},
+          { name: "材质12", type: "model"},
         ]},
         { name: "文件夹2", type: "folder", children: [
-          { name: "材质", type: "code"},
-          { name: "脚本", type: "model"},
+          { name: "材质21", type: "code"},
+          { name: "脚本22", type: "model"},
         ]},
-        { name: "脚本", type: "code"},
-        { name: "模型", type: "model"},
+        { name: "脚本00", type: "code"},
+        { name: "模型01", type: "model"},
       ]},
       { name: "材质", type: "material", option:{color: "white", opacity: 1} },
       { name: "脚本", type: "code"},
@@ -41,33 +42,29 @@
   var dragAsset = ref();  // 被拖动的组件
   const options = ref(["114514"]);
   var Path = ref([assets.value.name]);
-  const rename = ref('');  // 重命名
+  const renamed = ref('');  // 重命名
   var renamingAsset = ref(false);  // 被重命名的组件
   const Returner = (location, parent)=>{  // 返回标志
     return {location: location, name:"返回", parent: parent, type: "return"};
   };
+  const searchedAssets = ref([]);
+  const searchValue = ref('');
   const sortMethod = ref("按组件类型排序");
+
+  BUS.on("deselectAsset", ()=>{  // 点击外部则取消选择组件
+    dragAsset.value = null;
+  })
 
   function action(e){
     let current = currentFolder.value, option = e.key;
-    if(option == "新建文件夹"){
-      let folderName = "文件夹", index = 1;  // 若新文件夹名称重复，则加上最小的不重复文件夹的序号
-      while(current.children.filter(asset => asset.name==folderName).length){
-        folderName = "文件夹" + index;
-        index++;
-      }
-      let newFolder = { name: folderName, parent: current, type: "folder"};
-      newFolder.children = [Returner(newFolder, current)];
-      current.children.push(newFolder);
-      sort();
-    }
-    if(option == "删除"){
-      current.children = current.children.filter(asset => asset != dragAsset);
+    if(option == "新建文件夹") createAsset("文件夹");
+    if(option == "删除" && dragAsset.value.type != "return"){
+      current.children = current.children.filter(asset => asset != dragAsset.value);
       sort();
     }
   }
   function clickAsset(asset) {  // 单击卡片
-    renamed(false);
+    rename(false);
     if(dragAsset.value == asset){  // 再次点击则取消选择
       dragAsset.value = null;
     } else {
@@ -80,10 +77,16 @@
     }
   }
   function createAsset(asset){  // 创建组件
-    let dict = {"模型":"model", "材质":"material", "代码":"code"};
-    currentFolder.value.children.push(
-      {name:asset, type:dict[asset]}
-    );
+    const dict = {"模型":"model", "材质":"material", "代码":"code", "文件夹":"folder"};
+    let assetName = asset, index = 1;  // 若新文件夹名称重复，则加上最小的不重复文件夹的序号
+    let current = currentFolder.value;
+    while(current.children.filter(asset => asset.name==assetName).length){
+      assetName = asset + index;
+      index++;
+    }
+    let newAsset = { name: assetName, parent: current, type: dict[asset]};
+    newAsset.children = [Returner(newAsset, current)];
+    current.children.push(newAsset);
     sort();
   }
   function doubleClickAsset(asset){  // 双击卡片
@@ -170,50 +173,19 @@
   function hide(e){  // 隐藏排序条
     e.target.style.opacity = 0;
   }
-  function show(e){  // 显示排序条
-    e.target.style.opacity = 1;
-  }
-  function sort(newMode=null){  // 将组件进行排序
-    if(newMode) sortMethod.value = newMode;
-    let current = currentFolder.value;
-    let mode = sortMethod.value;
-    if(mode == "按组件名排序"){
-      current.children.sort((a, b)=>{  // 结果为正代表a排在后面，反之亦然
-        if(a.type != b.type){
-          if(a.type == "return") return -1;  // 返回标志排在最前面
-          if(b.type == "return") return 1;
-          if(a.type == "folder") return -1;  // 其次是文件夹排在前面
-          if(b.type == "folder") return 1;
-        }
-        return a.name > b.name ? 1 : -1;  // 文件夹之间以及其它组件之间按名称排序
-      });
-    }
-    if(mode == "按组件类型排序"){
-      current.children.sort((a, b)=>{  // 结果为正代表a排在后面，反之亦然
-        if(a.type != b.type){  // 先按类型名排序
-          if(a.type == "return") return -1;  // 返回标志排在最前面
-          if(b.type == "return") return 1;
-          if(a.type == "folder") return -1;  // 其次是文件夹排在前面
-          if(b.type == "folder") return 1;
-          return a.type > b.type? 1 : -1;
-        } else {  // 类型相同按名称排序
-          return a.name > b.name ? 1 : -1;
-        }
-      });
-    }
-  }
   function onRightClick(asset){  // 右键点击卡片
     dragAsset.value = asset.type=="return" ? null : asset;
   }
-  function renamed(cancelDrag = true){  // 完成重命名
+  function rename(cancelDrag = true){  // 完成重命名
+    BUS.emit("deselect");  // 点击组件则取消选择外部
     if(cancelDrag) dragAsset.value = null; 
-    if(rename.value && rename.value != renamingAsset.value.name){  // 新旧名字相同则返回
+    if(renamed.value && renamed.value != renamingAsset.value.name){  // 新旧名字相同则返回
       let content = currentFolder.value.children, renaming = renamingAsset.value;
-      if(renaming.type != "folder" || !content.filter(asset => asset.name == rename.value).length){
-        renaming.name = rename.value;
+      if(!content.filter(asset => asset.name == renamed.value).length){
+        renaming.name = renamed.value;
       } else {  // 若有重名文件夹，则将重命名结尾的数字（index）取出并自增，直到无重名文件夹为止
-        let basename = rename.value, folderName = rename.value, index = 1, 
-          match = rename.value.match(/([0-9]+)$/);
+        let basename = renamed.value, folderName = renamed.value, index = 1, 
+          match = renamed.value.match(/([0-9]+)$/);
         if(match){
           basename = basename.slice(0, -match[0].length);
           index = parseInt(match);
@@ -227,13 +199,23 @@
         renamingAsset.value.name = folderName;  // 将数字自增后确认重命名
       }
     }
-    rename.value = renamingAsset.value = null;
+    renamed.value = renamingAsset.value = null;
     sort();
   }
-  function startRename(){  // 开始重命名
-    renamingAsset.value = dragAsset.value; 
-    rename.value = dragAsset.value.name; 
-    dragAsset.value = null;
+  function search(){  // 搜索
+    let result = searchedAssets.value;
+    result.length = 0;
+    let input = searchValue.value;
+    function traverse(asset){
+      for(let child of asset.children){
+        if(child.name.indexOf(input)>-1 && child.type != "folder" && child.type != "return"){
+          result.push(child)
+        };
+        if(child.children) traverse(child); 
+      }
+    }
+    traverse(assets.value);
+    sort(null, result);
   }
   function setGotoParent(asset){  // 添加父对象，以便从文件夹中返回上一级
     for(let child of asset.children){
@@ -244,38 +226,79 @@
       }
     }
   }
+  function show(e){  // 显示排序条
+    e.target.style.opacity = 1;
+  }
+  function sort(newMode=null, current=currentFolder.value.children){  // 将组件进行排序
+    if(newMode) sortMethod.value = newMode;
+    let mode = sortMethod.value;
+    if(mode == "按组件名排序"){
+      current.sort((a, b)=>{  // 结果为正代表a排在后面，反之亦然
+        if(a.type != b.type){
+          if(a.type == "return") return -1;  // 返回标志排在最前面
+          if(b.type == "return") return 1;
+          if(a.type == "folder") return -1;  // 其次是文件夹排在前面
+          if(b.type == "folder") return 1;
+        }
+        return a.name > b.name ? 1 : -1;  // 文件夹之间以及其它组件之间按名称排序
+      });
+    }
+    if(mode == "按组件类型排序"){
+      current.sort((a, b)=>{  // 结果为正代表a排在后面，反之亦然
+        if(a.type != b.type){  // 先按类型名排序
+          if(a.type == "return") return -1;  // 返回标志排在最前面
+          if(b.type == "return") return 1;
+          if(a.type == "folder") return -1;  // 其次是文件夹排在前面
+          if(b.type == "folder") return 1;
+          return a.type > b.type? 1 : -1;
+        } else {  // 类型相同按名称排序
+          return a.name > b.name ? 1 : -1;
+        }
+      });
+    }
+  }
+  function startRename(){  // 开始重命名
+    renamingAsset.value = dragAsset.value; 
+    renamed.value = dragAsset.value.name; 
+    dragAsset.value = null;
+  }
   // 加载完成时
   onMounted(()=>{
     setGotoParent(assets.value);
     sort();
     window.addEventListener("keydown", (e)=>{
+      if(searchValue.value) return;
+      if(e.key == "Delete"){  // 按Delete键删除组件
+        action({key:"删除"});
+      }
       if(e.key == "F2"){  // 按F2开始重命名
         startRename();
       }
       if(e.key == "Enter"){   // 按Enter结束重命名
-        renamed();
+        rename();
       }
     })
   });
 </script>
 
 <style>
+  #assets {display: flex; margin-left:5px; margin-top:-8px; flex-wrap: wrap;}
   .card{
     width: 80px;
     height: 80px;
     margin-top: 10px;
     text-align: center;
   }
-  .content {position: absolute; left:20px; top:12px}
-  #files {display: flex; margin-left:5px; margin-top:-8px; flex-wrap: wrap;}
+  .content {position: absolute; left:20px; top:12px} 
   .icon {font-size:40px;}
   .split {background-color:dodgerblue; opacity:0; width:5px;}
 </style>
 
 <template>
-  <!--文件路径显示-->
-  <div style="margin-left: 1em">
-    <a-breadcrumb>
+  <!--文件路径显示与搜索框-->
+  <div style="display: flex; margin-left: 1em">
+    <!--文件路径显示-->
+    <a-breadcrumb style="margin-top:6px; width:calc(100% - 210px);">
       路径：
       <a-breadcrumb-item v-for="(node, index) of Path">
         <a :style="index==Path.length-1 ? {'color': 'black'} : {}"
@@ -286,12 +309,21 @@
         </a>
       </a-breadcrumb-item>
     </a-breadcrumb>
+    <!--搜索框-->
+    <a-input-search v-model:value="searchValue" placeholder="搜索" style="width:200px" 
+    @change="search" @search="()=>{searchValue = ''}">
+      <template #enterButton>
+        <a-button :disabled="!searchValue" type="primary"><CloseOutlined/></a-button>
+      </template>
+    </a-input-search>
   </div>
   <div style="background-color:lightgrey; margin:10px; height:1px;"/>
   <!--组件库-->
-  <a-dropdown :trigger="['contextmenu']" @click="renamed">
-    <span id="files" @dragenter.prevent @dragover.prevent @drop="dragAsset=null">
-      <div v-for="(asset, index) of currentFolder.children" style="display:flex;">
+  <a-dropdown :trigger="['contextmenu']" @click="rename">
+    <span id="assets" @dragenter.prevent @dragover.prevent @drop="dragAsset=null">
+      <!--默认-->
+      <div v-if="!searchValue" v-for="(asset, index) of currentFolder.children" 
+      style="display:flex;">
         <!--拖拽排序条-->
         <div class="split" v-if="asset.type!='return'" @dragenter.prevent @dragover.prevent 
         @dragenter="show" @drop="(e)=>dropOnSplit(e, index)" @dragleave="hide"/>
@@ -313,14 +345,41 @@
             <GiftTwoTone v-else-if="asset.type == 'model'" class="icon" twoToneColor="grey"/>
             <FileTwoTone v-else class="icon"/>
             <div v-if="asset!=renamingAsset" style="text-align: center;">{{ asset.name }}</div>
-            <a-input v-else v-model:value="rename" @click.stop @dragstart.stop @dragover.stop
+            <a-input v-else v-model:value="renamed" @click.stop @dragstart.stop @dragover.stop
             style="margin-left:-36%; width:140%"/>
           </span>    
         </a-card>
       </div>
+      <!--搜索时-->
+      <div v-else v-for="asset of searchedAssets" style="display:flex;">
+        <!--拖拽排序条-->
+        <div class="split"/>
+        <!--卡片-->
+        <a-card :draggable="asset!=renamingAsset" hoverable class="card"
+        :style="{'background': asset==dragAsset ? '#E6F4FF' : 'white'}"
+        @click.stop
+        @click="clickAsset(asset)"
+        @dblclick="doubleClickAsset(asset);"
+        >
+          <span class="content">
+            <RollbackOutlined v-if="asset.type == 'return'" class="icon" style="color:red"/>
+            <FolderOpenTwoTone v-else-if="asset.type == 'folder'" class="icon" twoToneColor="olive"/>
+            <CodeOutlined v-else-if="asset.type == 'code'" class="icon" twoToneColor="black"/>   
+            <PictureTwoTone v-else-if="asset.type == 'material'" class="icon" twoToneColor="blue"/>    
+            <GiftTwoTone v-else-if="asset.type == 'model'" class="icon" twoToneColor="grey"/>
+            <FileTwoTone v-else class="icon"/>
+            <div style="text-align: center;">
+              <span>{{ asset.name.substring(0, asset.name.indexOf(searchValue)) }}</span>
+              <span style="color: red"><strong>{{ searchValue }}</strong></span>
+              <span>
+                {{ asset.name.substring(asset.name.indexOf(searchValue) + searchValue.length) }}
+              </span>
+            </div>
+          </span>    
+        </a-card>
+      </div>
       <!--末尾拖拽排序条-->
-      <div class="split" @dragenter.prevent @dragover.prevent 
-      @dragenter="show" @drop="(e)=>dropOnSplit(e, currentFolder.children.length)" @dragleave="hide"/>
+      <div class="split"/>
     </span>
     <!--右键菜单-->
     <template #overlay>
