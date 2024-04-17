@@ -5,17 +5,20 @@ import * as THREE from "three"
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js"
 import { ColladaLoader } from "three/examples/jsm/loaders/COLLADALoader.js"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
-import { computed, ref,  toRaw, watch } from 'vue'
+const path = require("path")
+import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js"
 import { ViewHelper } from "three/examples/jsm/helpers/ViewHelper.js"
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
-const path = require("path")
+import { computed, ref,  toRaw, watch } from 'vue'
 
 var BottomFPS, BottomTimer;
 let customModels = {};
 var DTObjects = ref([]);
 var emulateMode = "stop";  // 仿真模式
+var frameCounter = 0;  // 帧计数器，计满60帧近似看做1秒
 var frames = 0;  // 帧率计算
+let front = new THREE.Vector3(); 
 var gizmo;
 var groundColor = "azure";
 var groundSize = 250;  // 地面范围：-groundSize ≤ x ≤ groundSize，-groundSize ≤ y ≤ groundSize
@@ -23,18 +26,20 @@ var loader = new STLLoader();
 var loading = false;
 var origin = new THREE.Vector3(0, 0, 0);
 var protectedObjects = [];
-var rowCounter = 0;  // 层级树行计数器
 var speed = 1;
 var SCENE = new THREE.Scene();
 var temp = false;
 var UP = new THREE.Vector3(0, 0, 1);  // z轴朝上
+var Ground = new THREE.Plane(UP);  // 平面z=0
 
 // 物理量
 var animate;
 const clock = new THREE.Clock();
 const g = 9.8;
-const G = new Ammo.btVector3( 0, 0, -g )
-const margin = 1e-5;
+const G = new Ammo.btVector3( 0, 0, -g );
+const margin = 1e-5;  // rigidShape需要此间隙
+var moveCamera = 0;
+var lookat, p_start, p_end;  // 相机移动的目标物体，起点和终点
 var T0;  // 开始仿真的时间
 var time = performance.now();
 var timeUpdateFPS = performance.now();
@@ -312,11 +317,13 @@ class DTObject {  // 用DTObject类包裹场景中的对象
 
 export default class SceneBuilder{
     camera: THREE.PerspectiveCamera
-    cameraControl: OrbitControls
+    camera0: THREE.PerspectiveCamera
     canvas: HTMLElement
     controller
     DTObjects = DTObjects
     ground
+    orbitControl: OrbitControls
+    pointerControl: PointerLockControls
     renderer: THREE.WebGLRenderer
     SCENE = SCENE
     constructor(canvas: HTMLElement){ 
@@ -351,6 +358,20 @@ export default class SceneBuilder{
         this.camera.position.set( 0, -25, 15 );
         this.camera.lookAt(0, 0, 0);
         this.camera.up.copy(UP);  // 在相机里让z轴向上
+        BUS.on("moveCameraTo", (id)=>{  // 双击将相机拉近至物体
+            moveCamera = id;
+        });   
+        this.camera0 = this.camera.clone()  // 克隆一个无orbitControl相机，用于控制原相机的角度
+        // 相机轨道控制器
+        this.orbitControl = new OrbitControls(this.camera, this.renderer.domElement);
+        this.orbitControl.mouseButtons = {  // 设置默认快捷键
+            LEFT: -1, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE
+        };
+        this.orbitControl.minDistance = 1;  // 限制相机缩放距离
+        this.orbitControl.maxDistance = 300;
+        this.orbitControl.screenSpacePanning = false;  // 平移时沿地面拖动
+        // 相机平移控制器
+        this.pointerControl = new PointerLockControls(this.camera0, this.renderer.domElement);
         // 平行光
         const light = new THREE.DirectionalLight( "white", 3 );
         light.castShadow = true;
@@ -367,47 +388,16 @@ export default class SceneBuilder{
         SCENE.add( light );
         let DTLight = new DTObject(light, true);
         DTLight.setTitle();
-        // 轨道控制器
-        this.cameraControl = new OrbitControls(this.camera, this.renderer.domElement);
-        this.cameraControl.mouseButtons = {  // 设置默认快捷键
-            LEFT: -1, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE
-        };
-        this.cameraControl.minDistance = 1;  // 限制相机缩放距离
-        this.cameraControl.maxDistance = 300;
         // 姿态控制器 
         this.controller = new TransformControls(this.camera, this.renderer.domElement);
         this.controller.traverse((child)=>{child.userData.controller = true});  // 对控制器做标记，以在点击时区分它和其它物体
         SCENE.add(this.controller);
-        this.canvas.addEventListener("keydown",(e)=>{
-            if(e.code == "KeyQ") this.controller.setMode("translate");  // 平移
-            if(e.code == "KeyW") this.controller.setMode("rotate");  // 旋转
-            if(e.code == "KeyE") this.controller.setMode("scale");  // 缩放
-            if(e.code == "KeyR") this.controller.reset();  // 恢复
-            if(e.code == "KeyT") {  // 切换全局坐标系和局部坐标系
-                if(this.controller.space == "world") this.controller.setSpace("local");
-                else this.controller.setSpace("world");
-            }
-            if(e.ctrlKey) {  // 切换全局坐标系和局部坐标系
-                this.controller.setTranslationSnap( 1 );
-			    this.controller.setRotationSnap( THREE.MathUtils.degToRad( 15 ) );
-			    this.controller.setScaleSnap( 0.25 );
-            }
-        })
-        this.canvas.addEventListener("keyup",()=>{
-            this.controller.setTranslationSnap( null );
-			this.controller.setRotationSnap( null );
-			this.controller.setScaleSnap( null );
-        })
         //window.tC = this.transformController;
         BUS.on("controlStart", (id)=>{  // 选中物体开始控制
             let DTObject = SCENE.getObjectById(id);
             this.controller.attach(DTObject);
         });
         BUS.on("controlEnd", ()=>{  // 取消选择时收起控制器
-            const hide = new THREE.Mesh();
-            SCENE.add(hide);
-            hide.position.z = -999;  // 将隐藏的控制器移走
-            this.controller.attach(light);
             this.controller.detach();
         });
         // 导向器（Gizmo）
@@ -456,6 +446,47 @@ export default class SceneBuilder{
         const lineMaterial = new THREE.LineBasicMaterial({color: "black"});
         const line = new THREE.Line( lineGeometry, lineMaterial );
         SCENE.add( line );
+        // 快捷键设置
+        this.canvas.addEventListener("keydown",(e)=>{
+            const step = 5;  // 相机前进步长
+            if(e.key == "1") this.controller.setMode("translate");  // 按1平移
+            else if(e.key == "2") this.controller.setMode("rotate");  // 按2旋转
+            else if(e.key == "3") this.controller.setMode("scale");  // 按3缩放
+            else if(e.key == "4") {  // 按4切换全局坐标系和局部坐标系
+                if(this.controller.space == "world") this.controller.setSpace("local");
+                else this.controller.setSpace("world");
+            }
+            else if(e.key == "5") this.controller.reset();  // 按5恢复
+            else if(e.ctrlKey) {  // 按Ctrl将移动间距离散化
+                this.controller.setTranslationSnap( 1 );
+			    this.controller.setRotationSnap( THREE.MathUtils.degToRad( 15 ) );
+			    this.controller.setScaleSnap( 0.25 );
+            }
+            else{
+                this.camera0.copy(this.camera);
+                if(e.code == "KeyW"){  // 按W前进，但借助camera0来求相机的新位置和角度
+                    this.pointerControl.moveForward(step); 
+                }
+                if(e.code == "KeyS"){  // 按S后退
+                    this.pointerControl.moveForward(-step); 
+                }
+                if(e.code == "KeyA"){  // 按A左移
+                    this.pointerControl.moveRight(-step); 
+                }
+                if(e.code == "KeyD"){  // 按D右移
+                    this.pointerControl.moveRight(step); console.log(this.orbitControl )
+                }
+                let p0 = this.camera0.position.clone();
+                this.camera.position.copy(p0);
+                this.camera0.getWorldDirection(front);
+                new THREE.Ray(p0, front).intersectPlane(Ground, this.orbitControl.target);
+            }console.log(this.orbitControl)
+        })
+        this.canvas.addEventListener("keyup",()=>{
+            this.controller.setTranslationSnap( null );
+			this.controller.setRotationSnap( null );
+			this.controller.setScaleSnap( null );
+        })
         // 预先载入自定义模型
         this.preloadModels();
         BUS.on("init", ()=>this.init());
@@ -463,15 +494,38 @@ export default class SceneBuilder{
     }
     init(){  // 场景更新时的操作
         // 天空
-        this.setSkyboxByColor(SCENE.DT)
+        this.setSkyboxByColor(SCENE.DT);
         // 远处雾化
         SCENE.fog = new THREE.Fog(groundColor, 5, 200);
         emulateMode = "stop";
         loading = false;
         if(!animate){
             animate = () => {
-                try{requestAnimationFrame(animate);}
-                catch{return}  
+                try{ requestAnimationFrame(animate) }
+                catch{ return }
+                if(moveCamera > 0){  // 开始移动相机到双击的物体
+                    lookat = SCENE.getObjectById(moveCamera);
+                    const d = 10;  // 相机到物体的距离
+                    p_start = this.camera.position.clone();  // 起点
+                    let r = new THREE.Vector3();
+                    this.camera.getWorldDirection(r);
+                    r.multiplyScalar(d);
+                    p_end = lookat.position.clone().sub(r);  // 终点 = p(物体) - d*r(相机)
+                    this.camera0.copy(this.camera);
+                    moveCamera = -1;
+                }
+                if(moveCamera < 0){  // 移动中
+                    frameCounter++;
+                    this.camera0.position.lerpVectors(p_start, p_end, frameCounter/60);
+                    let target = this.camera0.position.clone();
+                    this.camera.position.copy(target);
+                    this.camera0.getWorldDirection(front);
+                    new THREE.Ray(target, front).intersectPlane(Ground, this.orbitControl.target);
+                    if(frameCounter >= 60){  // 结束移动
+                        this.orbitControl.enableRotate = true;
+                        frameCounter = moveCamera = 0;
+                    }
+                }
                 this.render();
             };
             animate();
@@ -510,17 +564,6 @@ export default class SceneBuilder{
                 SCENE.add(robot);
             })
         }
-    }
-    cameraSetup (){
-        BUS.on("moveTo",(model)=>{
-            let box = new THREE.Box3().setFromObject(model);
-            let center = {
-                x: model.position.x + (box.min.x + box.max.x)/2,
-                y: model.position.y + (box.min.y + box.max.y)/2,
-                z: model.position.z + (box.min.z + box.max.z)/2,
-            };
-            this.camera.position.set( center.x, center.y - 30, center.z + 10);
-        });
     }
     createArrow(x, y, theta){  // 指示箭头(横坐标，纵坐标，旋转角)
         let theta0 = theta * Math.PI / 180;
@@ -665,10 +708,10 @@ export default class SceneBuilder{
         delete mesh.userData.rb;
     }
     render(){
-        this.updatePhysics( clock.getDelta() );
+        this.updatePhysics(clock.getDelta());
         this.renderer.render(toRaw(SCENE), this.camera)
         gizmo.render(this.renderer);
-        this.cameraControl.update();
+        this.orbitControl.update();
     } 
     setSkyboxByColor(DTScene) {  // 根据上中下三种颜色设置天空盒
         function isColor(color, defaultColor){  // 测试字符串是否能解析成颜色，否则将颜色恢复为默认值

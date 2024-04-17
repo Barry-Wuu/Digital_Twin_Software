@@ -21,7 +21,6 @@
     var lastChoice;  //  上一个选项
     var shift = false;  // 是否按下Shift键
     const searchValue = ref("");
-    var t0 = -999;
     var TREE = ref();
     var TREEs = ref([]);
     function emitProperty(){  // 将物体id发送到属性栏
@@ -118,6 +117,10 @@
           choices.value = [];
           BUS.emit("controlEnd");  // 收起控制器
         },
+        doubleClick(){  // 双击将相机拉近至物体
+          choices.value = [lastChoice];
+          BUS.emit("moveCameraTo", lastChoice);
+        },
         dragFrom(e){  // 开始拖拽
           // console.log(e)
         },
@@ -139,8 +142,6 @@
         onClick(_, Selection){  // 点击Tree中的项目
           console.log(_, Selection)
           let selection = Selection.node.key;
-          let time = new Date().getTime();
-          let dt = time - t0;
           if(choices.value.length == 1 && selection == lastChoice) {  // 取消选择
             choices.value = choices.value.filter(k => k != selection);
             BUS.emit("controlEnd");  // 收起控制器
@@ -153,13 +154,12 @@
             }
             BUS.emit("controlEnd");  // 收起控制器
           }
-          else {
+          else {  // 单选
             choices.value = [selection];
             BUS.emit("controlStart", selection);  // 选中物体开始控制
-          }  // 单选
-          if(dt < 300) BUS.emit("moveTo", selection);  // 双击拉近
-          lastChoice = selection;
-          t0 = time;
+            lastChoice = selection;
+          }
+          BUS.emit("deselectAsset")  // 点击外部则取消选择组件
         },
         onKeydown(k){
           if(k.code == "Delete") {this.deleteChoices();}
@@ -219,7 +219,7 @@
 <template>
   <!--搜索栏-->
   <a-input-search v-model:value="searchValue" placeholder="搜索"
-    style="margin-bottom: 8px" @change="search()" @search="()=>{searchValue = ''}">
+    style="margin-bottom: 8px" @change="search" @search="()=>{searchValue = ''}">
       <template #enterButton>
         <a-button :disabled="!searchValue" type="primary"><CloseOutlined/></a-button>
       </template>
@@ -232,7 +232,9 @@
       :selectedKeys = "choices" 
       style="margin-left: 10px"
       :tree-data="TREE" 
-      @dragstart="dragFrom" @drop="dragTo" @expand="update" @select="onClick">
+      @contextmenu="(e)=>console.log(e)"
+      @dblclick="doubleClick" @expand="update" @select="onClick"
+      @dragstart="dragFrom" @drop="dragTo">
         <!--重写展开和折叠标志-->
         <template #switcherIcon="DT">
           <MinusSquareOutlined v-if="DT.expanded"/>
