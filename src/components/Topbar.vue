@@ -1,18 +1,21 @@
 <script lang="ts">
-    const JSZip = require("jszip");  // 用于压缩解压文件的库
-    import BUS from "./EventBus"
+    import global from "./GlobalVariables"
     const electron = require("electron");
-    var fs = require("fs");
-    var path = require("path");
+    const fs = require("fs");
+    const JSZip = require("jszip");  // 用于压缩解压文件的库
+    const path = require("path");
     import { defineComponent, ref } from "vue";
     import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
     import { 
+        AppstoreAddOutlined,
+        BlockOutlined,
         CameraOutlined,
         CaretDownOutlined,
         CaretRightOutlined,
         CheckOutlined,
-        DeleteTwoTone,
+        CodeSandboxOutlined,
+        DeleteTwoTone, 
         FormOutlined,
         ForwardOutlined,
         FullscreenOutlined,
@@ -51,16 +54,19 @@
 
     export default defineComponent({
         components: {
-            BUS, 
+            global, 
+            AppstoreAddOutlined,
+            BlockOutlined,
             CameraOutlined,
             CaretDownOutlined,
             CaretRightOutlined,
             CheckOutlined,
-            DeleteTwoTone,
+            CodeSandboxOutlined,
+            DeleteTwoTone, 
             FormOutlined,
             ForwardOutlined,
             FullscreenOutlined,
-            PauseOutlined,  
+            PauseOutlined,
             ReloadOutlined,
             StepForwardOutlined,
         },
@@ -71,17 +77,17 @@
                 if(option == "保存场景") this.saveScene();
             },
             changeFullscreen(){  // 切换全屏显示
-                BUS.emit("canvasFullscreen");
+                global.emit("canvasFullscreen");
             },
             changeEmulateMode(mode){  // 切换仿真状态
                 emulateMode.value = mode;
-                BUS.emit("changeEmulateMode", mode);
+                global.emit("changeEmulateMode", mode);
                 if(mode == "stop") {this.message("仿真停止");}
                 if(mode == "play") {this.message("仿真开始");}
                 if(mode == "step") {this.message("仿真步进");}
                 if(mode == "fast") {this.message("仿真快进");}
                 speed.value = mode == "fast" ? fast.value : 0;
-                BUS.emit("changeSpeed", marks[speed.value]);
+                global.emit("changeSpeed", marks[speed.value]);
                 BottomSpeed.textContent = marks[speed.value];
             },
             changeSpeed(value){  // 更改速度，value为滑动条百分比，marks[value]为实际速度倍率
@@ -90,14 +96,17 @@
                 emulateMode.value = value==0 ? "play" : "fast";
                 this.message(value==0 ? "仿真开始" : "仿真快进"); 
                 speed.value = value;
-                BUS.emit("changeSpeed", marks[value]);
+                global.emit("changeSpeed", marks[value]);
                 BottomSpeed.textContent = marks[value];
             },
-            changeTab(key){tab.value = key;},  // 切换顶部栏目
-            clearTemp(){BUS.emit('clearTemp')},  // 清除临时实体
+            changeTab(key){tab.value = key},  // 切换顶部栏目
+            changeView(e){  // 切换视角
+                global.emit("changeView", e.key)
+            },
+            clearTemp(){global.emit("clearTemp")},  // 清除临时实体
             ipcRenderer(data){ electron.ipcRenderer.send(data); },  // 刷新页面
             loadScene(e=null, target=null){
-                let DTFilePath  // 选择路径
+                let DTFilePath;  // 选择路径
                 if(e) DTFilePath = e.target.files[0].path;  // 从input选择路径导入
                 else DTFilePath = target;  // 从指定路径导入
                 if(DTFilePath.slice(0,3)!="src") this.setHistory(DTFilePath);  // 若从绝对路径导入则修改文件打开记录
@@ -114,7 +123,7 @@
                     });  
                     Promise.all(promises).then(()=>{  // 文件全部解压完后读取解压文件  
                         GLTFloader.load("src/temp/Scene.txt", (file)=>{
-                            let DTScene = BUS.getDTScene();
+                            let DTScene = global.DTScene();
                             let obj = fs.readFileSync("src/temp/DTObjects.txt", "utf-8");
                             DTScene.copyFrom(JSON.parse(obj), true);
                             let scene = file.scene;
@@ -122,14 +131,14 @@
                             DTScene.mesh = scene;
                             DTScene.mesh.DT = DTScene;
                             DTScene.newScene();
-                            BUS.emit("foldAll");  // 折叠层级树
+                            global.emit("foldAll");  // 折叠层级树
                         });                  
                     })
                 }) 
             },
             message(data){ BottomMessage.textContent = data; },
             saveScene(target=null, DTObjects="src/temp/DTObjects.txt", Scene="src/temp/Scene.txt"){
-                let DTScene = BUS.getDTScene();
+                let DTScene = global.DTScene();
                 // 暂时移除姿态控制器
                 let children = DTScene.mesh.children;
                 let controller = children.filter(mesh => mesh.isTransformControls)[0];
@@ -179,12 +188,16 @@
                     recent.push(path);
                 }
                 fs.writeFileSync("src/recentOpened.txt", JSON.stringify(recent));
+            },
+            setMode(newMode){  // 切换编辑/浏览模式
+                global.setMode(newMode);
+                mode.value = newMode;
             }
         },
         setup() {
             const selectedKey = ref([]);
             return {
-                BUS, emulateMode, fast, marks, menu, mode, recentOpened, 
+                global, emulateMode, fast, marks, menu, mode, recentOpened, 
                 savepath:"", selectedKey, speed, tab,
             };
         },
@@ -200,7 +213,7 @@
                 recentOpened.value = JSON.parse(history);
             } 
             catch {}
-            BUS.on("saveInitScene", ()=>{this.saveScene("src/temp/New.DTScene")});
+            global.on("saveInitScene", ()=>{this.saveScene("src/temp/New.DTScene")});
         },
         destroyed(){  // 退出时清理临时文件（src/temp文件夹）
             function deleteFolder(path) {
@@ -273,18 +286,18 @@
             <span style="align-items:center; display:flex; 
             height: calc(100% - 35px); justify-content:space-evenly;" class="bottom">
                 <!--编辑模式-->
-                <div class="logo marginLR10 top16" @click="mode='edit'; BUS.emit('modeSelect', 'edit')"
+                <div class="logo marginLR10 top16"
                 :style="{'background': mode=='edit' ? 'powderblue' : ''}"
-                @mousedown = "e => e.preventDefault()"
+                @click="setMode('edit'); global.emit('modeSelect', 'edit')" @click.prevent
                 @mouseenter = "e => e.target.style.color = 'dodgerblue'"
                 @mouseleave = "e => e.target.style.color = 'black'">
                     <FormOutlined class="logoBig"/>
                     <br>编辑模式
                 </div>
                 <!--浏览模式-->
-                <div class="logo marginLR10 top16" @click="mode='view'; BUS.emit('modeSelect', 'view')"
+                <div class="logo marginLR10 top16"
                 :style="{'background': mode=='view' ? 'powderblue' : ''}"
-                @mousedown = "e => e.preventDefault()"
+                @click="setMode('view'); global.emit('modeSelect', 'view')" @click.prevent
                 @mouseenter = "e => e.target.style.color = 'dodgerblue'"
                 @mouseleave = "e => e.target.style.color = 'black'">
                     <CameraOutlined class="logoBig"/>
@@ -295,7 +308,7 @@
         </div>
         <vr class="splitV"/><!--分隔符-->
 
-        <!--动画-->
+        <!--仿真动画-->
         <div style="align-items:center; height:100%;" class="bottom marginLR5">
             <span style="align-items:center; display:flex; 
             height: calc(100% - 78px); justify-content:space-evenly;" class="bottom">
@@ -325,7 +338,7 @@
                     @mousedown = "e => e.preventDefault()"
                     @mouseenter = "e => {if(emulateMode!='play') e.target.style.color = 'dodgerblue'}"
                     @mouseleave = "e => {if(emulateMode!='play') e.target.style.color = 'black'}">              
-                        <StepForwardOutlined/>运行&nbsp;&nbsp;
+                        <CaretRightOutlined/>运行&nbsp;&nbsp;
                     </div>
                     <!--步进-->
                     <div class="logo" @click="changeEmulateMode('step')" 
@@ -373,6 +386,63 @@
             <div class="bottomBorder">仿真动画</div>
         </div>
         <vr class="splitV"/><!--分隔符-->
+
+        <!--相机控制-->
+        <div style="align-items:center; display:inline; height:100%" class="bottom marginLR5">
+            <span style="align-items:center; display:flex; 
+            height: calc(100% - 35px); justify-content:space-evenly;" class="bottom">
+                <!--层级选择-->
+                <a-dropdown :trigger="['click']">
+                    <div class="logo marginLR10 top16 ant-dropdown-link" @click.prevent>
+                        <BlockOutlined class="logoBig"/>
+                        <br>层级选择
+                    </div>
+                    <!--左键菜单-->
+                    <template #overlay>
+                        <a-menu @click="">
+                            <a-menu-item key="aaa">aaa</a-menu-item>
+                            <a-menu-item key="bbb">bbb</a-menu-item>
+                            <a-menu-item key="ccc">ccc</a-menu-item>
+                        </a-menu>
+                    </template>
+                </a-dropdown>
+                <!--视角选择-->
+                <a-dropdown :trigger="['click']">
+                    <div class="logo marginLR10 top16" @click.prevent>
+                        <CodeSandboxOutlined class="logoBig"/>
+                        <br>视角选择
+                    </div>
+                    <!--左键菜单-->
+                    <template #overlay>
+                        <a-menu @click="changeView">
+                            <a-menu-item key="默认视图">默认视图</a-menu-item>
+                            <a-menu-item key="俯视图">俯视图</a-menu-item>
+                            <a-menu-item key="正视图">正视图</a-menu-item>
+                            <a-menu-item key="左视图">左视图</a-menu-item>
+                            <a-menu-item key="右视图">右视图</a-menu-item>
+                        </a-menu>
+                    </template>
+                </a-dropdown>
+                <!--自定义视角-->
+                <a-dropdown :trigger="['click']">
+                    <div class="logo marginLR10 top16" @click.prevent>
+                        <AppstoreAddOutlined class="logoBig"/>
+                        <br>自定义视角
+                    </div>
+                    <!--左键菜单-->
+                    <template #overlay>
+                        <a-menu @click="">
+                            <a-menu-item key="ggg">ggg</a-menu-item>
+                            <a-menu-item key="hhh">hhh</a-menu-item>
+                            <a-menu-divider/>
+                            <a-menu-item key="iii">iii</a-menu-item>
+                        </a-menu>
+                    </template>
+                </a-dropdown>
+            </span>
+            <div class="bottomBorder">相机控制</div>
+        </div>
+        <vr class="splitV"/><!--分隔符-->
     </span>
 
     <!--可视化-->
@@ -411,4 +481,4 @@
         <vr class="splitV"/><!--分隔符-->
     </span>
 </template>
-  
+  ./Global

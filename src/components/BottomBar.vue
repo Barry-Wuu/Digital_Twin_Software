@@ -1,9 +1,9 @@
 <script lang="ts">
   import { computed, ref, unref } from 'vue'
-  import BUS from "./EventBus"
+  import global from "./GlobalVariables"
   var BottomMessage;
   var BottomWindowSize;
-  BUS.on("BottomMessage", (data)=>{BottomMessage.textContent = data;})
+  global.on("BottomMessage", (data)=>{BottomMessage.textContent = data;})
   export default {
     methods:{
       showWindowSize(){
@@ -58,3 +58,4 @@
     ">仿真时间：<span id="BottomTimer">00:00:00.000</span>&nbsp;s&nbsp;&nbsp;</div>
   </div> 
 </template>
+./Global

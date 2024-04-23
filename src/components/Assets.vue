@@ -10,8 +10,10 @@
     PictureTwoTone,
     RollbackOutlined
   } from '@ant-design/icons-vue'
-  import BUS from "./EventBus"
-  import DTScene from './ThreeScene/DTScene'
+  import global from "./GlobalVariables"
+  import { DTObject } from './ThreeScene/DTScene'
+  import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js"
+  const path = require("path");
   import * as THREE from 'three'
 
   const activeOptions = ref([]);
@@ -31,36 +33,32 @@
       ]},
       { name: "材质", type: "material", option:{color: "white", opacity: 1} },
       { name: "脚本", type: "code"},
-      { name: "模型1", type: "model"},
-      { name: "模型2", type: "model"},
-      { name: "模型3", type: "model"},
-      { name: "模型4", type: "model"},
-      { name: "模型5", type: "model"},
     ]}
   );
+  var assetInput;
+  var create;
   var currentFolder = ref(assets.value);
   var dragAsset = ref();  // 被拖动的组件
+  var loadingModel = false;  // 载入模型时禁止再导入其它模型
   const options = ref(["114514"]);
   var Path = ref([assets.value.name]);
   const renamed = ref('');  // 重命名
-  var renamingAsset = ref(false);  // 被重命名的组件
+  var renamingAsset = ref();  // 被重命名的组件
   const Returner = (location, parent)=>{  // 返回标志
     return {location: location, name:"返回", parent: parent, type: "return"};
   };
   const searchedAssets = ref([]);
   const searchValue = ref('');
   const sortMethod = ref("按组件类型排序");
-
-  BUS.on("deselectAsset", ()=>{  // 点击外部则取消选择组件
+ 
+  global.on("deselectAsset", ()=>{  // 点击外部则取消选择组件
     dragAsset.value = null;
   })
 
   function action(e){
-    let current = currentFolder.value, option = e.key;
-    if(option == "新建文件夹") createAsset("文件夹");
+    let option = e.key;
     if(option == "删除" && dragAsset.value.type != "return"){
-      current.children = current.children.filter(asset => asset != dragAsset.value);
-      sort();
+      deleteAsset(dragAsset.value);
     }
   }
   function clickAsset(asset) {  // 单击卡片
@@ -68,25 +66,41 @@
     if(dragAsset.value == asset){  // 再次点击则取消选择
       dragAsset.value = null;
     } else {
-      dragAsset.value = asset;
+      dragAsset.value = asset;  // 选择
+      if(asset.type == "model"){
+        window.assetDT = asset.DT;
+        global.emit("showProperty", "asset");
+      }
       if(asset.type == "return"){
         currentFolder.value = asset.parent;
         Path.value.pop();
         sort();
-      }
+      } 
     }
   }
   function createAsset(asset){  // 创建组件
     const dict = {"模型":"model", "材质":"material", "代码":"code", "文件夹":"folder"};
-    let assetName = asset, index = 1;  // 若新文件夹名称重复，则加上最小的不重复文件夹的序号
     let current = currentFolder.value;
-    while(current.children.filter(asset => asset.name==assetName).length){
-      assetName = asset + index;
-      index++;
-    }
-    let newAsset = { name: assetName, parent: current, type: dict[asset]};
-    newAsset.children = [Returner(newAsset, current)];
+    let newAsset = {
+      createdTime: new Date(),  // 设置创建时间  
+      name: newName(asset), 
+      parent: current, 
+      type: dict[asset]
+    };
     current.children.push(newAsset);
+    dragAsset.value = newAsset;
+    if(asset == "模型"){  // 创建组件后将默认名称设为类型名，同时显现重命名输入框
+      assetInput.click();
+      loadingModel = true;
+    }
+    else{
+      create = true;
+      startRename();
+    }
+  }
+  function deleteAsset(deleteAsset){  // 删除组件
+    let current = currentFolder.value;
+    current.children = current.children.filter(asset => asset != deleteAsset);
     sort();
   }
   function doubleClickAsset(asset){  // 双击卡片
@@ -100,16 +114,11 @@
         new THREE.BoxGeometry(), 
         new THREE.MeshPhongMaterial(asset.children)
       );
-      let DT = new DTScene.DTObject(mesh, inScene=false);
-      window.asset = DT;
-      BUS.emit("showProperty", "asset");
     }
   }
   function dragStart(e, asset, index){  // 开始拖拽
-    let data = e.dataTransfer;
     dragAsset.value = asset;
-    data.setData("type", "asset");
-    data.setData("index", index);
+    global.emit("dragModelStart", {type: "asset", data: dragAsset.value});
   }
   function dropOnCard(e, target){  // 拖拽到文件夹上以放入，拖拽到返回上以放出
     let data = e.dataTransfer;
@@ -128,7 +137,7 @@
     }
     dragAsset.value = null;
   }
-  function dropOnPath(index){
+  function dropOnPath(index){  // 拖到路径上
     let current = currentFolder.value;
     let dragged = dragAsset.value;
     let target = goto(index, false);
@@ -139,15 +148,13 @@
   }
   function dropOnSplit(e, index){  // 拖拽到排序条上排序
     hide(e);
-    let data = e.dataTransfer;
-    if(data.getData("type") != "asset") return;  // 拖拽数据类型校验
     if(dragAsset.value.type != "return"){
-      let source = parseInt(data.getData("index")), target = index;
+      let current = currentFolder.value.children;
+      let source = current.indexOf(dragAsset.value), target = index;
       if(target > source) target --;
       // 将数组的第a个元素移动到第b号位
-      let arr = currentFolder.value.children;
-      const element = arr.splice(source, 1)[0]; // 从原来的位置取出元素
-      arr.splice(target, 0, element); // 在新的位置插入元素
+      const element = current.splice(source, 1)[0]; // 从原来的位置取出元素
+      current.splice(target, 0, element); // 在新的位置插入元素
       sort();
     }
     dragAsset.value = null;
@@ -173,33 +180,101 @@
   function hide(e){  // 隐藏排序条
     e.target.style.opacity = 0;
   }
+  function loadAsset(e){
+    let path0 = e.target.files[0].path;  // 从input选择路径导入
+    path0 = path0.slice(path0.indexOf("src"));
+    let newAsset = dragAsset.value;
+    newAsset.loading = 0;
+    newAsset.name = newName(path.basename(path0, path.extname(path0)), newAsset.name);
+    let OBJloader = new OBJLoader();
+    OBJloader.load(path0, 
+      function loaded(mesh){  // 模型加载完成
+        let index = currentFolder.value.children.indexOf(newAsset);
+        newAsset = currentFolder.value.children[index];  // 使loading更新可被检测
+        setTimeout(function() {  // 过1s后隐藏进度条
+          delete newAsset.loading;
+          newAsset.DT = new DTObject(mesh, false, newAsset.type);
+          newAsset.DT.name = newAsset.name;
+          loadingModel = false;
+        }, 1000)
+      }, 
+      function loading(e){  // 模型加载时
+        let index = currentFolder.value.children.indexOf(newAsset);
+        newAsset = currentFolder.value.children[index];  // 使loading更新可被检测
+        let progress = e.loaded / e.total * 100;
+        newAsset.loading = progress;
+      },
+      function err(){  // 模型读取错误时弹窗，并删除刚创建的模型组件
+        alert("模型读取错误");
+        deleteAsset(dragAsset.value);
+        loadingModel = false;
+      }
+    )
+  }
+  function newName(name, originalName=null){  
+    // 求不重名且序号最小的新名字，如name→name(1)→name(2)→……
+    // 若重名组件也有数字和括号，则将重命名结尾的数字（index）和括号取出并自增，直到无重名组件为止
+    let basename = name, newName = name, index = 1; 
+    let content = currentFolder.value.children;
+    if(name == originalName) return name;  // 未改名则返回原名
+    if(!content.filter(asset => asset.name == name).length) return name;  // 未重名则返回新名
+    let match = name.match(/\([0-9]*\)$/);
+    let matched = match ? parseInt(match[0].slice(1, -1)) : null;
+    if(matched){
+      basename = basename.slice(0, -match[0].length);  // basename为去掉末尾序号的组件名
+      index = matched;
+    }
+    // 如果新名≠basename或basename存在，则加序号和括号
+    if(newName != basename || content.filter(asset => asset.name == basename).length){
+      newName = `${basename}(${index})`;
+      while(content.filter(asset => asset.name == newName && 
+      newName != originalName).length){
+        newName = `${basename}(${index})`;
+        index++;
+      }
+    }
+    return newName;
+  }
   function onRightClick(asset){  // 右键点击卡片
     dragAsset.value = asset.type=="return" ? null : asset;
   }
-  function rename(cancelDrag = true){  // 完成重命名
-    BUS.emit("deselect");  // 点击组件则取消选择外部
+  function printCreatedTime(){  // 显示组件创建时间
+    function pad(x, n=2) {return x.toString().padStart(n, '0')}
+    let time = dragAsset.value.createdTime;
+    alert("创建时间：" + time.getFullYear() + '/' 
+        + pad(time.getMonth() + 1) + '/'
+        + pad(time.getDate()) + ' '
+        + time.toTimeString().split(' ')[0] + '.'
+        + pad(time.getMilliseconds(), 3)
+    );
+  }
+  function rename(cancelDrag=true){  // 完成重命名
+    let renaming = renamingAsset.value;
     if(cancelDrag) dragAsset.value = null; 
-    if(renamed.value && renamed.value != renamingAsset.value.name){  // 新旧名字相同则返回
-      let content = currentFolder.value.children, renaming = renamingAsset.value;
-      if(!content.filter(asset => asset.name == renamed.value).length){
-        renaming.name = renamed.value;
-      } else {  // 若有重名文件夹，则将重命名结尾的数字（index）取出并自增，直到无重名文件夹为止
-        let basename = renamed.value, folderName = renamed.value, index = 1, 
-          match = renamed.value.match(/([0-9]+)$/);
-        if(match){
-          basename = basename.slice(0, -match[0].length);
-          index = parseInt(match);
-        }
-        folderName = basename + index;
-        while(content.filter(asset => folderName==asset.name && 
-        folderName!=renamingAsset.value.name).length){
-          folderName = basename + index;
-          index++;
-        }
-        renamingAsset.value.name = folderName;  // 将数字自增后确认重命名
+    if(create || renamed.value && renamed.value != renaming.name){  // 新旧名字相同则返回
+      global.emit("deselect");  // 点击组件则取消选择外部
+      let name = newName(renamed.value, renaming.name);  // 计算不重复的新名称
+      if(currentFolder.value.children.filter(  // 如果名称重复则弹出重命名窗口
+        asset => asset.name == renamed.value && asset != renamingAsset.value
+      ).length){
+        global.emit("assetNameDuplication", {  // 弹窗询问是否重命名
+          content: `组件“${renamed.value}”已存在。\r确定将其重命名吗？`,
+          yes: ()=>{  // 确认重命名
+            renaming.name = name;
+            if(renaming.DT) {renaming.DT.name = name} 
+            renamed.value = renamingAsset.value = null; 
+            create = false;
+            sort();
+          },
+          no: ()=>{},  // 取消重命名
+        });
+        return;
       }
+      renaming.name = name;  // 将数字自增后确认重命名
+      if(renaming.DT) {renaming.DT.name = name} 
     }
-    renamed.value = renamingAsset.value = null;
+    renamed.value = renamingAsset.value = null; 
+    create = false;
     sort();
   }
   function search(){  // 搜索
@@ -217,10 +292,11 @@
     traverse(assets.value);
     sort(null, result);
   }
-  function setGotoParent(asset){  // 添加父对象，以便从文件夹中返回上一级
+  function setAssets(asset){  // 初始化组件
     for(let child of asset.children){
-      if(child.children){
-        setGotoParent(child);
+      child.createdTime = new Date();  // 设置创建时间  
+      if(child.children){  // 添加父对象，以便从文件夹中返回上一级
+        setAssets(child);
         child.parent = asset;
         child.children.unshift(Returner(child, asset));
       }
@@ -260,11 +336,11 @@
   function startRename(){  // 开始重命名
     renamingAsset.value = dragAsset.value; 
     renamed.value = dragAsset.value.name; 
-    dragAsset.value = null;
   }
   // 加载完成时
   onMounted(()=>{
-    setGotoParent(assets.value);
+    assetInput = document.getElementById("assetInput");
+    setAssets(assets.value);
     sort();
     window.addEventListener("keydown", (e)=>{
       if(searchValue.value) return;
@@ -283,6 +359,11 @@
 
 <style>
   #assets {display: flex; margin-left:5px; margin-top:-8px; flex-wrap: wrap;}
+  .assetRenamer{
+    margin-left:-36%; 
+    width:140%; 
+    text-align: center;
+  }
   .card{
     width: 80px;
     height: 80px;
@@ -295,6 +376,10 @@
 </style>
 
 <template>
+  <!--隐藏的文件选择器input和下载器a，用于导入和导出文件-->
+  <div style="display: none;">   
+    <input id="assetInput" type="file" accept=".obj" @change="loadAsset"/>
+  </div>
   <!--文件路径显示与搜索框-->
   <div style="display: flex; margin-left: 1em">
     <!--文件路径显示-->
@@ -323,12 +408,22 @@
     <span id="assets" @dragenter.prevent @dragover.prevent @drop="dragAsset=null">
       <!--默认-->
       <div v-if="!searchValue" v-for="(asset, index) of currentFolder.children" 
-      style="display:flex;">
+      style="display: flex;">
         <!--拖拽排序条-->
-        <div class="split" v-if="asset.type!='return'" @dragenter.prevent @dragover.prevent 
+        <div v-if="asset.type!='return'" class="split" @dragenter.prevent @dragover.prevent 
         @dragenter="show" @drop="(e)=>dropOnSplit(e, index)" @dragleave="hide"/>
-        <!--卡片-->
-        <a-card :draggable="asset!=renamingAsset" hoverable class="card"
+        <!--加载中卡片-->
+        <a-card v-if="asset.loading" class="card">
+          <span class="content" style="margin-top:11px;">
+            <a-progress :percent="asset.loading" :show-info="false"
+            />
+            <div style="margin-bottom: 10px; text-align: center;">
+              {{ asset.name }}
+            </div>
+          </span>    
+        </a-card>
+        <!--加载完成卡片-->
+        <a-card v-else :draggable="asset!=renamingAsset" class="card" hoverable 
         :style="{'background': asset==dragAsset ? '#E6F4FF' : 'white'}"
         @click.stop @dragenter.prevent @dragover.prevent
         @click="clickAsset(asset)" 
@@ -344,15 +439,18 @@
             <PictureTwoTone v-else-if="asset.type == 'material'" class="icon" twoToneColor="blue"/>    
             <GiftTwoTone v-else-if="asset.type == 'model'" class="icon" twoToneColor="grey"/>
             <FileTwoTone v-else class="icon"/>
-            <div v-if="asset!=renamingAsset" style="text-align: center;">{{ asset.name }}</div>
-            <a-input v-else v-model:value="renamed" @click.stop @dragstart.stop @dragover.stop
-            style="margin-left:-36%; width:140%"/>
+            <div v-if="asset!=renamingAsset" style="text-align: center;">
+              {{ asset.name }}
+            </div>
+            <!--重命名输入框-->
+            <a-input v-else v-model:value="renamed" class="assetRenamer"
+            @click.stop @dragstart.stop @dragover.stop/>
           </span>    
         </a-card>
       </div>
       <!--搜索时-->
       <div v-else v-for="asset of searchedAssets" style="display:flex;">
-        <!--拖拽排序条-->
+        <!--无效拖拽排序条-->
         <div class="split"/>
         <!--卡片-->
         <a-card :draggable="asset!=renamingAsset" hoverable class="card"
@@ -379,20 +477,28 @@
         </a-card>
       </div>
       <!--末尾拖拽排序条-->
-      <div class="split"/>
+      <div v-if="!searchValue" class="split" @dragenter.prevent @dragover.prevent @dragenter="show"
+      @drop="(e)=>dropOnSplit(e, currentFolder.children.length)" @dragleave="hide"/>
+      <!--末尾无效拖拽排序条-->
+      <div v-else class="split"/>
     </span>
     <!--右键菜单-->
     <template #overlay>
       <a-menu @click="action">
-        <!--新建组件-->
-        <a-sub-menu key="新建组件" title="新建组件">
-          <a-menu-item v-for="asset in ['模型','材质','代码']" :key="asset" 
+        <!--导入-->
+        <a-sub-menu key="导入" title="导入" :disabled="loadingModel">
+          <a-menu-item v-for="asset in ['模型','材质']" :key="asset" 
           @click="createAsset(asset)">
             {{asset}}
           </a-menu-item>
         </a-sub-menu>
-        <!--新建文件夹-->
-        <a-menu-item key="新建文件夹">新建文件夹</a-menu-item>
+        <!--新建-->
+        <a-sub-menu key="新建" title="新建">
+          <a-menu-item v-for="asset in ['文件夹','代码']" :key="asset" 
+          @click="createAsset(asset)">
+            {{asset}}
+          </a-menu-item>
+        </a-sub-menu>
         <!--重命名-->
         <a-menu-item key="重命名" :disabled="!dragAsset" @click="startRename">
           重命名
@@ -405,9 +511,13 @@
             <CheckOutlined v-if="sortMethod==mode"/>
           </a-menu-item>
         </a-sub-menu>
+        <!--创建时间-->
+        <a-menu-item key="创建时间" :disabled="!dragAsset" @click="printCreatedTime">
+          创建时间
+        </a-menu-item>
         <!--删除-->
         <a-menu-item key="删除" :disabled="!dragAsset">删除</a-menu-item>
       </a-menu>
     </template>
   </a-dropdown>
-</template>
+</template>./Global

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import BUS from "./EventBus"
+  import global from "./GlobalVariables"
   import { ref } from 'vue'
   import {
     CheckCircleOutlined,
@@ -21,7 +21,9 @@
   const newProp = ref('');
   var popup;
   var popupMask;
-  const popupContent = ref();
+  const popupContent = ref('');
+  const yesNoContent
+   = ref({content:'', yes:()=>{}, no:()=>{}});
 
   export default{
     components:{CheckCircleOutlined, CheckOutlined, CloseOutlined},
@@ -95,7 +97,7 @@
       setProp({e=null, unit=null, min=null, max=null, delta=1, fixed=0, loop=false, type="number"}){
         let result = chosenDOM_value.value;
         let enter = e.type=="keydown" && e.key=="Enter", scroll = e.type=="wheel";
-        if(type=="number"){
+        if(type == "number"){
           if(enter){result = JSON.parse(chosenDOM_value.value);}
           else if(scroll){
             e.preventDefault();
@@ -133,13 +135,20 @@
       },
     },
     setup(){
-      return {addCustomProp, angle, BUS, chosenDOM, chosenDOM_value, customCodeFont, DT, 
-        editProp, editValue, helpChange, newCode, newProp, popup, popupContent, popupMask}
+      return {addCustomProp, angle, global, chosenDOM, chosenDOM_value, customCodeFont, DT, 
+        editProp, editValue, helpChange, newCode, newProp, popup, popupContent, popupMask,
+        yesNoContent
+      }
     },
     mounted(){
-      BUS.on("showProperty", (data:string)=>{
+      global.on("assetNameDuplication", (data)=>{  // 确认重命名组件
+        yesNoContent.value = data;
+        this.showPopup("yes_no");
+      });
+      global.on("showProperty", (data)=>{
         if('未已'.includes(data[0])) DT.value = data;
-        else DT.value = BUS.getDTScene().findDTObjectById(data);
+        else if(data == "asset") {DT.value = window.assetDT;}
+        else DT.value = global.DTScene().findDTObjectById(data);
       })
       main = document.getElementById("main");
       popup = document.getElementById("popup"); 
@@ -175,7 +184,10 @@
 </script>
 
 <style>
-  .buttonCustomCode{float:right; margin:10px;}
+  .buttonCustomCode{
+    float:right; 
+    margin:10px;
+  }
   .customCode{
     margin-top: 10px;
     margin-left: 0px; 
@@ -184,7 +196,9 @@
     resize: none; 
     white-space: nowrap
   }
-  .input{border:1px solid dodgerblue;}
+  .input{
+    border:1px solid dodgerblue;
+  }
 	.popup{  
     background-color: #fff;  
     border: 2px solid dodgerblue;  
@@ -202,12 +216,27 @@
     align-items: center;   
     padding-left:10px
   }  
-  .row{display:block; margin-top:3px; margin-bottom:3px;}
+  .row{
+    display:block;
+    margin-top:3px; 
+    margin-bottom:3px;
+  }
+  .yes-no-content{
+    margin-top: 10px; 
+    margin-bottom: -12px; 
+    margin-right: 10px; 
+    text-align: right;
+  }
+  .yes-no-confirm{
+    border:#0B0 solid 1px; 
+    color:#0B0; 
+    margin-right:10px
+    }
 </style>
 
 <template>
   <h2 v-if="typeof DT == 'string'">{{ DT }}</h2>
-  <div v-else style="text-align:left">   
+  <div v-else style="text-align:left; display:flex;">   
     <a-collapse :default-active-key="[
       '基本属性', '几何属性', '物理属性', '材质属性', '代码属性', '自定义属性', '自定义脚本'
       ]">
@@ -346,7 +375,7 @@
           <strong>天空颜色：</strong>
           <a-input class="input" :style="propStyle(prop[0], 120)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
-            @keydown="(e)=>{setProp({e:e, type:typeof prop[1]}); BUS.emit('updateSkybox')}" 
+            @keydown="(e)=>{setProp({e:e, type:typeof prop[1]}); global.emit('updateSkybox')}" 
             @mouseout="chosenDOM=null"
           />
           <a-input :style="propStyle(prop[0], 120)" v-else :value="prop[1]"/>
@@ -357,7 +386,7 @@
           <strong>天际线颜色：</strong>
           <a-input class="input" :style="propStyle(prop[0], 120)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
-            @keydown="(e)=>{setProp({e:e, type:typeof prop[1]}); BUS.emit('updateSkybox')}" 
+            @keydown="(e)=>{setProp({e:e, type:typeof prop[1]}); global.emit('updateSkybox')}" 
             @mouseout="chosenDOM=null"
           />
           <a-input :style="propStyle(prop[0], 120)" v-else :value="prop[1]"/>
@@ -368,7 +397,7 @@
           <strong>地面颜色：</strong>
           <a-input class="input" :style="propStyle(prop[0], 120)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
-            @keydown="(e)=>{setProp({e:e, type:typeof prop[1]}); BUS.emit('updateSkybox')}" 
+            @keydown="(e)=>{setProp({e:e, type:typeof prop[1]}); global.emit('updateSkybox')}" 
             @mouseout="chosenDOM=null"
           />
           <a-input :style="propStyle(prop[0], 120)" v-else :value="prop[1]"/>
@@ -572,12 +601,15 @@
 
   <!--弹出式窗口-->
   <div id="popup" class="popup" 
-  :style="popupContent=='prop' ? {'width': '600px'} : {'width': '800px'}">
+  :style="{'width':
+    {'prop': '600px', 'code': '800px', 'yes_no': '400px'}[popupContent]
+  }">
     <!--头部拖动栏-->  
     <div id="popup-header" class="popup-header">  
       <strong style="color:white">
         <div v-if="popupContent=='prop'">自定义属性</div>
         <div v-if="popupContent=='code'">自定义脚本</div>
+        <div v-if="popupContent=='yes_no'">确认重命名</div>
       </strong>  
       <!--退出-->
       <a-button id="popup-quit" danger type="primary" @click="closePopup">
@@ -586,9 +618,24 @@
     </div>  
 
     <div class="popup-content" id="popup-content">  
-      <!--工具栏-->  
+      <!--双项选择栏-->
+      <div style="margin-top: 10px; text-align: left">
+        <div v-for="row in yesNoContent.content.split('\r')">
+          &nbsp;&nbsp;&nbsp;&nbsp;{{ row }}
+        </div>
+      </div>
+      <div v-if="popupContent=='yes_no'" class="yes-no-content">
+        <a-button class="yes-no-confirm" @click="yesNoContent.yes(); closePopup()">
+          是<CheckOutlined/>
+        </a-button>
+        <a-button danger @click="yesNoContent.no(); closePopup()">
+          否<CloseOutlined/>
+        </a-button>
+      </div>
+
+      <!--自定义属性工具栏-->  
       <span v-if="popupContent=='prop'" style="display:flex; margin:10px">
-        <a-button @click="addCustomProp=true; editProp = '';" 
+        <a-button @click="addCustomProp=true; editProp='';" 
         :disabled="addCustomProp">点此添加属性</a-button>&nbsp;
         <div v-if="addCustomProp">
           <a-input
@@ -692,3 +739,4 @@
     z-index: 100;
   "/>
 </template>
+./Global

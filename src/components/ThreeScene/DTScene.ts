@@ -1,5 +1,5 @@
 import * as Ammo from "ammo.js"
-import BUS from "../EventBus"
+import global from "../GlobalVariables"
 import * as fs from "fs";
 import * as THREE from "three"
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js"
@@ -74,11 +74,11 @@ physicsWorld.setGravity( G );
 // 碰撞体到刚体和网格的映射表，因为碰撞检测时碰撞体和刚体不同，而两者ptr相同，所以需要用ptr在此表中查找刚体和网格
 var rb_mesh = {};
 
-BUS.on("changeEmulateMode", (mode: string)=>{emulateMode = mode});
-BUS.on("changeSpeed", (k: string)=>{speed = parseInt(k.slice(0, k.length-1))});
-BUS.on("clearTemp", ()=>{SCENE.DT.clearTemp()});
+global.on("changeEmulateMode", (mode: string)=>{emulateMode = mode});
+global.on("changeSpeed", (k: string)=>{speed = parseInt(k.slice(0, k.length-1))});
+global.on("clearTemp", ()=>{SCENE.DT.clearTemp()});
 
-class DTObject {  // 用DTObject类包裹场景中的对象
+export class DTObject {  // 用DTObject类包裹场景中的对象
     children  // 子物体（自动计算）
     code: string  // 自定义脚本
     custom: object  // 自定义属性
@@ -105,7 +105,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
     type: string  // 模型类型
     v0: number  // 传送带中轴线速度
     wireframe
-    constructor(mesh=null, newScene=false) {  
+    constructor(mesh=null, newScene=false, asset=null) {  
         this.children = [];
         this.custom = {};
         this.friction0 = 0.5;  
@@ -118,9 +118,14 @@ class DTObject {  // 用DTObject类包裹场景中的对象
         if(mesh){
             this.id = this.key = mesh.id;
             this.mesh = mesh;
+            if(mesh.name) this.name = mesh.name;
             this.type = mesh.type;
             mesh.DT = this;
             mesh.userData.id = this.id;
+            if(asset == "model"){
+                this.geometry = mesh.geometry;
+                this.material = mesh.material;
+            }
         }
         if(newScene) DTObjects.value.push(this);
         return this;
@@ -228,7 +233,7 @@ class DTObject {  // 用DTObject类包裹场景中的对象
         SCENE.add(controller);
         this.updateChildren(true);
         this.updateWireframes(true);
-        BUS.emit("init");
+        global.emit("init");
     }
     setProp(prop, newValue) {
         let node = this, split = prop.split('.');
@@ -271,11 +276,17 @@ class DTObject {  // 用DTObject类包裹场景中的对象
     setTitle(name=null) {  // 物体在树中的标题 = 类型 + 名称 
         let title = '';
         if(this.type == "DirectionalLight") {}
-        else if(this.name == "地面") title = "【地面】";
-        else if(this.name) title = `【${this.name + this.id}】`;
-        else if(this.mesh.name) title = `【${this.mesh.name}】`;  // + this.id
+        else if(this.name == "地面") title = "地面";
+        else if(this.name) {  // 若标题太长则截取20个字符
+            if(this.name.length <= 20) title = this.name;
+            else title = this.name.slice(0, 20) + "...";
+        }
+        else if(this.mesh.name){  // + this.id
+            if(this.mesh.name.length <= 20) title = this.mesh.name;
+            else title = this.mesh.name.slice(0, 20) + "...";
+        } 
         else if(name) title = this.name = name;
-        this.title = this.type + title;
+        this.title = `(${this.type}) ` + title;
     }
     updateChildren(loadingFile=false) {  // 更新DTObject的父子关系
         let newChildren = [];
@@ -335,15 +346,15 @@ export default class SceneBuilder{
         // 物体数量变化时
         watch(computed(()=>DTObjects.value.length), ()=>{  // 只检测DTObjects的长度变化
             if(loading) return;
-            BUS.getDTScene().updateChildren();
-            BUS.emit("updateTree");
-            if(!temp) BUS.emit("saveInitScene");
+            global.DTScene().updateChildren();
+            global.emit("updateTree");
+            if(!temp) global.emit("saveInitScene");
             temp = true;
         });
         // 场景
         protectedObjects.push(SCENE.id);
-        BUS.setDTScene(new DTObject(SCENE, true));
-        BUS.getDTScene().skybox = {skyColor:"skyblue", skyline:"white", groundColor:"darkkhaki"};
+        global.setDTScene(new DTObject(SCENE, true));
+        global.DTScene().skybox = {skyColor:"skyblue", skyline:"white", groundColor:"darkkhaki"};
         // 渲染器
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.autoClear = false;
@@ -355,12 +366,21 @@ export default class SceneBuilder{
         const near = 0.1;
         const far = 1000;
         this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-        this.camera.position.set( 0, -25, 15 );
+        this.camera.position.set(0, -25, 15);
         this.camera.lookAt(0, 0, 0);
         this.camera.up.copy(UP);  // 在相机里让z轴向上
-        BUS.on("moveCameraTo", (id)=>{  // 双击将相机拉近至物体
+        global.on("moveCameraTo", (id)=>{  // 双击将相机拉近至物体
             moveCamera = id;
         });   
+        global.on("changeView", (key)=>{
+            let camera = this.camera;
+            if(key == "默认视图") camera.position.set(0, -25, 15);           
+            if(key == "俯视图") camera.position.set(0, 0, 20);
+            if(key == "正视图") camera.position.set(0, -50, 5);
+            if(key == "左视图") camera.position.set(-50, 0, 5);
+            if(key == "右视图") camera.position.set(50, 0, 5);
+            this.orbitControl.target.set(0, 0, 0)
+        })
         this.camera0 = this.camera.clone()  // 克隆一个无orbitControl相机，用于控制原相机的角度
         // 相机轨道控制器
         this.orbitControl = new OrbitControls(this.camera, this.renderer.domElement);
@@ -373,7 +393,7 @@ export default class SceneBuilder{
         // 相机平移控制器
         this.pointerControl = new PointerLockControls(this.camera0, this.renderer.domElement);
         // 平行光
-        const light = new THREE.DirectionalLight( "white", 3 );
+        var light = new THREE.DirectionalLight( "white", 3 );
         light.castShadow = true;
         light.position.set(-16, -16, 24);
         light.shadow.bias = - 0.003;
@@ -388,16 +408,20 @@ export default class SceneBuilder{
         SCENE.add( light );
         let DTLight = new DTObject(light, true);
         DTLight.setTitle();
+        // 自然光
+        // light = new THREE.AmbientLight( "white" );
+        // light.position.set(-16, -16, 24);
+        // SCENE.add( light );
         // 姿态控制器 
         this.controller = new TransformControls(this.camera, this.renderer.domElement);
         this.controller.traverse((child)=>{child.userData.controller = true});  // 对控制器做标记，以在点击时区分它和其它物体
         SCENE.add(this.controller);
         //window.tC = this.transformController;
-        BUS.on("controlStart", (id)=>{  // 选中物体开始控制
+        global.on("controlStart", (id)=>{  // 选中物体开始控制
             let DTObject = SCENE.getObjectById(id);
             this.controller.attach(DTObject);
         });
-        BUS.on("controlEnd", ()=>{  // 取消选择时收起控制器
+        global.on("controlEnd", ()=>{  // 取消选择时收起控制器
             this.controller.detach();
         });
         // 导向器（Gizmo）
@@ -448,21 +472,24 @@ export default class SceneBuilder{
         SCENE.add( line );
         // 快捷键设置
         this.canvas.addEventListener("keydown",(e)=>{
-            const step = 5;  // 相机前进步长
-            if(e.key == "1") this.controller.setMode("translate");  // 按1平移
-            else if(e.key == "2") this.controller.setMode("rotate");  // 按2旋转
-            else if(e.key == "3") this.controller.setMode("scale");  // 按3缩放
-            else if(e.key == "4") {  // 按4切换全局坐标系和局部坐标系
-                if(this.controller.space == "world") this.controller.setSpace("local");
-                else this.controller.setSpace("world");
+            if(global.mode() == "edit"){  // 在编辑模式下
+                if(e.code == "KeyQ") this.controller.setMode("translate");  // 按Q平移
+                else if(e.code == "KeyW") this.controller.setMode("rotate");  // 按W旋转
+                else if(e.code == "KeyE") this.controller.setMode("scale");  // 按E缩放
+                else if(e.code == "KeyR") {  // 按R切换全局坐标系和局部坐标系
+                    if(this.controller.space == "world") this.controller.setSpace("local");
+                    else this.controller.setSpace("world");
+                }
+                else if(e.code == "Escape") this.controller.reset();  // 按ESC恢复
+                else if(e.ctrlKey) {  // 按Ctrl将移动间距离散化
+                    if(e.code == "KeyZ") this.controller.reset();  // 按Ctrl+Z恢复
+                    this.controller.setTranslationSnap( 1 );
+                    this.controller.setRotationSnap( THREE.MathUtils.degToRad( 15 ) );
+                    this.controller.setScaleSnap( 0.25 );
+                }
             }
-            else if(e.key == "5") this.controller.reset();  // 按5恢复
-            else if(e.ctrlKey) {  // 按Ctrl将移动间距离散化
-                this.controller.setTranslationSnap( 1 );
-			    this.controller.setRotationSnap( THREE.MathUtils.degToRad( 15 ) );
-			    this.controller.setScaleSnap( 0.25 );
-            }
-            else{
+            if(global.mode() == "view"){  // 在浏览模式下
+                const step = 5;  // 相机前进步长
                 this.camera0.copy(this.camera);
                 if(e.code == "KeyW"){  // 按W前进，但借助camera0来求相机的新位置和角度
                     this.pointerControl.moveForward(step); 
@@ -474,13 +501,13 @@ export default class SceneBuilder{
                     this.pointerControl.moveRight(-step); 
                 }
                 if(e.code == "KeyD"){  // 按D右移
-                    this.pointerControl.moveRight(step); console.log(this.orbitControl )
+                    this.pointerControl.moveRight(step);
                 }
                 let p0 = this.camera0.position.clone();
                 this.camera.position.copy(p0);
                 this.camera0.getWorldDirection(front);
                 new THREE.Ray(p0, front).intersectPlane(Ground, this.orbitControl.target);
-            }console.log(this.orbitControl)
+            }
         })
         this.canvas.addEventListener("keyup",()=>{
             this.controller.setTranslationSnap( null );
@@ -489,7 +516,7 @@ export default class SceneBuilder{
         })
         // 预先载入自定义模型
         this.preloadModels();
-        BUS.on("init", ()=>this.init());
+        global.on("init", ()=>this.init());
         //this.importRobot()
     }
     init(){  // 场景更新时的操作
@@ -540,7 +567,7 @@ export default class SceneBuilder{
             models.push(`src/assets/models/Robot${i}.obj`);
         }
         for(let model of models){
-            loader.load(model, function (robot) {
+            loader.load(model, function(robot){
                 robot.traverse((mesh)=>{
                     if(mesh.isGroup || mesh.isMesh) {  // 递归判断dae下的子类标签是否是网格对象
                         if(model=="src/assets/models/Robot0.obj") {
@@ -577,7 +604,7 @@ export default class SceneBuilder{
         const material = new THREE.MeshBasicMaterial( { color: "white" } );
         return new THREE.Mesh( geom, material ) ;
     }
-    createGeometry(data, position: Object){  // 定义各物体属性
+    createGeometry(data, position: Object){  // 定义拖入的物体属性
         let indicators = [];  // 传送带的指示箭头
         let modelPath;
         let name = data.modeltype + '-' + data.modelname;
@@ -670,6 +697,26 @@ export default class SceneBuilder{
         DT.createRigidBody();
         SCENE.add(mesh);
         return mesh;
+    }  
+    createGeometryFromAsset(DT, position){  // 定义从组件库中拖入的组件的物体属性
+        let mesh0 = DT.mesh.clone();
+        mesh0.traverse((mesh)=>{
+            if(mesh.isGroup || mesh.isMesh) {  // 递归判断dae下的子类标签是否是网格对象
+                mesh.castShadow = mesh.receiveShadow = true;
+                mesh.material = new THREE.MeshPhongMaterial({color: "lightgray"});
+                new DTObject(mesh, true);
+            }
+        });
+        mesh0.scale.setScalar(20);
+        mesh0.rotateX(Math.PI/2);
+        let DT0 = mesh0.DT;
+        DT0.name = DT.name;
+        DT0.setTitle();
+        DT0.updateWireframes();
+        mesh0.position.copy(position);
+        if(DT.scale != 1){ mesh0.scale.setScalar(DT.scale); }
+        SCENE.add(mesh0);
+        return mesh0;
     }  
     createSkyBoxFromTexture() {
         // 图片路径有要求，需要放在public文件夹下
@@ -833,7 +880,7 @@ export default class SceneBuilder{
                 }
                 else if(mesh1.DT.name == "回收器"){
                     mesh0.DT.destroy();
-                    BUS.emit("print", `【${mesh0.DT.name}${mesh0.id}】被【${mesh1.DT.name}${mesh1.id}】回收`)
+                    global.emit("print", `【${mesh0.DT.name}${mesh0.id}】被【${mesh1.DT.name}${mesh1.id}】回收`)
                 }
             }
         }
@@ -880,7 +927,7 @@ export default class SceneBuilder{
                         mesh0.rotation.copy(mesh.rotation);
                         DTObjects.value.push(mesh0.DT);
                         SCENE.DT.children.push(mesh0.DT);
-                        BUS.emit("print", `【${DT.name}${DT.id}】创建了【${mesh0.DT.name}${mesh0.id}】`);
+                        global.emit("print", `【${DT.name}${DT.id}】创建了【${mesh0.DT.name}${mesh0.id}】`);
                         DT.timer = now;
                     }
                 }
