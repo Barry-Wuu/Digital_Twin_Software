@@ -5,7 +5,7 @@
   import Topbar from "./components/Topbar.vue"
   import "ant-design-vue"
   import { FullscreenExitOutlined } from '@ant-design/icons-vue';
-  import BUS from "./components/EventBus"
+  import global from "./components/GlobalVariables"
 
   var dragPoint = [0, 0];
   var draggedSpliter;
@@ -29,7 +29,7 @@
     ]
   });
   const showQuitFullscreen = ref(false);
-  BUS.on("changeQuitFullscreen", (data)=>{showQuitFullscreen.value = JSON.parse(data)});
+  global.on("changeQuitFullscreen", (data)=>{showQuitFullscreen.value = JSON.parse(data)});
   const quitFullscreenStyle = ref("default");
   var target;
 
@@ -45,8 +45,8 @@
   function addSplitMover(layout){  // 拖动分隔模块以改变相邻模块的尺寸
     if(layout.children){
       let children = layout.children;
-      for(let I in children){
-        let i = parseInt(I);
+      for(let index in children){
+        let i = parseInt(index);
         if(children[i].info){
           let info = children[i].info, DOM = document.getElementById(children[i].id);
           let addEventListener = (e)=>{
@@ -54,8 +54,9 @@
             initSize = [children[i-1].size, children[i+1].size];
             target = e.target;
           };
-          if(info == "col-split"){
+          if(info == "col-split"){  // 列分隔模块
             DOM.addEventListener("mousedown", (e)=>{
+              document.body.style.userSelect = "none";  // 拖动时禁止选中文本
               addEventListener(e);
               draggedSpliter = DOM;
             })
@@ -67,8 +68,9 @@
                 children[i+1].size = initSize[1] - dX;
               }
             });
-          } else if (info == "row-split"){
+          } else if (info == "row-split"){  // 行分隔模块
             DOM.addEventListener("mousedown", (e)=>{
+              document.body.style.userSelect = "none";  // 拖动时禁止选中文本
               addEventListener(e);
               draggedSpliter = DOM;
             })
@@ -91,9 +93,11 @@
   onMounted(() => {  // 加载完成时
     addSplitMover(layout.value);
     window.addEventListener("drop", ()=>{
+      document.body.style.userSelect = '';  // 恢复文本选择功能
       draggedSpliter = null;
     });
     window.addEventListener("mouseup", ()=>{
+      document.body.style.userSelect = '';  // 恢复文本选择功能
       draggedSpliter = null;
     });
   })
@@ -119,7 +123,7 @@
       " 
       :type="quitFullscreenStyle"
       @mouseenter = "quitFullscreenStyle = 'primary'"
-      @mousedown = "BUS.emit('canvasFullscreen'); quitFullscreenStyle = 'default'"
+      @mousedown = "global.emit('canvasFullscreen'); quitFullscreenStyle = 'default'"
       @mouseleave = "quitFullscreenStyle = 'default'"
       >
         <FullscreenExitOutlined/>退出全屏&nbsp;(Esc)
@@ -130,3 +134,4 @@
     </div>
   </a-config-provider>
 </template>
+./components/Global

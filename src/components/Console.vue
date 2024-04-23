@@ -1,29 +1,27 @@
 <script lang="ts">
     import { defineComponent, ref } from 'vue'
-    import BUS from "./EventBus"
+    import global from "./GlobalVariables"
     import * as THREE from 'three';  // 导入库以便在控制台中执行相应命令
     var Console = document.createElement("div");
     var command = ref('')
 
     // 下列未使用函数为控制台专用指令
     function DT(){
-      let DT = BUS.getDTScene();
+      let DT = global.DTScene();
       console.log(DT)
       return DT;
     };
-    function print(s){BUS.emit("print", s)};
+    function print(s){global.emit("print", s)};
 
-    function pad(x, n=2){return x.toString().padStart(n, '0')};
-    BUS.on("print", (data)=>{
+    function pad(x, n=2) {return x.toString().padStart(n, '0')}
+    global.on("print", (data)=>{
       Console.innerHTML += "<br>";
-      let date = new Date();
-      Console.innerHTML += date.getFullYear() + '/' 
-        + pad(date.getMonth() + 1) + '/'
-        + pad(date.getDate()) + ' '
-        + pad(date.getHours()) + ':'
-        + pad(date.getMinutes()) + ':'
-        + pad(date.getSeconds()) + '.'
-        + pad(date.getMilliseconds(), 3) + ' —— ';
+      let time = new Date();
+      Console.innerHTML += time.getFullYear() + '/' 
+        + pad(time.getMonth() + 1) + '/'
+        + pad(time.getDate()) + ' '
+        + time.toTimeString().split(' ')[0] + '.'
+        + pad(time.getMilliseconds(), 3) + ' —— ';
       Console.innerHTML += data;
     });
 
@@ -39,7 +37,7 @@
       },
       mounted(){
         Console = document.getElementById("console");
-        BUS.emit("print", "程序启动")
+        global.emit("print", "程序启动")
       }
     }
 </script>
@@ -53,4 +51,4 @@
   <div id="console" style="border-top: 1px solid grey; margin:10px; text-align:left">
     <strong>输出：</strong>
   </div>
-</template> 
+</template> ./Global

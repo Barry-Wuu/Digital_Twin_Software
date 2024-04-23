@@ -1,19 +1,18 @@
 import { defineComponent, ref, watch } from "vue"
 import * as THREE from "three"
 import DTScene from "./DTScene"
-import BUS from "../EventBus"
+import global from "../GlobalVariables"
 
 var app;
 var canvas;
 var delta = new THREE.Vector3();
 var dragFromOutside;  // 是否从外界拖入
+var dragData;
 var dragModel;
-var dragName;
 var dragPoint;  // 拖动开始时的拖动点
 var front = new THREE.Vector3();
 var fullscreen = false;
 var isDrag = false;  // 是否在用鼠标移动模型
-var mode = "edit";  // 编辑模式（edit）或浏览模式（view）
 var moveStart = null;  // 用左键移动镜头之前，射线检测器与地面的交点
 var mouseType = [false, false, false];  // 左、中、右键是否按下
 const ray = new THREE.Raycaster();  // 从鼠标发出的射线检测器
@@ -36,9 +35,9 @@ export default defineComponent({
       resizeObserver = new ResizeObserver(()=>{
         this.resizeCanvas()
       });
-      BUS.on("dragstart", (data)=>{dragName = data;});
-      BUS.on("dropout", ()=>dragModel.remove());
-      BUS.on("canvasFullscreen", ()=>{  // 全屏或退出全屏
+      global.on("dragModelStart", (data)=>{dragData = data;});
+      global.on("dropout", ()=>dragModel.remove());
+      global.on("canvasFullscreen", ()=>{  // 全屏或退出全屏
         fullscreen = !fullscreen;
         if(fullscreen){ 
           parent = canvas.parentElement;
@@ -52,10 +51,9 @@ export default defineComponent({
           canvas.style = style;
           parent.appendChild(canvas);
         }
-        BUS.emit("changeQuitFullscreen", fullscreen);
+        global.emit("changeQuitFullscreen", fullscreen);
         this.resizeCanvas();
       });
-      BUS.on('modeSelect', data => mode = data);
       return{
         description: null,
         rendered: false,
@@ -101,7 +99,7 @@ export default defineComponent({
         return result;
       },
       onDragenter(e){
-        console.log(e.dataTransfer)
+        let data = e.dataTransfer;
         // 隐藏拖动图像
         function findImg(DOM){
           for(let child of DOM.children){
@@ -110,12 +108,19 @@ export default defineComponent({
           }
         }
         findImg(e.fromElement);
-        e.dataTransfer.setDragImage(document.createElement("img"), 0 ,0);
+        data.setDragImage(document.createElement("img"), 0 ,0);console.log()
         // 拖入模型
-        let modelName = dragName.data;
-        if(dragName.type != "modelName") return;
+        let DT, modelName;
         dragFromOutside = true;
-        dragModel = this.scene.createGeometry(modelName, this.intersectObject(e)[1]);
+        if(dragData.type == "asset"){
+          DT = dragData.data.DT;
+          dragModel = this.scene.createGeometryFromAsset(DT, this.intersectObject(e)[1]);
+        }
+        if(dragData.type == "model"){
+          modelName = dragData.data;
+          dragModel = this.scene.createGeometry(modelName, this.intersectObject(e)[1]);
+        }
+        else return;
         dragModel.isDrag = true;
         dragModel.material.transparent = true;
         tempOpacity = dragModel.material.opacity;
@@ -168,29 +173,29 @@ export default defineComponent({
             this.scene.DTObjects.value.push(dragModel.DT);
           }
           dragModel = null;
-          if(dragName) dragName.data.modeltype = null;
-          tempModel.clear();
+          if(tempModel) tempModel.clear();
         }
-        BUS.emit("updateTree");
+        global.emit("updateTree");
       },
       onKeyup(k){
         // 按键抬起
       },
       onKeydown(k){
-        if(k.code == "Delete") BUS.emit("deleteChoices");
+        if(k.code == "Delete") global.emit("deleteChoices");
       },
       onMousedown(e){
+        global.emit("deselectAsset");
         mouseType[e.button] = true;
         if(mouseType[0]){
           if(mouseType[2]){}  // 双击左右键则移动
-          else if(mode == "edit"){  // 左键点击
+          else if(global.mode() == "edit"){  // 左键点击
             let result = this.intersectObject(e);
             let choice = result[0];
             if(choice.userData.controller) return;  // 点击控制器则忽略后文
             dragPoint = result[1];
             if(choice.userData.indicator) choice = choice.parent;  // 点击指示箭头
             if(choice.DT && !choice.userData.ground){
-              BUS.emit("clickModel", choice.id + ',' + e.shiftKey); 
+              global.emit("clickModel", choice.id + ',' + e.shiftKey); 
               delta.subVectors(result[0].position, result[1]);  // Δp = 选中物体的坐标 - 物体上点击处的坐标
               dragModel = choice;
               dragModel.isDrag = true;
@@ -201,7 +206,7 @@ export default defineComponent({
                 this.scene.removeRigidBody(dragModel);
               }
             } else {
-              BUS.emit("deselect")
+              global.emit("deselect")
             }
           }
         }
@@ -217,7 +222,7 @@ export default defineComponent({
           };
         } else if(mouseType[0]){
           this.scene.orbitControl.mouseButtons = {
-            LEFT: mode == "edit" ? -1 : ROTATE, MIDDLE: isDrag ? -1 : ZOOM, RIGHT: -1
+            LEFT: global.mode() == "edit" ? -1 : ROTATE, MIDDLE: isDrag ? -1 : ZOOM, RIGHT: -1
           };
         } else if(mouseType[1]){
           this.scene.orbitControl.mouseButtons = {
@@ -290,7 +295,7 @@ export default defineComponent({
       resizeObserver.observe(canvas.parentElement.parentElement.parentElement);
       window.addEventListener("keydown", (k)=>{
         if(k.code == "Escape" && fullscreen){
-          BUS.emit("canvasFullscreen");
+          global.emit("canvasFullscreen");
         }
       });
     },

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import BUS from "./EventBus"
+    import global from "./GlobalVariables"
     import {
         BorderlessTableOutlined,  // 网格图标
         BulbOutlined,  // 灯光图标
@@ -25,9 +25,9 @@
     var TREEs = ref([]);
     function emitProperty(){  // 将物体id发送到属性栏
       let len = choices.value.length;
-      if(len == 0){BUS.emit("showProperty", "未选择对象")}
-      else if(len == 1){BUS.emit("showProperty", choices.value[0])}
-      else {BUS.emit("showProperty", `已选择${len}个对象`)}
+      if(len == 0){global.emit("showProperty", "未选择对象")}
+      else if(len == 1){global.emit("showProperty", choices.value[0])}
+      else {global.emit("showProperty", `已选择${len}个对象`)}
     }
 
     export default defineComponent({
@@ -44,7 +44,7 @@
         MinusSquareOutlined
       },
       data(){
-        BUS.on("clickModel", (id_shift: string)=>{  // 点击屏幕中的物体
+        global.on("clickModel", (id_shift: string)=>{  // 点击屏幕中的物体
           let id_shift_split = id_shift.split(',');
           let selection = JSON.parse(id_shift_split[0]);
           let shift = JSON.parse(id_shift_split[1]);
@@ -52,24 +52,24 @@
             if(choices.value.includes(selection))  // 多选取消
               choices.value = choices.value.filter(k => k != selection);
             else choices.value.push(selection);  // 多选选择
-            BUS.emit("controlEnd")  // 收起控制器
+            global.emit("controlEnd")  // 收起控制器
           }
           else{  // 单选
             choices.value = [selection];
-            BUS.emit("controlStart", selection);  // 选中物体开始控制
+            global.emit("controlStart", selection);  // 选中物体开始控制
           }
         });
-        BUS.on("deselect", ()=>{  // 取消选择
+        global.on("deselect", ()=>{  // 取消选择
           this.deselect();
-          BUS.emit("controlEnd")  // 收起控制器
+          global.emit("controlEnd")  // 收起控制器
         });
-        BUS.on("deleteChoices", ()=>{this.deleteChoices()});
-        BUS.on("foldAll", ()=>{this.foldAll()});
-        BUS.on("updateSearch", ()=>{this.search(TREE.value)});
-        BUS.on("updateTree", ()=>{
-          try {BUS.getDTScene().setRow(expanded.value);} 
+        global.on("deleteChoices", ()=>{this.deleteChoices()});
+        global.on("foldAll", ()=>{this.foldAll()});
+        global.on("updateSearch", ()=>{this.search(TREE.value)});
+        global.on("updateTree", ()=>{
+          try {global.DTScene().setRow(expanded.value);} 
           catch(e) {console.log(e)}
-          let DTScene = BUS.getDTScene();
+          let DTScene = global.DTScene();
           DTObjects = DTScene.getDTObjects();         
           TREE.value = [DTScene];
         });
@@ -108,29 +108,29 @@
         },
         deleteChoices(){
           for(let id of choices.value){
-            let DTObject = BUS.getDTScene().findDTObjectById(id);
+            let DTObject = global.DTScene().findDTObjectById(id);
             if(DTObject) DTObject.destroy();
           }
-          BUS.emit("updateTree");
+          global.emit("updateTree");
         },  // 删除所选模型
         deselect(){  // 点别处取消点选模型
+          global.emit("deselectAsset");
           choices.value = [];
-          BUS.emit("controlEnd");  // 收起控制器
+          global.emit("controlEnd");  // 收起控制器
         },
         doubleClick(){  // 双击将相机拉近至物体
           choices.value = [lastChoice];
-          BUS.emit("moveCameraTo", lastChoice);
+          global.emit("moveCameraTo", lastChoice);
         },
         dragFrom(e){  // 开始拖拽
           // console.log(e)
         },
         dragTo(e){  // 结束拖拽
           let sourceDT = e.dragNode.dataRef, targetDT = e.node.dataRef;
-          console.log(targetDT);
           if(!targetDT.children.includes(sourceDT)){
             targetDT.mesh.attach(sourceDT.mesh);  // attach方法既改变父子关系，又不改变物体的绝对坐标
             //sourceDT.mesh.scale.setScalar(1, 1, 1);
-            BUS.getDTScene().updateChildren();
+            global.DTScene().updateChildren();
             if(!expanded.value.includes(targetDT.key)) expanded.value.push(targetDT.key);
             this.updateLine();
           }
@@ -139,12 +139,11 @@
           this.expanded.value = [];
           this.updateLine();
         },
-        onClick(_, Selection){  // 点击Tree中的项目
-          console.log(_, Selection)
+        onClick(_, Selection){  // 点击Tree中的项目)
           let selection = Selection.node.key;
           if(choices.value.length == 1 && selection == lastChoice) {  // 取消选择
             choices.value = choices.value.filter(k => k != selection);
-            BUS.emit("controlEnd");  // 收起控制器
+            global.emit("controlEnd");  // 收起控制器
           } 
           else if(shift) {  // 按shift进入默认的多选模式
             if(choices.value.includes(selection)){  // 多选取消
@@ -152,14 +151,14 @@
             } else {  // 多选选择
               choices.value.push(selection);
             }
-            BUS.emit("controlEnd");  // 收起控制器
+            global.emit("controlEnd");  // 收起控制器
           }
           else {  // 单选
             choices.value = [selection];
-            BUS.emit("controlStart", selection);  // 选中物体开始控制
+            global.emit("controlStart", selection);  // 选中物体开始控制
             lastChoice = selection;
           }
-          BUS.emit("deselectAsset")  // 点击外部则取消选择组件
+          global.emit("deselectAsset")  // 点击外部则取消选择组件
         },
         onKeydown(k){
           if(k.code == "Delete") {this.deleteChoices();}
@@ -167,26 +166,18 @@
         },
         search(){  // 搜索栏内容改变时
           if(searchValue.value){
-            let result = [];
-            for(let DT of DTObjects){
-              if(DT.title.indexOf(searchValue.value) > -1) {
-                let DT0 = JSON.parse(JSON.stringify(DT));
-                DT0.children = [];  // 清除搜索项的父子关系
-                result.push(DT0)
-              };
-            }
-            TREEs.value = result;
+            TREEs.value = DTObjects.filter(DT => DT.title.indexOf(searchValue.value) > -1);
           }
         },
         update(){  // 更新线框和属性栏
           emitProperty();
-          for(let DT of BUS.getDTScene().getDTObjects()){
+          for(let DT of global.DTScene().getDTObjects()){
             if(DT.wireframe) DT.wireframe.visible = choices.value.includes(DT.id);
           };
           this.updateLine();
         },
         updateLine(){  // 更新层级树的连接线和内容
-          BUS.emit("updateTree");   
+          global.emit("updateTree");   
         }
       },
       
@@ -212,10 +203,32 @@
         watch(computed(()=>choices.value.length), ()=>{
           this.update();
         });
-        watch(TREE, ()=>{BUS.emit('updateSearch');});
+        watch(TREE, ()=>{global.emit('updateSearch');});
       },
     });
 </script>
+
+<style>
+  #hierarchy{
+    display:flex; outline: none
+  }
+  .treelineH{
+    background-color: lightgrey;
+    position: absolute; 
+    top: 11px; 
+    left: -14px;
+    width: 12px;
+    height: 2px;
+  }
+  .treelineV{
+    background-color: lightgrey;
+    position: absolute; 
+    top: 28px; 
+    left: 10px; 
+    width: 2px;
+  }
+</style>
+
 <template>
   <!--搜索栏-->
   <a-input-search v-model:value="searchValue" placeholder="搜索"
@@ -225,24 +238,19 @@
       </template>
   </a-input-search>
   <a-dropdown :trigger="['contextmenu']">
-    <div tabindex="0" @click="deselect" @keydown = "onKeydown" style="outline: none">
+    <div id="hierarchy" tabindex="0" @click="deselect" @keydown="onKeydown">
       <!--层级树-->
       <a-tree v-if="!searchValue" @click.stop draggable multiple selectable
       v-model:expandedKeys = "expanded"
       :selectedKeys = "choices" 
-      style="margin-left: 10px"
+      style="margin-left: 6px"
       :tree-data="TREE" 
       @contextmenu="(e)=>console.log(e)"
       @dblclick="doubleClick" @expand="update" @select="onClick"
       @dragstart="dragFrom" @drop="dragTo">
-        <!--重写展开和折叠标志-->
-        <template #switcherIcon="DT">
-          <MinusSquareOutlined v-if="DT.expanded"/>
-          <PlusSquareOutlined v-else/>
-        </template>
         <!--各个结点-->
         <template #title="DT">
-          <span :style="DT.children.length ? {} : {'margin-left': '-24px'}">
+          <span style="white-space: nowrap">
             <BorderlessTableOutlined v-if="DT.type=='GridHelper'"/>
             <BulbOutlined v-if="DT.mesh.isLight"/>
             <CodepenOutlined v-if="DT.mesh.isMesh"/>
@@ -250,29 +258,23 @@
             <DropboxOutlined v-if="DT.mesh.isGroup || DT.mesh.isScene"/>
             {{ DT.title }}
             <!--横向连接线-->
-            <div v-if="DT.title!='Scene'" style="
-              background-color: lightgrey;
-              position: absolute; 
-              top: 11px; 
-              left: -37px; 
-              width: 12px;
-              height: 2px;
-            "/>
+            <div v-if="DT.title!='Scene' && DT.isLeaf" class="treelineH"/>
             <!--纵向连接线-->
-            <div v-if="DT.row" style="
-              background-color: lightgrey;
-              position: absolute; 
-              top: 28px; 
-              left: -13px; 
-              width: 2px;
-            " :style="{'height': 12+(DT.row-1)*28+'px'}"/>
+            <div v-if="DT.row" class="treelineV" :style="{'height': 12+(DT.row-1)*28+'px'}"/>
           </span>
         </template> 
+        <!--展开和折叠标志-->
+        <template #switcherIcon="DT">
+          <span style="background-color:white; margin-left: -2px">
+            <MinusSquareOutlined v-if="DT.expanded"/>
+            <PlusSquareOutlined v-else/>
+          </span>
+        </template>
       </a-tree>  
       <!--搜索树-->
       <a-tree v-else :tree-data="TREEs" multiple @select="onClick" :selectedKeys = "choices">
         <template #title="DT">
-          <span>
+          <span style="margin-left: -18px">
             <BorderlessTableOutlined v-if="DT.type=='GridHelper'"/>
             <BulbOutlined v-if="DT.mesh.isLight"/>
             <CodepenOutlined v-if="DT.mesh.isMesh"/>
@@ -296,3 +298,4 @@
     </template>
   </a-dropdown> 
 </template>
+./Global

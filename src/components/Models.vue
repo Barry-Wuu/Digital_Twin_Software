@@ -1,27 +1,27 @@
 <script lang="ts">
-  import { ref } from 'vue';
+  import { ref } from "vue";
   import {
     CloseOutlined,  // 清除图标
-  } from '@ant-design/icons-vue';
-  import BUS from "./EventBus"
+  } from "@ant-design/icons-vue";
+  import global from "./GlobalVariables"
   var models = ref({
     "传送带": [
-      ["直道",'../assets/直道.jpg'],
-      ["弯道",'../assets/弯道.jpg'],
-      ["护栏",'../assets/护栏.jpg'],
-      ["传感器",'../assets/传感器.jpg'],
+      ["直道","直道.jpg"],
+      ["弯道","弯道.jpg"],
+      ["护栏","护栏.jpg"],
+      ["传感器","传感器.jpg"],
     ],
     "货物": [
-      ["发生器",'../assets/发生器.jpg'],
-      ["货物",'../assets/货物.jpg'],
-      ["回收器",'../assets/回收器.jpg'],
-      ["模型",'../assets/cube.jpg'],
+      ["发生器","发生器.jpg"],
+      ["货物","货物.jpg"],
+      ["回收器","回收器.jpg"],
+      ["模型","cube.jpg"],
     ],
     "基本几何体":[
-      ["正方体",'../assets/cube.jpg'],
-      ["球",'../assets/sphere.jpg'],
-      ["锥体",'../assets/pyramid.jpg'],
-      ["圆柱",'../assets/cone.jpg'],
+      ["正方体","cube.jpg"],
+      ["球","sphere.jpg"],
+      ["锥体","cone.jpg"],
+      ["圆柱","cylinder.jpg"],
     ],
   })
   const activeKeys = ref([]);
@@ -54,9 +54,7 @@
         findImg(e.srcElement);
         e.dataTransfer.setDragImage(document.createElement("img"), 0, 0); 
         //e.dataTransfer.setDragImage(result, 0, 0);
-        e.dataTransfer.setData("type", "model");
-        e.dataTransfer.setData("modelName", data);
-        BUS.emit("dragstart", {type:"modelName", data:data});
+        global.emit("dragModelStart", {type: "model", data: data});
       },
       onRightClick(e){
         let option = e.key;
@@ -82,7 +80,13 @@
       }
     },
     setup() {return {activeKeys, models, searchValue, searchResult}},
-    mounted(){}
+    mounted(){
+      for(let items in models.value){
+        for(let item of models.value[items]){
+          item[1] = "../assets/icons/" + item[1];
+        }
+      }
+    }
   }
 </script>
 
@@ -162,3 +166,4 @@
     </template>
   </a-dropdown>
 </template>
+./Global
