@@ -82,6 +82,11 @@
           }
         } catch {}
       },
+      setColor(e){  // 更改材质颜色
+        if(e.type=='keydown' && e.key=='Enter'){
+          DT.value.mesh.material.color.setStyle(e.target.value);
+        }
+      },
       setCustomCodeFont(size){  // 更改自定义脚本字体
         let rule = ['xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large'];
         let style = document.getElementById("customCode").style;
@@ -236,7 +241,7 @@
 
 <template>
   <h2 v-if="typeof DT == 'string'">{{ DT }}</h2>
-  <div v-else style="text-align:left; display:flex;">   
+  <div v-else style="text-align:left; wrap:nowrap;">   
     <a-collapse :default-active-key="[
       '基本属性', '几何属性', '物理属性', '材质属性', '代码属性', '自定义属性', '自定义脚本'
       ]">
@@ -336,7 +341,7 @@
           <a-input :style="propStyle(prop[0], 80)" v-else
             :value="loop(Math.round(prop[1]/angle), 360)"
             @wheel="(e)=>setProp({e:e, unit:angle, min:0, max:360, delta:10, fixed:2, loop:true})"
-          />
+          />°
         </span>&nbsp;
 
         <span :title="helpChange" v-for="prop in hasProp('mesh.rotation.z')">
@@ -349,7 +354,7 @@
           <a-input :style="propStyle(prop[0], 80)" v-else
             :value="loop(Math.round(prop[1]/angle), 360)"
             @wheel="(e)=>setProp({e:e, unit:angle, min:0, max:360, delta:10, fixed:2, loop:true})"
-          />
+          />°
         </span>  
 
         <!--比例-->
@@ -568,7 +573,14 @@
               :value="parseInt(prop[1]*255)"
               @wheel="(e)=>setProp({e:e, unit:1/255, min:0, max:255})"
             />&nbsp;
-          </span>
+          </span><br>
+
+          <!--更改颜色-->
+          更改颜色：
+          <span :title="helpChange">
+            <a-input style="width: 120px" placeholder="输入CSS颜色"
+            @keydown="setColor"/>
+          </span> 
         </div>
 
         <!--透明度-->
