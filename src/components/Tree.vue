@@ -20,6 +20,7 @@
     var expanded = ref([]);  // 展开的选项
     var lastChoice;  //  上一个选项
     var shift = false;  // 是否按下Shift键
+    var space = false;  // 是否按下空格键
     const searchValue = ref("");
     var TREE = ref();
     var TREEs = ref([]);
@@ -163,6 +164,7 @@
         onKeydown(k){
           if(k.code == "Delete") {this.deleteChoices();}
           else if(k.code == "ShiftLeft") shift = true;
+          else if (k.code == "Space") space = true;
         },
         search(){  // 搜索栏内容改变时
           if(searchValue.value){
@@ -196,6 +198,7 @@
         });  
         window.addEventListener('keyup', (k)=>{
           if(k.code == "ShiftLeft") shift = false;
+          if (k.code == "Space") space = false;
         });  
         watch(computed(()=>choices.value[0]), ()=>{  // 根据选项变化来确定被选物体，并展示或隐藏物体边框
           this.update();
