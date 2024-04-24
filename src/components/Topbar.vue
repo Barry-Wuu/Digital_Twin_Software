@@ -14,24 +14,32 @@
         CaretDownOutlined,
         CaretRightOutlined,
         CheckOutlined,
+        CloseOutlined,
+        CodepenOutlined,
         CodeSandboxOutlined,
         DeleteTwoTone, 
         FormOutlined,
         ForwardOutlined,
         FullscreenOutlined,
+        MinusOutlined,
         PauseOutlined,
+        PlusOutlined,
         ReloadOutlined,
         StepForwardOutlined,
+        VideoCameraOutlined,
     } from "@ant-design/icons-vue";
 
     var BottomMessage;
     var BottomSpeed;
+    const cameraMode = ref("透视");
+    const customViews = ref([]);
     const emulateMode = ref("stop");  // 仿真状态
     var fast = ref(25);  // 快进速度
     var fileInput;  // 文件选择器
     var fileOutput;  // 文件保存器
     const GLTFexporter = new GLTFExporter();
     const GLTFloader = new GLTFLoader();
+    const layers = ref(["特殊物体", "货物", "指示箭头", "Gizmo", "物体控制器"]);
     const marks = {0:'1x', 25: '2x', 50: '4x', 
         75: {style: {color: 'lightgrey', textDecoration: "line-through"}, label: '8x'}, 
         100: {style: {color: 'lightgrey', textDecoration: "line-through"}, label: '10x'}
@@ -51,6 +59,8 @@
     const recentOpened = ref([]);  // 最近打开的场景文件
     const speed = ref(0);
     const tab = ref("主要功能");  // 栏目
+    const viewName = ref('');  // 自定义视角名称
+    const wireframe = ref("包围盒");  // 物体边框
 
     export default defineComponent({
         components: {
@@ -61,20 +71,28 @@
             CaretDownOutlined,
             CaretRightOutlined,
             CheckOutlined,
+            CloseOutlined,
+            CodepenOutlined,
             CodeSandboxOutlined,
             DeleteTwoTone, 
             FormOutlined,
             ForwardOutlined,
             FullscreenOutlined,
+            MinusOutlined,
             PauseOutlined,
+            PlusOutlined,
             ReloadOutlined,
             StepForwardOutlined,
+            VideoCameraOutlined,
         },
         methods:{
             action(option){  // 场景操作
                 if(option == "新建场景") this.loadScene(null, "src/temp/New.DTScene");
                 if(option == "载入场景") fileInput.click();
                 if(option == "保存场景") this.saveScene();
+            },
+            changeCamera(e){  // 切换相机类型（投影/正交）
+                cameraMode.value = e.key;
             },
             changeFullscreen(){  // 切换全屏显示
                 global.emit("canvasFullscreen");
@@ -90,6 +108,17 @@
                 global.emit("changeSpeed", marks[speed.value]);
                 BottomSpeed.textContent = marks[speed.value];
             },
+            changeLayers(){  // 更改各类物体的显隐性
+                global.emit("changeControllerVisibility", layers.value.includes("物体控制器"));
+                global.emit("changeGizmoVisibility", layers.value.includes("Gizmo"));
+                global.DTScene().mesh.traverse(mesh => {
+                    if(mesh.userData.indicator) mesh.visible = layers.value.includes("指示箭头");
+                    ;
+                    if(mesh.DT && mesh.DT.temp) mesh.visible = layers.value.includes("货物");
+                    if(mesh.DT && mesh.DT.special) mesh.visible = layers.value.includes("特殊物体");
+                    ;
+                });
+            },
             changeSpeed(value){  // 更改速度，value为滑动条百分比，marks[value]为实际速度倍率
                 if(value.key) value=value.key;
                 if(value>=75) value=50;
@@ -99,9 +128,18 @@
                 global.emit("changeSpeed", marks[value]);
                 BottomSpeed.textContent = marks[value];
             },
-            changeTab(key){tab.value = key},  // 切换顶部栏目
+            changeTab(key){  // 切换顶部栏目及其标题颜色
+                tab.value = key;
+            },
             changeView(e){  // 切换视角
                 global.emit("changeView", e.key)
+            },
+            changeWireframe(e){  // 切换物体边框
+                wireframe.value = e.key;
+                global.emit("changeWireframe", e.key);
+            },
+            clearViewName(){
+                this.$nextTick(()=>{viewName.value = ''});
             },
             clearTemp(){global.emit("clearTemp")},  // 清除临时实体
             ipcRenderer(data){ electron.ipcRenderer.send(data); },  // 刷新页面
@@ -192,13 +230,49 @@
             setMode(newMode){  // 切换编辑/浏览模式
                 global.setMode(newMode);
                 mode.value = newMode;
+            },
+            viewAdd(){  // 新建视角
+                customViews.value.push({
+                    name: viewName.value,
+                    position: global.camera().position.clone(),
+                    target: global.camera().userData.orbitControl.target.clone()
+                });
+                customViews.value.sort(  // 将视角按名称拼音排序
+                    (a,b) => a.name.localeCompare(b.name, 'zh-cn', {sensitivity:'accent'})
+                );
+                viewName.value = '';
+                this.viewSave();
+            },
+            viewClear(){  // 清空自定义视角
+                customViews.value = [];
+                this.viewSave();
+            },
+            viewExists(){  // 视角名称是否存在
+                return customViews.value.filter(view=>view.name==viewName.value)[0]; 
+            },
+            viewSave(){  // 保存自定义视角
+                fs.writeFileSync("src/customViews.txt", JSON.stringify(customViews.value));
+            },
+            viewSelect(e){  // 选择视角
+                if(e.key == "新增视角" || e.key == "移除视角") return;
+                viewName.value = e.key;
+                let view = customViews.value.filter(item => item.name==e.key)[0];
+                global.camera().position.copy(view.position);
+                global.camera().userData.orbitControl.target.copy(view.target);
+            },
+            viewDelete(){  // 移除视角
+                customViews.value = customViews.value.filter(
+                    view => view.name != viewName.value
+                );
+                viewName.value = '';
+                this.viewSave();
             }
         },
         setup() {
             const selectedKey = ref([]);
             return {
-                global, emulateMode, fast, marks, menu, mode, recentOpened, 
-                savepath:"", selectedKey, speed, tab,
+                cameraMode, customViews, global, emulateMode, fast, layers, marks, menu, 
+                mode, recentOpened, savepath:"", selectedKey, speed, tab, viewName, wireframe
             };
         },
         mounted(){
@@ -208,9 +282,12 @@
             fileInput = document.getElementById("fileInput");
             fileOutput = document.getElementById("fileOutput");
             fileOutput.download = this.savepath;
-            try {  // 有历史打开记录则加载
-                let history = fs.readFileSync("src/recentOpened.txt", "utf-8"); 
-                recentOpened.value = JSON.parse(history);
+            try {  // 有历史打开记录和自定义视角则加载
+                let file;
+                file = fs.readFileSync("src/recentOpened.txt", "utf-8"); 
+                recentOpened.value = JSON.parse(file);
+                file = fs.readFileSync("src/customViews.txt", "utf-8"); 
+                customViews.value = JSON.parse(file);
             } 
             catch {}
             global.on("saveInitScene", ()=>{this.saveScene("src/temp/New.DTScene")});
@@ -234,6 +311,7 @@
 <style>
     .bottom {margin-bottom:10px;}
     .bottomBorder {border-top:2px solid grey; width:100%}
+    .layers {margin-top: 10px; text-align:left; padding: 10px;}
     .logo {border-radius:5px; cursor:pointer}
     .logoBig {font-size:36px;}
     .marginLR5 {margin-left:5px; margin-right:5px;}
@@ -241,6 +319,7 @@
     .splitH {border:1px solid lightgrey;}
     .splitV {border:1px solid lightgrey;}
     .top {margin-top:10px;}
+    .toptab {border:2px solid grey; display: flex; height:100px; user-select: none}
     .top16 {margin-top:16px;}
 </style>
 
@@ -256,17 +335,20 @@
         <a-sub-menu v-for="key in menu">
             <template #title>
                 <div v-if="typeof key == 'object'">{{key[0]}}</div>
-                <div v-else @click="changeTab(key)">{{key}}</div>
+                <div v-else @click="changeTab(key);"
+                :style="{'color': tab == key ? 'dodgerblue': 'black'}">
+                    {{key}}
+                </div>
             </template>
 
             <!--文件-->
             <a-list v-if="typeof key == 'object'" v-for="option in key[1]">  
                 <a-sub-menu v-if="option=='最近打开'" title="最近打开">
-                    <a-menu-item v-for="(path, index) in recentOpened.slice().reverse()" :key="path" 
-                    @click="loadScene(null, path)">
+                    <a-menu-item v-for="(path, index) in recentOpened.slice().reverse()" 
+                    :key="path"  @click="loadScene(null, path)">
                         {{ index + 1 + '：' + path }}
                     </a-menu-item>
-                    <a-menu-item v-if="!recentOpened[0]" disabled>无</a-menu-item>
+                    <a-menu-item v-if="!recentOpened[0]" disabled>（无）</a-menu-item>
                     <hr class="splitH"/>          
                     <a-menu-item @click="setHistory('clear')">清空历史记录</a-menu-item>
                 </a-sub-menu>
@@ -280,7 +362,7 @@
     </a-menu>
 
     <!--主要功能-->
-    <span v-if="tab=='主要功能'" style="border:2px solid grey; display: flex; height:100px">
+    <span v-if="tab=='主要功能'" class="toptab" @click="global.emit('deselect')">
         <!--模式选择-->
         <div style="align-items:center; display:inline; height:100%" class="bottom marginLR5">
             <span style="align-items:center; display:flex; 
@@ -387,22 +469,68 @@
         </div>
         <vr class="splitV"/><!--分隔符-->
 
+        <!--系统操作-->
+        <div style="align-items:center; display:inline; height:100%" class="bottom marginLR5">
+            <span style="align-items:center; display:flex; 
+            height: calc(100% - 35px); justify-content:space-evenly;" class="bottom">
+                <!--重载界面-->
+                <div class="logo marginLR10 top16" @click="()=>{ipcRenderer('reload')}"
+                @mousedown = "e => e.preventDefault()"
+                @mouseenter = "e => e.target.style.color = 'dodgerblue'"
+                @mouseleave = "e => e.target.style.color = 'black'">
+                    <ReloadOutlined class="logoBig"/>
+                    <br>重载界面
+                </div>
+            </span>
+            <div class="bottomBorder">系统操作</div>
+        </div>
+        <vr class="splitV"/><!--分隔符-->
+    </span>
+
+    <!--可视化-->
+    <span v-if="tab=='可视化'" class="toptab" @click="global.emit('deselect')">
+        <!--层级选择-->
+        <div style="align-items:center; display:inline; height:100%" class="marginLR5">
+            <span style="align-items:center; display:flex; 
+            height: calc(100% - 35px); justify-content:space-evenly;" class="bottom">
+                <!--层级选择-->
+                <a-checkbox-group v-model:value="layers" @change="changeLayers">
+                    <a-row :gutter="8" class="layers">
+                        <a-col>          
+                            <a-checkbox value="指示箭头">指示箭头</a-checkbox><br>
+                            <a-checkbox value="Gizmo">Gizmo</a-checkbox><br>
+                            <a-checkbox value="物体控制器">物体控制器</a-checkbox><br> 
+                        </a-col>
+                        <a-col>
+                            <a-checkbox value="货物">货物</a-checkbox><br>
+                            <a-checkbox value="特殊物体">特殊物体</a-checkbox><br>
+                            <a-checkbox value="碰撞体" disabled>碰撞体</a-checkbox>
+                        </a-col>
+                    </a-row>
+                </a-checkbox-group>
+            </span>
+            <div class="bottomBorder">层级选择</div>
+        </div>
+        <vr class="splitV"/><!--分隔符-->
+
         <!--相机控制-->
         <div style="align-items:center; display:inline; height:100%" class="bottom marginLR5">
             <span style="align-items:center; display:flex; 
             height: calc(100% - 35px); justify-content:space-evenly;" class="bottom">
-                <!--层级选择-->
+                <!--投影模式-->
                 <a-dropdown :trigger="['click']">
                     <div class="logo marginLR10 top16 ant-dropdown-link" @click.prevent>
-                        <BlockOutlined class="logoBig"/>
-                        <br>层级选择
+                        <VideoCameraOutlined class="logoBig"/>
+                        <br>投影模式
                     </div>
                     <!--左键菜单-->
                     <template #overlay>
-                        <a-menu @click="">
-                            <a-menu-item key="aaa">aaa</a-menu-item>
-                            <a-menu-item key="bbb">bbb</a-menu-item>
-                            <a-menu-item key="ccc">ccc</a-menu-item>
+                        <a-menu @click="changeCamera">
+                            <a-menu-item v-for="item in ['透视', '正交']" :key="item"
+                            :disabled="item==cameraMode">
+                                {{item}}&nbsp;
+                                <CheckOutlined v-if="item==cameraMode"/>
+                            </a-menu-item>
                         </a-menu>
                     </template>
                 </a-dropdown>
@@ -431,11 +559,29 @@
                     </div>
                     <!--左键菜单-->
                     <template #overlay>
-                        <a-menu @click="">
-                            <a-menu-item key="ggg">ggg</a-menu-item>
-                            <a-menu-item key="hhh">hhh</a-menu-item>
-                            <a-menu-divider/>
-                            <a-menu-item key="iii">iii</a-menu-item>
+                        <a-menu @click="viewSelect">
+                            <a-menu-item v-if="!customViews[0]" disabled>（无）</a-menu-item>
+                            <a-menu-item v-for="view in customViews" :key="view.name">
+                                {{ view.name }}
+                            </a-menu-item>
+                            <hr class="splitH"/>
+                            <a-input v-model:value="viewName" placeholder="视角名称" 
+                            style="width: 100%"/>
+                            <a-menu-item key="新增视角" @click="viewAdd" 
+                            :disabled="viewName.trim() == ''||viewExists()">
+                                <PlusOutlined/>&nbsp;新增视角
+                            </a-menu-item>
+                            <a-menu-item key="移除视角" @click="viewDelete" :disabled="!viewExists()">
+                                <MinusOutlined/>&nbsp;移除视角
+                            </a-menu-item>
+                            <a-popconfirm title="确定清空视角吗？"
+                            placement="bottom" ok-text="否" cancel-text="是"
+                            @cancel="viewClear"><!--左边的为cancel，右边的为ok-->
+                                <a-menu-item danger href="#"  key="清空视角" 
+                                :disabled="!customViews[0]" @click="clearViewName">
+                                    <CloseOutlined/>&nbsp;清空视角
+                                </a-menu-item>
+                            </a-popconfirm>
                         </a-menu>
                     </template>
                 </a-dropdown>
@@ -443,14 +589,29 @@
             <div class="bottomBorder">相机控制</div>
         </div>
         <vr class="splitV"/><!--分隔符-->
-    </span>
 
-    <!--可视化-->
-    <span v-if="tab=='可视化'" style="border:2px solid grey; display: flex; height:100px">
         <!--屏幕-->
         <div style="align-items:center; display:inline; height:100%" class="marginLR5">
             <span style="align-items:center; display:flex; 
             height: calc(100% - 35px); justify-content:space-evenly;" class="bottom">
+                <!--物体边框--> 
+                <a-dropdown :trigger="['click']">
+                    <div class="logo marginLR10 top16 ant-dropdown-link" @click.prevent>
+                        <CodepenOutlined class="logoBig"/>
+                        <br>物体边框
+                    </div>
+                    <!--左键菜单-->
+                    <template #overlay>
+                        <a-menu @click="changeWireframe">
+                            <a-menu-item v-for="item in ['包围盒', '边缘发光']" :key="item"
+                            :disabled="item==wireframe">
+                                {{item}}&nbsp;
+                                <CheckOutlined v-if="item==wireframe"/>
+                            </a-menu-item>
+                        </a-menu>
+                    </template>
+                </a-dropdown>
+                <!--全屏显示-->   
                 <div class="logo marginLR10 top16" @click="changeFullscreen"
                 @mousedown = "e => e.preventDefault()"
                 @mouseenter = "e => e.target.style.color = 'dodgerblue'"
@@ -460,23 +621,6 @@
                 </div>     
             </span>
             <div class="bottomBorder">屏幕</div>
-        </div>
-        <vr class="splitV"/><!--分隔符-->
-
-        <!--系统操作-->
-        <div style="align-items:center; display:inline; height:100%" class="bottom marginLR5">
-            <span style="align-items:center; display:flex; 
-            height: calc(100% - 35px); justify-content:space-evenly;" class="bottom">
-                <!--重载界面-->
-                <div class="logo marginLR10 top16" @click="()=>{ipcRenderer('reload')}"
-                @mousedown = "e => e.preventDefault()"
-                @mouseenter = "e => e.target.style.color = 'dodgerblue'"
-                @mouseleave = "e => e.target.style.color = 'black'">
-                    <ReloadOutlined class="logoBig"/>
-                    <br>重载界面
-                </div>
-            </span>
-            <div class="bottomBorder">系统操作</div>
         </div>
         <vr class="splitV"/><!--分隔符-->
     </span>

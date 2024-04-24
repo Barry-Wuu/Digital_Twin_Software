@@ -2,6 +2,11 @@ import { defineComponent, ref, watch } from "vue"
 import * as THREE from "three"
 import DTScene from "./DTScene"
 import global from "../GlobalVariables"
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { LuminosityShader } from 'three/examples/jsm/shaders/LuminosityShader.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { SobelOperatorShader } from 'three/examples/jsm/shaders/SobelOperatorShader.js';
 
 var app;
 var canvas;
@@ -32,9 +37,7 @@ export default defineComponent({
     props:{},
     components:{},
     data(){
-      resizeObserver = new ResizeObserver(()=>{
-        this.resizeCanvas()
-      });
+      resizeObserver = new ResizeObserver(()=>{this.resizeCanvas()});
       global.on("dragModelStart", (data)=>{dragData = data;});
       global.on("dropout", ()=>dragModel.remove());
       global.on("canvasFullscreen", ()=>{  // 全屏或退出全屏
@@ -260,16 +263,22 @@ export default defineComponent({
       },
       remove(){this.scene.SCENE.remove(dragModel)},
       resizeCanvas() {  //让画布大小和父组件大小相适应
+        let composer = this.scene.composer;
         let width = window.innerWidth, height = window.innerHeight;
+        document.getElementById("canvas").style.width = "444px";
         if(!fullscreen){  // 直接预览
           let tab = canvas;
           for(let i=0; i<4; i++){tab = tab.parentElement;}
-          width = canvas.clientWidth;  
+          width = tab.clientWidth;  
           height = tab.clientHeight - tab.children[0].clientHeight - 4; 
         }  // 否则全屏预览
-        this.scene.renderer.setSize(width, height);
         this.scene.camera.aspect = width / height;
         this.scene.camera.updateProjectionMatrix();
+        this.scene.renderer.setSize(width, height);
+        composer.setSize(width, height);
+        if(composer.passes[1]) composer.passes[1].resolution.set(width, height);
+        if(composer.passes[2]) 
+          composer.passes[2].uniforms['resolution'].value.set(1/width, 1/height);
       },
       setControl(key, action){  // 设置快捷键（左键、中间、右键：平移、旋转、放缩）
         var map = {

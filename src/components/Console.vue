@@ -42,13 +42,19 @@
     }
 </script>
   
+<style>
+  .console{border-top: 1px solid grey; margin:10px; text-align:left}
+</style>
+
 <template>
-  <a-input-search v-model:value="command" placeholder="指令" @search="(command)=>{run(command)}">
+  <a-input-search v-model:value="command" placeholder="指令" 
+  style="padding-top: 6px; padding-left: 15px; padding-right: 15px"
+  @search="(command)=>{run(command)}">
     <template #enterButton>
       <a-button type="primary">运行</a-button>
     </template>
   </a-input-search>
-  <div id="console" style="border-top: 1px solid grey; margin:10px; text-align:left">
+  <div id="console" class="console">
     <strong>输出：</strong>
   </div>
 </template> ./Global

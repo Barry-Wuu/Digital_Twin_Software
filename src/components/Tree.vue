@@ -23,6 +23,8 @@
     const searchValue = ref("");
     var TREE = ref();
     var TREEs = ref([]);
+    var wireframe = "包围盒";
+
     function emitProperty(){  // 将物体id发送到属性栏
       let len = choices.value.length;
       if(len == 0){global.emit("showProperty", "未选择对象")}
@@ -44,6 +46,7 @@
         MinusSquareOutlined
       },
       data(){
+        global.on("changeWireframe", (x)=>{wireframe = x;}) 
         global.on("clickModel", (id_shift: string)=>{  // 点击屏幕中的物体
           let id_shift_split = id_shift.split(',');
           let selection = JSON.parse(id_shift_split[0]);
@@ -171,9 +174,19 @@
         },
         update(){  // 更新线框和属性栏
           emitProperty();
-          for(let DT of global.DTScene().getDTObjects()){
-            if(DT.wireframe) DT.wireframe.visible = choices.value.includes(DT.id);
-          };
+          if(wireframe == "包围盒"){  // 更新物体包围盒线框
+            for(let DT of global.DTScene().getDTObjects()){
+              if(DT.wireframe) 
+                DT.wireframe.visible = choices.value.includes(DT.id);
+            };
+          }
+          if(wireframe == "边缘发光"){  // 更新物体边缘线框
+            global.emit("lightWireframe", null);
+            global.emit("lightWireframe", global.DTScene().getDTObjects()
+              .filter(DT => choices.value.includes(DT.id))
+              .map(DT => DT.mesh)
+            );
+          }
           this.updateLine();
         },
         updateLine(){  // 更新层级树的连接线和内容

@@ -85,6 +85,9 @@
       setColor(e){  // 更改材质颜色
         if(e.type=='keydown' && e.key=='Enter'){
           DT.value.mesh.material.color.setStyle(e.target.value);
+          if(DT.value.mesh.userData.ground){  // 更改地面颜色时同时更改雾的颜色
+            global.emit("changeFogColor");
+          }
         }
       },
       setCustomCodeFont(size){  // 更改自定义脚本字体
@@ -122,6 +125,9 @@
         } else if(enter || scroll){
           DT.value.setProp(e.target.style.prop, result);
         } 
+        if(DT.value.mesh.userData.ground){  // 更改地面颜色时同时更改雾的颜色
+          global.emit("changeFogColor");
+        }
       },
       showPopup(content){  // 显示自定义属性和脚本弹出窗口
         if(popupContent.value == content) this.closePopup();
@@ -253,14 +259,14 @@
           <strong>物体类型：</strong>{{ DT.type }}
         </div>
 
-        <!--物体名称-->
-        <div v-if="'name' in DT" class="row">
-          <strong>物体名称：</strong>{{ DT.name }}
-        </div>
-
         <!--物体ID-->
         <div v-if="'id' in DT" class="row">
           <strong>物体ID：</strong>{{ DT.id }}
+        </div>
+
+        <!--物体名称-->
+        <div v-if="'name' in DT" class="row">
+          <strong>物体名称：</strong>{{ DT.name }}
         </div>
 
         <!--是否可见-->
