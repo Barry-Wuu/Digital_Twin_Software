@@ -22,6 +22,7 @@ import { computed, ref, watch } from "vue"
 
 var BottomFPS, BottomTimer;
 let customModels = {};
+let attachObjects=new THREE.Group();
 var DTObjects = ref([]);
 var emulateMode = "stop";  // 仿真模式
 var frameCounter = 0;  // 帧计数器，计满60帧近似看做1秒
@@ -211,7 +212,11 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         catch {}
         let index = DTObjects.value.indexOf(this);
         if(index != -1) DTObjects.value.splice(index, 1);  // 原地修改DTObject.value，以防监听不到其变化
-    }  
+    }
+    sensorStop() {
+        let rb = this.mesh.userData.physicsBody;
+        rb.setMassProps(0, new Ammo.btVector3(0, 0, 0));
+    }   
     findDTObjectById(id, loadingFile=false) {  // 根据id寻找物体 
         if(!loadingFile){
             let mesh = SCENE.getObjectById(id);
@@ -330,7 +335,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
             wireframe.visible = false;
             this.wireframe = wireframe;
         }
-        for(let child of this.children){child.updateWireframes(loadingFile);}
+        // for(let child of this.children){child.updateWireframes(loadingFile);}
     }
 }  
 
@@ -631,8 +636,28 @@ export default class SceneBuilder{
         const material = new THREE.MeshBasicMaterial( { color: "white" } );
         return new THREE.Mesh( geom, material ) ;
     }
+    createAttachPoint1(x, y) {  // 连接点1(横坐标，纵坐标)
+        const geom = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+        const material = new THREE.MeshBasicMaterial({ color: "red" });
+        const point = new THREE.Mesh(geom, material);
+        point.position.x = x;
+        point.position.y = y
+        point.name = "ap1";
+        return point;
+    }
+    createAttachPoint2(x, y) {  // 连接点2(横坐标，纵坐标)
+        const geom = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+        const material = new THREE.MeshBasicMaterial({ color: "lime" });
+        const point = new THREE.Mesh(geom, material);
+        point.position.x = x;
+        point.position.y = y
+        point.name = "ap2";
+        return point;
+    }
     createGeometry(data, position: Object){  // 定义拖入的物体属性
         let indicators = [];  // 传送带的指示箭头
+        let attachPoint1 = [];//连接点1
+        let attachPoint2 = [];//连接点2
         let modelPath;
         let name = data.modeltype + '-' + data.modelname;
         let mesh = new THREE.Mesh();
@@ -645,10 +670,10 @@ export default class SceneBuilder{
                 DT.rigidShape = "new Ammo.btBoxShape(new Ammo.btVector3( 1, 0.25, 0.5 ))";
             }
             else if(data.modelname == "传感器"){
-                DT.geometry = new THREE.BoxGeometry( 2, 0.5, 1 );
-                DT.material = { color: "red", opacity: 0.5, transparent: true };
-                DT.rigidShape = "new Ammo.btBoxShape(new Ammo.btVector3( 1, 0.25, 0.5 ))";
-                DT.special = true;
+                DT.geometry = new THREE.BoxGeometry(3, 0.1, 0.1);
+                DT.rigidShape = new Ammo.btBoxShape(new Ammo.btVector3(1.5, 0.05, 0.05));
+                DT.material = { color: "lime", opacity: 0.5, transparent: true };
+                DT.code = 'let rb = this.mesh.userData.physicsBody; \n rb.setMassProps(0, new Ammo.btVector3(0, 0, 0));'
             }
             else{
                 DT.scale = 0.05;
@@ -659,13 +684,19 @@ export default class SceneBuilder{
                     DT.material = { color: "lightgray" };
                     DT.v0 = 2;
                     indicators = [this.createArrow(0.5, 0, 0)]
+                    attachPoint1 = [this.createAttachPoint1(0, 0)]
+                    attachPoint2 = [this.createAttachPoint2(150, 0)]
                 }
                 if(data.modelname == "弯道"){
                     DT.material = { color: "lightgray" };
                     DT.v0 = 2;
                     indicators = [this.createArrow(-5, 0, 90)]
+                    attachPoint1 = [this.createAttachPoint1(-100, 0)]
+                    attachPoint2 = [this.createAttachPoint2(0, 100)]
                 }   
             }
+            attachObjects.add(DT.mesh);
+            localStorage.setItem('attachObjects', JSON.stringify(attachObjects));
         }
         else if(name == "货物-发生器"){  
             DT.geometry = new THREE.BoxGeometry( 1, 1, 1 );
@@ -719,7 +750,19 @@ export default class SceneBuilder{
                 i.userData.indicator = true;
                 mesh.add(i);
             }
-        }   
+        } 
+        if (attachPoint1.length) {  // 连接点1
+            for (let i of attachPoint1) {
+                i.scale.set(1 / DT.scale, 1 / DT.scale, 1 / DT.scale);
+                mesh.add(i);
+            }
+        }
+        if (attachPoint2.length) {  // 连接点2
+            for (let i of attachPoint2) {
+                i.scale.set(1 / DT.scale, 1 / DT.scale, 1 / DT.scale);
+                mesh.add(i);
+            }
+        }  
 
         mesh.castShadow = mesh.receiveShadow = true;
         mesh.position.copy(position);
@@ -913,6 +956,9 @@ export default class SceneBuilder{
                 else if(mesh1.DT.name == "回收器"){
                     mesh0.DT.destroy();
                     global.emit("print", `【${mesh0.DT.name}${mesh0.id}】被【${mesh1.DT.name}${mesh1.id}】回收`)
+                }
+                else if (mesh1.DT.name == "传感器") {
+                    mesh0.DT.sensorStop();
                 }
             }
         }
