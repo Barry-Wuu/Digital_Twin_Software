@@ -9,7 +9,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 
 const storedattachObjects = localStorage.getItem('attachObjects');
 const attachObjects = JSON.parse(storedattachObjects);
-console.log(attachObjects);
+// console.log(attachObjects);
 var app;
 var canvas;
 var delta = new THREE.Vector3();
