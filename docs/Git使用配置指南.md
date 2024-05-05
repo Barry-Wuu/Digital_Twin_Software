@@ -2,14 +2,15 @@
 [参考视频（该视频仅供参考，具体操作请严格按照下面的规范操作）](https://www.bilibili.com/video/BV19e4y1q7JJ/?spm_id_from=333.999.0.0&vd_source=4f7244b037b690184e273c18093968d0)
 ## 配置
 - 配置本机电脑邮箱以及用户名
-    - 邮箱（目前大家的注册邮箱均为`me+名字拼音@mail.scut.edu.cn`）： git config --global user.email "your@mail.scut.edu.cn"
+    - 邮箱（目前大家的注册邮箱均为`me+姓名拼音@mail.scut.edu.cn`）： 
+     `git config --global user.email "me+姓名拼音@mail.scut.edu.cn"`
         - 例如`罗漪雄`的邮箱为`meluoyixiong@mail.scut.edu.cn`
-    - 用户名（姓名拼音）： git config --global user.name "Your Name"
+    - 用户名（姓名拼音）： `git config --global user.name "姓名拼音"`
 
 ## Git使用规范
 `注意，括号内为示例命令，需要根据具体情况进行修改`
-1.  clone项目到本地(`git clone https://p605z95310.zicp.fun/SCUTCaiHu/Test.git`）
-	1. 注意：首次克隆后不用执行`git pull`更新，其他时候只更新不克隆)
+1.  clone项目到本地（`git clone https://p605z95310.zicp.fun/SCUTCaiHu/DT-FrontEnd.git`）
+	1. 注意：首次克隆后不用执行`git pull`更新，其他时候只更新不克隆
 2.  切换到dev开发分支（`git checkout dev`）
 3.  查看当前分支（`git branch -a`）
 4.  更新项目dev分支到本地(`git pull`)
