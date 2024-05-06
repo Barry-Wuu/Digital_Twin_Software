@@ -6,7 +6,6 @@
     import Menu from './Menu.vue'
     import Models from './Models.vue'
     import Properties from './Properties.vue'
-    import Demo from './Demo.vue'
     import Tree from './Tree.vue'
     export default defineComponent({
         components:{Assets, Canvas, Console, Menu, Models, Properties, Tree},
@@ -74,7 +73,7 @@
             <Tree v-if="tab=='层级'"/>
             <Canvas v-if="tab=='场景'"/>
             <div v-if="tab=='演示场景'" style="display:block">  
-                <Demo style="border:1px solid black"/>
+                <div style="border:1px solid black"/>
             </div>  
             <Assets v-if="tab=='组件库'"/>
             <Console v-if="tab=='控制台'"/>  

@@ -10,7 +10,7 @@
     PictureTwoTone,
     RollbackOutlined
   } from '@ant-design/icons-vue'
-  import global from "./GlobalVariables"
+  import global from "./Global"
   import { DTObject } from './ThreeScene/DTScene'
   import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js"
   const path = require("path");
@@ -270,7 +270,8 @@
           if(currentFolder.value.children.filter(  // 如果名称重复则弹出重命名窗口
             asset => asset.name == renamed.value && asset != renamingAsset.value
           ).length){
-            global.emit("assetNameDuplication", {  // 弹窗询问是否重命名
+            global.emit("popup", {  // 弹窗询问是否重命名
+              type: "yes_no",
               content: `组件“${renamed.value}”已存在。\r确定将其重命名吗？`,
               yes: ()=>{  // 确认重命名
                 renaming.name = name;
@@ -541,4 +542,4 @@
       </a-menu>
     </template>
   </a-dropdown>
-</template>./Global
+</template>./Global./Global

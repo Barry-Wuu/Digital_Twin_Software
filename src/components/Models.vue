@@ -3,7 +3,7 @@
   import {
     CloseOutlined,  // 清除图标
   } from "@ant-design/icons-vue";
-  import global from "./GlobalVariables"
+  import global from "./Global"
   var models = ref({
     "传送带": [
       ["直道","直道.jpg"],
@@ -166,4 +166,4 @@
     </template>
   </a-dropdown>
 </template>
-./Global
+./Global./Global

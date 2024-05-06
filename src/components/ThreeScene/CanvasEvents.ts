@@ -1,7 +1,7 @@
 import { defineComponent, ref, watch } from "vue"
 import * as THREE from "three"
 import DTScene from "./DTScene"
-import global from "../GlobalVariables"
+import global from "../Global"
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { LuminosityShader } from 'three/examples/jsm/shaders/LuminosityShader.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -45,7 +45,7 @@ export default defineComponent({
     });
     global.on("dragModelStart", (data) => { dragData = data });
     global.on("dropout", () => dragModel.remove());
-    global.on("canvasFullscreen", () => {  // 全屏或退出全屏
+    global.on("changeFullscreen", () => {  // 全屏或退出全屏
       fullscreen = !fullscreen;
       if (fullscreen) {
         parent = canvas.parentElement;
@@ -367,7 +367,7 @@ export default defineComponent({
     resizeObserver.observe(canvas.parentElement.parentElement.parentElement);
     window.addEventListener("keydown", (k) => {
       if (k.code == "Escape" && fullscreen) {
-        global.emit("canvasFullscreen");
+        global.emit("changeFullscreen");
       }
     });
   },

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import global from "./GlobalVariables"
+    import global from "./Global"
     const electron = require("electron");
     const fs = require("fs");
     const JSZip = require("jszip");  // 用于压缩解压文件的库
@@ -24,6 +24,7 @@
         MinusOutlined,
         PauseOutlined,
         PlusOutlined,
+        QuestionCircleOutlined,
         ReloadOutlined,
         StepForwardOutlined,
         VideoCameraOutlined,
@@ -81,6 +82,7 @@
             MinusOutlined,
             PauseOutlined,
             PlusOutlined,
+            QuestionCircleOutlined,
             ReloadOutlined,
             StepForwardOutlined,
             VideoCameraOutlined,
@@ -93,9 +95,10 @@
             },
             changeCamera(e){  // 切换相机类型（投影/正交）
                 cameraMode.value = e.key;
+                global.emit("changeCamera", e.key);
             },
             changeFullscreen(){  // 切换全屏显示
-                global.emit("canvasFullscreen");
+                global.emit("changeFullscreen");
             },
             changeEmulateMode(mode){  // 切换仿真状态
                 emulateMode.value = mode;
@@ -142,7 +145,15 @@
                 this.$nextTick(()=>{viewName.value = ''});
             },
             clearTemp(){global.emit("clearTemp")},  // 清除临时实体
-            ipcRenderer(data){ electron.ipcRenderer.send(data); },  // 刷新页面
+            ipcRenderer(data){   // 刷新页面 
+                electron.ipcRenderer.send(data); 
+            },
+            lightON(e, condition = true){  // 鼠标移入图标时将其点亮
+                if(condition) e.target.style.color = 'dodgerblue';
+            },
+            lightOFF(e, condition = true){  // 鼠标移入图标时将其熄灭
+                if(condition) e.target.style.color = 'black';
+            },
             loadScene(e=null, target=null){
                 let DTFilePath;  // 选择路径
                 if(e) DTFilePath = e.target.files[0].path;  // 从input选择路径导入
@@ -371,8 +382,7 @@
                 <div class="logo marginLR10 top16"
                 :style="{'background': mode=='edit' ? 'powderblue' : ''}"
                 @click="setMode('edit'); global.emit('modeSelect', 'edit')" @click.prevent
-                @mouseenter = "e => e.target.style.color = 'dodgerblue'"
-                @mouseleave = "e => e.target.style.color = 'black'">
+                @mouseenter = "lightON" @mouseleave = "lightOFF">      
                     <FormOutlined class="logoBig"/>
                     <br>编辑模式
                 </div>
@@ -380,8 +390,7 @@
                 <div class="logo marginLR10 top16"
                 :style="{'background': mode=='view' ? 'powderblue' : ''}"
                 @click="setMode('view'); global.emit('modeSelect', 'view')" @click.prevent
-                @mouseenter = "e => e.target.style.color = 'dodgerblue'"
-                @mouseleave = "e => e.target.style.color = 'black'">
+                @mouseenter = "lightON" @mouseleave = "lightOFF">      
                     <CameraOutlined class="logoBig"/>
                     <br>浏览模式
                 </div>
@@ -397,9 +406,7 @@
                 <div class="marginLR10" style="display:flex; margin-top:16px">
                     <!--重置-->
                     <div class="logo" @click="clearTemp(); changeEmulateMode('stop')" 
-                    @mousedown = "e => e.preventDefault()"
-                    @mouseenter = "e => e.target.style.color = 'red'"
-                    @mouseleave = "e => e.target.style.color = 'black'">              
+                    @mousedown.prevent @mouseenter = "lightON" @mouseleave = "lightOFF">          
                         <DeleteTwoTone twoToneColor="red"/>重置&nbsp;&nbsp;
                     </div>
                     <!--暂停-->
@@ -407,9 +414,9 @@
                     :style="
                         emulateMode=='stop' ? {color:'grey', cursor:'default'} : {color:'black', cursor:'pointer'}
                     " 
-                    @mousedown = "e => e.preventDefault()"
-                    @mouseenter = "e => {if(emulateMode!='stop') e.target.style.color = 'dodgerblue'}"
-                    @mouseleave = "e => {if(emulateMode!='stop') e.target.style.color = 'black'}">     
+                    @mousedown.prevent
+                    @mouseenter = "e => lightON(e, emulateMode!='stop')" 
+                    @mouseleave = "e => lightOFF(e, emulateMode!='stop')">      
                         <PauseOutlined/>暂停&nbsp;&nbsp; 
                     </div>
                     <!--运行-->
@@ -417,24 +424,21 @@
                     :style="
                         emulateMode=='play' ? {color:'grey', cursor:'default'} : {color:'black', cursor:'pointer'}
                     " 
-                    @mousedown = "e => e.preventDefault()"
-                    @mouseenter = "e => {if(emulateMode!='play') e.target.style.color = 'dodgerblue'}"
-                    @mouseleave = "e => {if(emulateMode!='play') e.target.style.color = 'black'}">              
+                    @mousedown.prevent
+                    @mouseenter = "e => lightON(e, emulateMode!='play')"
+                    @mouseleave = "e => lightOFF(e, emulateMode!='play')">              
                         <CaretRightOutlined/>运行&nbsp;&nbsp;
                     </div>
                     <!--步进-->
                     <div class="logo" @click="changeEmulateMode('step')" 
-                    @mousedown = "e => e.preventDefault()"
-                    @mouseenter = "e => e.target.style.color = 'dodgerblue'"
-                    @mouseleave = "e => e.target.style.color = 'black'">              
+                    @mousedown.prevent @mouseenter = "lightON" @mouseleave = "lightOFF">             
                         <StepForwardOutlined/>步进&nbsp;&nbsp;
                     </div>
                     <!--快进-->
                     <div class="logo"
-                    @mousedown = "e => {e.preventDefault(); changeEmulateMode('fast');}"
-                    @mouseup = "e => changeEmulateMode('play')"
-                    @mouseenter = "e => e.target.style.color = 'dodgerblue'"
-                    @mouseleave = "e => e.target.style.color = 'black'">              
+                    @mousedown = "changeEmulateMode('fast')" @mousedown.prevent
+                    @mouseup = "changeEmulateMode('play')"
+                    @mouseenter = "lightON" @mouseleave = "lightOFF">          
                         <ForwardOutlined/>快进&nbsp;&nbsp;
                     </div>
                     <a-dropdown>
@@ -475,11 +479,15 @@
             height: calc(100% - 35px); justify-content:space-evenly;" class="bottom">
                 <!--重载界面-->
                 <div class="logo marginLR10 top16" @click="()=>{ipcRenderer('reload')}"
-                @mousedown = "e => e.preventDefault()"
-                @mouseenter = "e => e.target.style.color = 'dodgerblue'"
-                @mouseleave = "e => e.target.style.color = 'black'">
+                @mousedown.prevent @mouseenter = "lightON" @mouseleave = "lightOFF">
                     <ReloadOutlined class="logoBig"/>
                     <br>重载界面
+                </div>
+                <!--帮助-->
+                <div class="logo marginLR10 top16" @click="global.emit('popup', {type:'help'})"
+                @mousedown.prevent @mouseenter = "lightON" @mouseleave = "lightOFF">
+                    <QuestionCircleOutlined class="logoBig"/>
+                    <br>帮助
                 </div>
             </span>
             <div class="bottomBorder">系统操作</div>
@@ -613,9 +621,7 @@
                 </a-dropdown>
                 <!--全屏显示-->   
                 <div class="logo marginLR10 top16" @click="changeFullscreen"
-                @mousedown = "e => e.preventDefault()"
-                @mouseenter = "e => e.target.style.color = 'dodgerblue'"
-                @mouseleave = "e => e.target.style.color = 'black'">
+                @mousedown = "global.emit('help')">
                     <FullscreenOutlined class="logoBig"/>
                     <br>全屏显示
                 </div>     
@@ -625,4 +631,4 @@
         <vr class="splitV"/><!--分隔符-->
     </span>
 </template>
-  ./Global
+  ./Global./Global
