@@ -1,47 +1,14 @@
 <script lang="ts">
-  import global from "./GlobalVariables"
+  import global from "./Global"
   import { ref } from 'vue'
-  import {
-    CheckCircleOutlined,
-    CheckOutlined,
-    CloseOutlined,
-  } from '@ant-design/icons-vue';
 
-  const addCustomProp = ref(false);
   const angle = Math.PI/180;
   const chosenDOM = ref(null);
   const chosenDOM_value = ref(null);
-  const customCodeFont = ref(3);
   const DT = ref("未选择对象");
-  const editProp = ref('');
-  const editValue = ref();
-  const helpChange = "点此可修改参数，按下回车键确认修改";
-  var main;
-  const newCode = ref('');
-  const newProp = ref('');
-  var popup;
-  var popupMask;
-  const popupContent = ref('');
-  const yesNoContent
-   = ref({content:'', yes:()=>{}, no:()=>{}});
 
   export default{
-    components:{CheckCircleOutlined, CheckOutlined, CloseOutlined},
     methods:{
-      closePopup(quit=true){  // 清空并隐藏新增属性输入栏，关闭弹窗
-        if(quit){
-          popupContent.value = null; 
-          popup.style.display = popupMask.style.display="none";
-        }
-        addCustomProp.value = false;
-        editProp.value = newProp.value = '';
-      },
-      createCustomProp(){
-        if(DT.value.custom[newProp.value] == undefined) {
-          DT.value.custom[newProp.value] = null;
-          this.closePopup(false);
-        };
-      },
       hasProp(prop){  // DT对象有某属性则显示，无则不显示
         let node = DT.value;
         for(let p of prop.split('.')){
@@ -53,19 +20,6 @@
       loop(x, max){  // 限定x在0~max之间循环，比如角度
         x = JSON.parse(x);
         return x%max + (x<0 ? max : 0);
-      },
-      obj2table(data){  // 将自定义属性对象转为a-table对象
-        if(!data) return [];
-        let result = [];
-        for(let prop of Object.keys(data).sort()) {
-          result.push({key:prop, prop:prop, value:data[prop]});
-        }
-        return result;
-      },
-      prefix(s){  // 获取自定义代码前一行的空格前缀，以便在换行时继承到下一行
-        let lastRow = s.split('\n').splice(-1)[0];
-        let result = lastRow.match(/^\s+/);
-        return result ? result['0'] : '';
       },
       propStyle(prop, width){
         return {editable:true, prop:prop, width:width + "px"};
@@ -89,17 +43,6 @@
             global.emit("changeFogColor");
           }
         }
-      },
-      setCustomCodeFont(size){  // 更改自定义脚本字体
-        let rule = ['xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large'];
-        let style = document.getElementById("customCode").style;
-        style.fontSize = rule[size];
-      },
-      setCustomProp(editValue, prop){
-        if(editValue.length>0 && editValue[0]=='$'){ 
-          DT.value.custom[prop]=JSON.parse(editValue.slice(1));
-        }else DT.value.custom[prop]=editValue; 
-        editProp.value = null;
       },
       // 滚轮或按回车键更改属性的值，超出范围时取边界值，fixed为小数位数
       setProp({e=null, unit=null, min=null, max=null, delta=1, fixed=0, loop=false, type="number"}){
@@ -129,120 +72,31 @@
           global.emit("changeFogColor");
         }
       },
-      showPopup(content){  // 显示自定义属性和脚本弹出窗口
-        if(popupContent.value == content) this.closePopup();
-        else {
-          popupContent.value = content;
-          popup.style.display = popupMask.style.display = "block";
-          this.$nextTick(()=>{  // 异步更新窗口位置
-            let rect = popup.getBoundingClientRect();
-            popup.style.top = (main.offsetHeight - rect.height)/2 + "px";
-            popup.style.left = (main.offsetWidth - rect.width)/2 + "px";
-            if(content == "code"){
-              newCode.value = DT.value.code ? DT.value.code : '';
-            }
-          });
-        }
-      },
     },
     setup(){
-      return {addCustomProp, angle, global, chosenDOM, chosenDOM_value, customCodeFont, DT, 
-        editProp, editValue, helpChange, newCode, newProp, popup, popupContent, popupMask,
-        yesNoContent
-      }
+      return {angle, global, chosenDOM, chosenDOM_value, DT}
     },
     mounted(){
-      global.on("assetNameDuplication", (data)=>{  // 确认重命名组件
-        yesNoContent.value = data;
-        this.showPopup("yes_no");
-      });
       global.on("showProperty", (data)=>{
         if('未已'.includes(data[0])) DT.value = data;
         else if(data == "asset") {DT.value = window.assetDT;}
         else DT.value = global.DTScene().findDTObjectById(data);
       })
-      main = document.getElementById("main");
-      popup = document.getElementById("popup"); 
-      main.appendChild(popup);  
-      popupMask = document.getElementById("popupMask");
-      main.appendChild(popupMask);  
-      var popupHeader = document.getElementById("popup-header");  
-      var startM, startP;
       // 点击属性进行编辑
       window.addEventListener("mousedown", this.selectDOM);
-      // 拖动弹窗  
-      popupHeader.addEventListener("mousedown", (e)=>{  
-        e.preventDefault();  
-        startM = [e.clientX, e.clientY]
-        startP = [popup.getBoundingClientRect().left, popup.getBoundingClientRect().top]
-        var onMousemove = function(e) {  
-            e.preventDefault();  
-            popup.style.left = startP[0] + (e.clientX - startM[0]) + "px";  
-            popup.style.top = startP[1] + (e.clientY - startM[1]) + "px";  
-        };  
-        document.addEventListener("mousemove", onMousemove);  
-        document.addEventListener("mouseup", function() {  
-          document.removeEventListener("mousemove", onMousemove);  
-        });  
-      })
-      // 退出按钮  
-      var popupCloseBtn = document.getElementById('popup-quit');  
-      popupCloseBtn.addEventListener('click', function() {  
-          popup.style.display = 'none';  
-      }); 
     }
   }
 </script>
 
 <style>
-  .buttonCustomCode{
-    float:right; 
-    margin:10px;
-  }
-  .customCode{
-    margin-top: 10px;
-    margin-left: 0px; 
-    width: calc(100% - 20px); 
-    height: 500px; 
-    resize: none; 
-    white-space: nowrap
-  }
   .input{
     border:1px solid dodgerblue;
   }
-	.popup{  
-    background-color: #fff;  
-    border: 2px solid dodgerblue;  
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);  
-    border-radius: 10px;  
-    display: none;
-    position: absolute;
-    z-index: 1919;  
-  }  
-  .popup-header{  
-    background: dodgerblue;
-    cursor: move;  
-    display: flex;  
-    justify-content: space-between;  
-    align-items: center;   
-    padding-left:10px
-  }  
   .row{
     display:block;
     margin-top:3px; 
     margin-bottom:3px;
   }
-  .yes-no-content{
-    margin-top: 10px; 
-    margin-bottom: -12px; 
-    margin-right: 10px; 
-    text-align: right;
-  }
-  .yes-no-confirm{
-    border:#0B0 solid 1px; 
-    color:#0B0; 
-    margin-right:10px
-    }
 </style>
 
 <template>
@@ -287,7 +141,7 @@
           <strong>x:</strong>
           <a-input class="input" :style="propStyle(prop[0], 80)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
-            @keydown="(e)=>setProp({e:e, fixed:2})" @mouseout="chosenDOM=null"
+            @keydown="(e)=>setProp({e:e, fixed:2})"
           />
           <a-input :style="propStyle(prop[0], 80)" v-else
             :value="prop[1].toFixed(2)"
@@ -299,7 +153,7 @@
         <span :title="helpChange" v-for="prop in hasProp('mesh.position.y')">
           <a-input class="input" :style="propStyle(prop[0], 80)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
-            @keydown="(e)=>setProp({e:e, fixed:2})" @mouseout="chosenDOM=null"
+            @keydown="(e)=>setProp({e:e, fixed:2})"
           />
           <a-input :style="propStyle(prop[0], 80)" v-else
             :value="prop[1].toFixed(2)" 
@@ -311,7 +165,7 @@
         <span :title="helpChange" v-for="prop in hasProp('mesh.position.z')">
           <a-input class="input" :style="propStyle(prop[0], 80)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
-            @keydown="(e)=>setProp({e:e, fixed:2})" @mouseout="chosenDOM=null"
+            @keydown="(e)=>setProp({e:e, fixed:2})"
           />
           <a-input :style="propStyle(prop[0], 80)" v-else
             :value="prop[1].toFixed(2)" 
@@ -329,7 +183,7 @@
           <a-input class="input" :style="propStyle(prop[0], 80)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
             @keydown="(e)=>setProp({e:e, unit:angle, min:0, max:360, fixed:2, loop:true})" 
-            @mouseout="chosenDOM=null"
+           
           />
           <a-input :style="propStyle(prop[0], 80)" v-else
             :value="loop(Math.round(prop[1]/angle), 360)"
@@ -342,7 +196,7 @@
           <a-input class="input" :style="propStyle(prop[0], 80)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
             @keydown="(e)=>setProp({e:e, unit:angle, min:0, max:360, fixed:2, loop:true})" 
-            @mouseout="chosenDOM=null"
+           
           />
           <a-input :style="propStyle(prop[0], 80)" v-else
             :value="loop(Math.round(prop[1]/angle), 360)"
@@ -355,7 +209,7 @@
           <a-input class="input" :style="propStyle(prop[0], 80)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
             @keydown="(e)=>setProp({e:e, unit:angle, min:0, max:360, fixed:2, loop:true})" 
-            @mouseout="chosenDOM=null"
+           
           />
           <a-input :style="propStyle(prop[0], 80)" v-else
             :value="loop(Math.round(prop[1]/angle), 360)"
@@ -373,7 +227,7 @@
           <strong>发生时间间隔：</strong>
           <a-input class="input" :style="propStyle(prop[0], 80)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
-            @keydown="(e)=>setProp({e:e, min:1, max:10, fixed:2})" @mouseout="chosenDOM=null"
+            @keydown="(e)=>setProp({e:e, min:1, max:10, fixed:2})"
           />
           <a-input :style="propStyle(prop[0], 80)" v-else
             :value="(prop[1]/1000).toFixed(3)"
@@ -387,7 +241,7 @@
           <a-input class="input" :style="propStyle(prop[0], 120)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
             @keydown="(e)=>{setProp({e:e, type:typeof prop[1]}); global.emit('updateSkybox')}" 
-            @mouseout="chosenDOM=null"
+           
           />
           <a-input :style="propStyle(prop[0], 120)" v-else :value="prop[1]"/>
         </span>
@@ -398,7 +252,7 @@
           <a-input class="input" :style="propStyle(prop[0], 120)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
             @keydown="(e)=>{setProp({e:e, type:typeof prop[1]}); global.emit('updateSkybox')}" 
-            @mouseout="chosenDOM=null"
+           
           />
           <a-input :style="propStyle(prop[0], 120)" v-else :value="prop[1]"/>
         </span>
@@ -409,7 +263,7 @@
           <a-input class="input" :style="propStyle(prop[0], 120)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
             @keydown="(e)=>{setProp({e:e, type:typeof prop[1]}); global.emit('updateSkybox')}" 
-            @mouseout="chosenDOM=null"
+           
           />
           <a-input :style="propStyle(prop[0], 120)" v-else :value="prop[1]"/>
         </span>
@@ -480,7 +334,7 @@
           <strong>质量：</strong>
           <a-input class="input" :style="propStyle(prop[0], 80)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
-            @keydown="(e)=>setProp({e:e, min:0.1, max:5, fixed:2})" @mouseout="chosenDOM=null"
+            @keydown="(e)=>setProp({e:e, min:0.1, max:5, fixed:2})"
           />
           <a-input :style="propStyle(prop[0], 80)" v-else
             :value="prop[1].toFixed(2)"
@@ -493,7 +347,7 @@
           <strong>静摩擦系数：</strong>
           <a-input class="input" :style="propStyle(prop[0], 80)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
-            @keydown="(e)=>setProp({e:e, min:0, max:1, fixed:2})" @mouseout="chosenDOM=null"
+            @keydown="(e)=>setProp({e:e, min:0, max:1, fixed:2})"
           />
           <a-input :style="propStyle(prop[0], 80)" v-else
             :value="prop[1].toFixed(2)"
@@ -506,7 +360,7 @@
           <strong>滑动摩擦系数：</strong>
           <a-input class="input" :style="propStyle(prop[0], 80)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
-            @keydown="(e)=>setProp({e:e, min:0, max:1, fixed:2})" @mouseout="chosenDOM=null"
+            @keydown="(e)=>setProp({e:e, min:0, max:1, fixed:2})"
           />
           <a-input :style="propStyle(prop[0], 80)" v-else
             :value="prop[1].toFixed(2)"
@@ -519,7 +373,7 @@
           <strong>传送带速度：</strong>
           <a-input class="input" :style="propStyle(prop[0], 80)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
-            @keydown="(e)=>setProp({e:e, min:0.1, max:5, fixed:2})" @mouseout="chosenDOM=null"
+            @keydown="(e)=>setProp({e:e, min:0.1, max:5, fixed:2})"
           />
           <a-input :style="propStyle(prop[0], 80)" v-else
             :value="prop[1].toFixed(2)"
@@ -547,7 +401,7 @@
             <a-input class="input" :style="propStyle(prop[0], 80)"
               v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
               @keydown="(e)=>setProp({e:e, unit:1/255, min:0, max:255})" 
-              @mouseout="chosenDOM=null"
+             
             />
             <a-input :style="propStyle(prop[0], 80)" v-else
               :value="parseInt(prop[1]*255)"
@@ -560,7 +414,7 @@
             <a-input class="input" :style="propStyle(prop[0], 80)"
               v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
               @keydown="(e)=>setProp({e:e, unit:1/255, min:0, max:255})" 
-              @mouseout="chosenDOM=null"
+             
             />
             <a-input :style="propStyle(prop[0], 80)" v-else
               :value="parseInt(prop[1]*255)"
@@ -573,7 +427,7 @@
             <a-input class="input" :style="propStyle(prop[0], 80)"
               v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
               @keydown="(e)=>setProp({e:e, unit:1/255, min:0, max:255})"
-              @mouseout="chosenDOM=null"
+             
             />
             <a-input :style="propStyle(prop[0], 80)" v-else
               :value="parseInt(prop[1]*255)"
@@ -594,7 +448,7 @@
           <strong>透明度：</strong>
           <a-input class="input" :style="propStyle(prop[0], 80)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
-            @keydown="(e)=>setProp({e:e, unit:0.01, min:0, max:100})" @mouseout="chosenDOM=null"
+            @keydown="(e)=>setProp({e:e, unit:0.01, min:0, max:100})"
           />
           <a-input :style="propStyle(prop[0], 80)" v-else
             :value="parseInt(prop[1]*100)"
@@ -607,154 +461,17 @@
 
       <!--自定义属性-->
       <a-collapse-panel v-if="DT.custom" header="自定义属性" key="自定义属性">
-        <a-button @click="showPopup('prop')">编辑自定义属性</a-button>  
+        <a-button @click="global.emit('popup', {DT: DT, type: 'prop'})">
+          编辑自定义属性
+        </a-button>  
       </a-collapse-panel>
 
       <!--自定义脚本-->
       <a-collapse-panel v-if="DT.custom" header="自定义脚本" key="自定义脚本">
-        <a-button @click="showPopup('code');">编辑自定义脚本</a-button>  
+        <a-button @click="global.emit('popup', {DT: DT, type: 'code'})">
+          编辑自定义脚本
+        </a-button>  
       </a-collapse-panel>
     </a-collapse>
   </div>
-
-  <!--弹出式窗口-->
-  <div id="popup" class="popup" 
-  :style="{'width':
-    {'prop': '600px', 'code': '800px', 'yes_no': '400px'}[popupContent]
-  }">
-    <!--头部拖动栏-->  
-    <div id="popup-header" class="popup-header">  
-      <strong style="color:white">
-        <div v-if="popupContent=='prop'">自定义属性</div>
-        <div v-if="popupContent=='code'">自定义脚本</div>
-        <div v-if="popupContent=='yes_no'">确认重命名</div>
-      </strong>  
-      <!--退出-->
-      <a-button id="popup-quit" danger type="primary" @click="closePopup">
-        <CloseOutlined/>
-      </a-button>  
-    </div>  
-
-    <div class="popup-content" id="popup-content">  
-      <!--双项选择栏-->
-      <div style="margin-top: 10px; text-align: left">
-        <div v-for="row in yesNoContent.content.split('\r')">
-          &nbsp;&nbsp;&nbsp;&nbsp;{{ row }}
-        </div>
-      </div>
-      <div v-if="popupContent=='yes_no'" class="yes-no-content">
-        <a-button class="yes-no-confirm" @click="yesNoContent.yes(); closePopup()">
-          是<CheckOutlined/>
-        </a-button>
-        <a-button danger @click="yesNoContent.no(); closePopup()">
-          否<CloseOutlined/>
-        </a-button>
-      </div>
-
-      <!--自定义属性工具栏-->  
-      <span v-if="popupContent=='prop'" style="display:flex; margin:10px">
-        <a-button @click="addCustomProp=true; editProp='';" 
-        :disabled="addCustomProp">点此添加属性</a-button>&nbsp;
-        <div v-if="addCustomProp">
-          <a-input
-            v-model:value="newProp"
-            placeholder="属性名"
-            style="width:200px"
-            @keydown="(e)=>{if(e.key=='Enter') createCustomProp(e)}"
-          />&nbsp;
-          <a-button style="border:#0B0 solid 1px; color:#0B0" @click="createCustomProp();">
-            <CheckOutlined/>
-          </a-button>&nbsp;
-          <a-button danger @click="closePopup(false)"><CloseOutlined/></a-button>
-        </div>
-      </span>
-
-      <!--自定义属性表--> 
-      <a-table v-if="popupContent=='prop'" bordered :data-source="obj2table(DT.custom)">
-        <a-table-column title="属性" data-index="prop">
-          <template #default="{ value:prop }">
-            <div>{{ prop }}</div>
-          </template>
-        </a-table-column>
-        <a-table-column title="值" data-index="prop">
-          <template #default="{ value:prop }">
-            <a-input v-if="editProp==prop" v-model:value="editValue"
-            size="small" style="width:120px"
-            @keydown="(e)=>{if(e.key=='Enter') setCustomProp(editValue, prop)}">
-            <template #suffix>
-              <CheckCircleOutlined @click="setCustomProp(editValue, prop)"
-            />
-            </template>
-            </a-input>
-            <div v-else>{{ DT.custom[prop] }}</div>
-          </template>
-        </a-table-column>
-        <a-table-column title="类型" data-index="value">
-          <template #default="{ value }">
-            <div>{{ typeof value }}</div>
-          </template>
-        </a-table-column>
-        <a-table-column title="操作" data-index="prop" >
-          <template #default="{ value:prop }">
-            <a v-if="editProp!=prop" @click="
-              editProp=prop; editValue=DT.custom[prop];
-            ">编辑</a>
-            <a v-else @click="editProp=null">取消</a>
-            <a @click="delete DT.custom[prop]" style="margin-left:10px">删除</a>
-          </template>
-        </a-table-column>
-      </a-table>
-
-      <!--自定义脚本-->
-      <textarea v-if="popupContent=='code'" class="customCode" id="customCode" placeholder="自定义脚本"
-      v-model="newCode"
-      v-on="this.$nextTick(()=>{setCustomCodeFont(customCodeFont)})"
-      @keydown="(e)=>{ 
-        let textarea = e.target;
-        let insert = '';
-        const start = textarea.selectionStart;  
-        const end = textarea.selectionEnd;  
-        const text = textarea.value;  
-        const text0 = text.substring(0, start);  
-        const text1 = text.substring(end, text.length);
-        if (e.key == 'Enter'){  // 换行时继承前一行的空格前缀
-          e.preventDefault(); 
-          insert = '\n' + prefix(text0);
-        } else if (e.key == 'Tab') {  // 按Tab键时在光标处插入制表符 
-          e.preventDefault();
-          insert = '    '; 
-        } 
-        textarea.value = text0 + insert + text1;  
-        textarea.selectionStart = textarea.selectionEnd = start + insert.length;  
-      }"/>
-      <a-button v-if="popupContent=='code'" class="buttonCustomCode"
-      @click="DT.code=newCode; closePopup()" :disabled="newCode==DT.code">
-        保存
-      </a-button>
-      <a-button v-if="popupContent=='code'" class="buttonCustomCode"
-      @click="newCode=''" :disabled="newCode==''">
-        清空
-      </a-button>
-      <span style="display:flex;" class="buttonCustomCode">
-        <div v-if="popupContent=='code'" style="margin-top:4px">字体大小：</div>
-        <a-slider v-if="popupContent=='code'" :min=0 :max=6 :step=1 :tooltipVisible="false" 
-        @change="(e)=>{customCodeFont=e;}" 
-        :value="customCodeFont" style="width: 100px"/>
-      </span>
-    </div>  
-  </div>  
-
-  <!--弹窗时显示遮罩，禁止在弹窗外的操作-->
-  <span id="popupMask" style="
-    background-color: grey;
-    display: none;
-    position: absolute;
-    left: 0px;
-    top: 0px;
-    width: 100%;
-    height: 100%;
-    opacity: 50%;
-    z-index: 100;
-  "/>
-</template>
-./Global
+</template>./Global

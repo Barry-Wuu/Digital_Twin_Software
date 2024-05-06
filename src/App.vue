@@ -2,10 +2,11 @@
   import {onMounted, ref} from "vue"
   import BottomBar from "./components/BottomBar.vue"
   import Layout from "./components/Layout.vue"
+  import Popup from "./components/Popup.vue"
   import Topbar from "./components/Topbar.vue"
   import "ant-design-vue"
   import { FullscreenExitOutlined } from '@ant-design/icons-vue';
-  import global from "./components/GlobalVariables"
+  import global from "./components/Global"
 
   var dragPoint = [0, 0];
   var draggedSpliter;
@@ -104,17 +105,24 @@
 </script>
 
 <template>
-  <a-config-provider :autoInsertSpaceInButton="false"><!--禁止ant自动在两字按钮之间加空格-->
-    <div :DTScene="{}" id="main" ref="main" style = "
-      border: 0px solid grey;
-      display: block;
-      margin-left: 0px;
-      position: absolute;  
-      top: 0;  
-      left: 0;  
-      width: 100vw;  
-      height: 100vh;
-    ">
+  <div :DTScene="{}" id="main" ref="main" style="
+    border: 0px solid grey;
+    display: block;
+    margin-left: 0px;
+    position: absolute;  
+    top: 0;  
+    left: 0;  
+    width: 100vw;  
+    height: 100vh;
+  ">
+    <a-config-provider :autoInsertSpaceInButton="false"><!--禁止ant自动在两字按钮之间加空格-->
+      <!--主界面-->
+      <Topbar/>
+      <Layout style="height: calc(100vh - 186px);" :item="layout" parent="none"/>
+      <BottomBar style=""/>
+      <!--弹窗-->
+      <Popup/>
+      <!--全屏模式-->
       <a-button v-if="showQuitFullscreen" danger style="
         position: absolute; 
         top: 10px; 
@@ -123,15 +131,12 @@
       " 
       :type="quitFullscreenStyle"
       @mouseenter = "quitFullscreenStyle = 'primary'"
-      @mousedown = "global.emit('canvasFullscreen'); quitFullscreenStyle = 'default'"
+      @mousedown = "global.emit('changeFullscreen'); quitFullscreenStyle = 'default'"
       @mouseleave = "quitFullscreenStyle = 'default'"
       >
         <FullscreenExitOutlined/>退出全屏&nbsp;(Esc)
       </a-button>
-      <Topbar/>
-      <Layout style="height: calc(100vh - 186px);" :item="layout" parent="none"/>
-      <BottomBar style=""/>
-    </div>
-  </a-config-provider>
+    </a-config-provider>
+  </div>
 </template>
-./components/Global
+./components/Global./components/Global

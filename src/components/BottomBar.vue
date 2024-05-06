@@ -1,6 +1,6 @@
 <script lang="ts">
   import { computed, ref, unref } from 'vue'
-  import global from "./GlobalVariables"
+  import global from "./Global"
   var BottomMessage;
   var BottomWindowSize;
   global.on("BottomMessage", (data)=>{BottomMessage.textContent = data;})
@@ -58,4 +58,4 @@
     ">仿真时间：<span id="BottomTimer">00:00:00.000</span>&nbsp;s&nbsp;&nbsp;</div>
   </div> 
 </template>
-./Global
+./Global./Global

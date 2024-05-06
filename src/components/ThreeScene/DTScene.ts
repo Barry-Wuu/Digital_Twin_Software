@@ -1,5 +1,5 @@
 import * as Ammo from "ammo.js"
-import global from "../GlobalVariables"
+import global from "../Global"
 import * as fs from "fs";
 const path = require("path");
 import * as THREE from "three"
@@ -28,14 +28,14 @@ var emulateMode = "stop";  // 仿真模式
 var frameCounter = 0;  // 帧计数器，计满60帧近似看做1秒
 var frames = 0;  // 帧率计算
 let front = new THREE.Vector3(); 
-var gizmo;
 var groundColor = "azure";
 var groundSize = 250;  // 地面范围：-groundSize ≤ x ≤ groundSize，-groundSize ≤ y ≤ groundSize
 var loader = new STLLoader();
 var loading = false;
 var origin = new THREE.Vector3(0, 0, 0);
-var speed = 1;
 var SCENE = new THREE.Scene();
+var speed = 1;
+var startControl = false;
 var temp = false;
 var UP = new THREE.Vector3(0, 0, 1);  // z轴朝上
 var Ground = new THREE.Plane(UP);  // 平面z=0
@@ -340,12 +340,16 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
 }  
 
 export default class SceneBuilder{
-    camera: THREE.PerspectiveCamera
-    camera0: THREE.PerspectiveCamera
+    camera  // 默认相机
+    cameraMovable: THREE.PerspectiveCamera  // 可平移透视相机
+    cameraOrtho: THREE.OrthographicCamera  // 正交相机
+    cameraPersp: THREE.PerspectiveCamera  // 透视相机
     canvas: HTMLElement
     composer  // 边缘高亮着色器
     controller
     DTObjects = DTObjects
+    gizmoOrtho: THREE.ViewHelper
+    gizmoPersp: THREE.ViewHelper
     ground
     orbitControl: OrbitControls
     pointerControl: PointerLockControls
@@ -375,19 +379,32 @@ export default class SceneBuilder{
         this.renderer.shadowMap.enabled = true;
         const DOM = this.renderer.domElement;
         this.canvas.appendChild(DOM);
-        // 相机
+        // 透视相机
         const near = 0.1;
         const far = 1000;
         const fov = 75;
         const ratio = window.innerWidth / window.innerHeight;
-        this.camera = new THREE.PerspectiveCamera(fov, ratio, near, far);
-        this.camera.position.set(0, -25, 15);
-        this.camera.lookAt(0, 0, 0);
-        this.camera.up.copy(UP);  // 在相机里让z轴向上
+        this.cameraPersp = new THREE.PerspectiveCamera(fov, ratio, near, far);
+        this.cameraPersp.position.set(0, -25, 15);
+        this.cameraPersp.lookAt(0, 0, 0);
+        this.cameraPersp.up.copy(UP);  // 在相机里让z轴向上
+        this.camera = this.cameraPersp;
         global.setCamera(this.camera);
         global.on("moveCameraTo", (id)=>{  // 双击将相机拉近至物体
             moveCamera = id;
         });   
+        global.on("changeCamera", data => {  // 切换相机类型（透视/正交）
+            let camera = this.camera;  // 前一个相机
+            let position = camera.position;
+            let target = this.orbitControl.target;
+            this.camera = {"透视": this.cameraPersp, "正交": this.cameraOrtho} [data];
+            this.camera.position.copy(position);
+            this.orbitControl.object = this.camera;
+            this.orbitControl.target.copy(target);
+            renderPass.camera = this.camera; 
+            this.gizmoPersp.visible = data == "透视";
+            this.gizmoOrtho.visible = data == "正交";
+        })
         global.on("changeView", (key)=>{
             let camera = this.camera;
             if(key == "默认视图") camera.position.set(0, -25, 15);           
@@ -397,18 +414,25 @@ export default class SceneBuilder{
             if(key == "右视图") camera.position.set(30, 0, 5);
             this.orbitControl.target.set(0, 0, 0)
         })
-        this.camera0 = this.camera.clone()  // 克隆一个无orbitControl相机，用于控制原相机的角度
+        // 平移相机及其控制器
+        this.cameraMovable = this.camera.clone();  // 克隆一个无orbitControl相机，用于控制原相机的角度
+        this.pointerControl = new PointerLockControls(this.cameraMovable, DOM);
+        // 正交相机
+        const k = 10;
+        this.cameraOrtho = new THREE.OrthographicCamera(-k*ratio, k*ratio, k, -k, 0, 1000);
+        this.cameraOrtho.position.set(0, -25, 15);
+        this.cameraOrtho.lookAt(0, 0, 0);
+        this.cameraOrtho.up.copy(UP);  // 在相机里让z轴向上
         // 相机轨道控制器
         this.orbitControl = new OrbitControls(this.camera, DOM);
         this.orbitControl.mouseButtons = {  // 设置默认快捷键
             LEFT: -1, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE
         };
-        this.orbitControl.minDistance = 1;  // 限制相机缩放距离
-        this.orbitControl.maxDistance = 300;
+        this.orbitControl.minDistance = 5;  // 限制透视相机缩放距离
+        this.orbitControl.maxDistance = 100;
+        this.orbitControl.minZoom = 0.1;  // 限制正交相机缩放比例
+        this.orbitControl.maxZoom = 5;
         this.orbitControl.screenSpacePanning = false;  // 平移时沿地面拖动
-        this.camera.userData.orbitControl = this.orbitControl;
-        // 相机平移控制器
-        this.pointerControl = new PointerLockControls(this.camera0, DOM);
         // 平行光
         var light = new THREE.DirectionalLight( "white", 3 );
         light.castShadow = true;
@@ -431,38 +455,84 @@ export default class SceneBuilder{
         // SCENE.add( light );
         // 物体控制器 
         this.controller = new TransformControls(this.camera, DOM);
+        this.controller.size = 0.8;
         this.controller.traverse((child)=>{child.userData.controller = true});  // 对控制器做标记，以在点击时区分它和其它物体
         var attached, controllerVisible = true;
-        global.on("changeControllerVisibility", (x)=>{
+        this.controller.children[0].children[0].children[0].onBeforeRender = ()=>{  // 在控制器显现之前调整其位置
+            if(!attached.userData.protected && startControl) {  // 将控制器移动到物体包围盒中心
+                let center = new THREE.Vector3();
+                startControl = false;
+                if(attached.isGroup) {  // 拖动Group
+                    let mesh = attached.DT.wireframe;
+                    let arr = mesh.geometry.attributes.position.array;
+                    let xmax, ymax, zmax, xmin, ymin, zmin;
+                    for(let i=0, ai=arr[0]; i<arr.length; i++, ai=arr[i]){
+                        if (i % 3 == 0){
+                            if(ai > xmax || !xmax) xmax = ai;
+                            if(ai < xmin || !xmin) xmin = ai;
+                        }
+                        if (i % 3 == 1){
+                            if(ai > ymax || !ymax) ymax = ai;
+                            if(ai < ymin || !ymin) ymin = ai;
+                        }
+                        if (i % 3 == 2){
+                            if(ai > zmax || !zmax) zmax = ai;
+                            if(ai < zmin || !zmin) zmin = ai;
+                        }
+                    }
+                    // center.set((xmin+xmax)/2, (ymin+ymax)/2, (zmin+zmax)/2);
+                    // center.applyMatrix4(attached.matrix.invert());
+                }
+                else if(attached.geometry) {  // 拖动有geometry的物体
+                    attached.geometry.boundingBox.getCenter(center);
+                }
+                else {  // 拖动无geometry的物体
+                    center = attached.position;
+                }
+                center.multiplyScalar(attached.scale.x);
+                attached.traverseAncestors((mesh)=>{center.multiplyScalar(mesh.scale.x)});
+                this.controller.position.copy(center);
+            }
+        };
+        global.on("changeControllerVisibility", (x)=>{  // 改变控制器的可见性
             controllerVisible = x;
             this.controller.visible = x;
-            if(x && attached){
+            if(x && attached){  // 显示控制器时将其添加回场景
                 SCENE.add(this.controller);
                 this.controller.attach(attached); 
             }
-            if(!x && attached){
+            if(!x && attached){  // 隐藏控制器时将其移除出场景，以免仍能被选中
                 SCENE.remove(this.controller);
                 this.controller.detach();
             }
         });
-        //window.tC = this.transformController;
         global.on("controlStart", (id)=>{  // 选中物体开始控制
             attached = SCENE.getObjectById(id);
             if(!controllerVisible) return;
             SCENE.add(this.controller);
             if(!attached.userData.protected) {
+                startControl = true;
                 this.controller.attach(attached);
-                //this.controller.visible = controllerVisible;
             }
         });
         global.on("controlEnd", ()=>{  // 取消选择时收起控制器
             attached = null;
             SCENE.remove(this.controller);
             this.controller.detach();
+            this.controller.setMode("translate");  // 取消选择时把控制器恢复为平移模式
         });
-        // 导向器（Gizmo）
-        gizmo = new ViewHelper(this.camera, DOM);
-        global.on("changeGizmoVisibility", (x)=>{gizmo.visible = x});
+        // 透视和正交相机导向器（Gizmo）
+        this.gizmoPersp = new ViewHelper(this.cameraPersp, DOM);
+        this.gizmoOrtho = new ViewHelper(this.cameraOrtho, DOM);
+        this.gizmoOrtho.visible = false;
+        global.on("changeGizmoVisibility", visible => {
+            if(visible){
+                this.gizmoPersp.visible = this.camera == this.cameraPersp;
+                this.gizmoOrtho.visible = this.camera == this.cameraOrtho;
+            } else {
+                this.gizmoPersp.visible = this.gizmoOrtho.visible = false;
+            }      
+        });
         // 地面
         this.ground = new THREE.Mesh( 
             new THREE.PlaneGeometry(500, 500), 
@@ -508,7 +578,7 @@ export default class SceneBuilder{
         SCENE.add( line );
         this.composer = new EffectComposer(this.renderer);  // 物体边缘着色器
         // 渲染器滤镜
-        const renderPass = new RenderPass(SCENE, this.camera);
+        const renderPass = new RenderPass(SCENE, this.camera); console.log(renderPass)
         this.composer.addPass(renderPass);
         // 边缘滤镜
         const outlinePass = new OutlinePass(new THREE.Vector2(), SCENE, this.camera);
@@ -521,7 +591,7 @@ export default class SceneBuilder{
         // 抗锯齿滤镜
         const effectFXAA = new ShaderPass( FXAAShader );
         // 点亮或熄灭某些物体的边缘
-        global.on("lightWireframe", (meshes)=>{
+        global.on("lightWireframe", meshes => {
             outlinePass.selectedObjects = meshes;
             if(meshes && meshes.length){
                 if(!this.composer.passes.includes(outlinePass)) {
@@ -534,12 +604,16 @@ export default class SceneBuilder{
             }
         })
         // 快捷键设置
-        this.canvas.addEventListener("keydown",(e)=>{
+        this.canvas.addEventListener("keydown", e => {
             if(global.mode() == "edit"){  // 在编辑模式下
                 if(e.code == "KeyQ") this.controller.setMode("translate");  // 按Q平移
                 else if(e.code == "KeyW") this.controller.setMode("rotate");  // 按W旋转
-                else if(e.code == "KeyE") this.controller.setMode("scale");  // 按E缩放
-                else if(e.code == "KeyR") {  // 按R切换全局坐标系和局部坐标系
+                //else if(e.code == "KeyE") this.controller.setMode("scale");  // 屏蔽缩放
+                else if(e.code == "KeyE") {  // 按R切换全局坐标系和局部坐标系
+                    if(this.controller.space == "world") this.controller.setSpace("local");
+                    else this.controller.setSpace("world");
+                }
+                else if(e.code == "KeyE") {  // 按R切换全局坐标系和局部坐标系
                     if(this.controller.space == "world") this.controller.setSpace("local");
                     else this.controller.setSpace("world");
                 }
@@ -553,8 +627,8 @@ export default class SceneBuilder{
             }
             if(global.mode() == "view"){  // 在浏览模式下
                 const step = 5;  // 相机前进步长
-                this.camera0.copy(this.camera);
-                this.camera0.userData = {};
+                this.cameraMovable.copy(this.camera);
+                this.cameraMovable.userData = {};
                 if(e.code == "KeyW"){  // 按W前进，但借助camera0来求相机的新位置和角度
                     this.pointerControl.moveForward(step); 
                 }
@@ -567,13 +641,13 @@ export default class SceneBuilder{
                 if(e.code == "KeyD"){  // 按D右移
                     this.pointerControl.moveRight(step);
                 }
-                let p0 = this.camera0.position.clone();
+                let p0 = this.cameraMovable.position.clone();
                 this.camera.position.copy(p0);
-                this.camera0.getWorldDirection(front);
+                this.cameraMovable.getWorldDirection(front);
                 new THREE.Ray(p0, front).intersectPlane(Ground, this.orbitControl.target);
             }
         })
-        this.canvas.addEventListener("keyup",()=>{
+        this.canvas.addEventListener("keyup", ()=>{
             this.controller.setTranslationSnap( null );
 			this.controller.setRotationSnap( null );
 			this.controller.setScaleSnap( null );
@@ -601,20 +675,19 @@ export default class SceneBuilder{
                     lookat = SCENE.getObjectById(moveCamera);
                     const d = 10;  // 相机到物体的距离
                     p_start = this.camera.position.clone();  // 起点
-                    let r = new THREE.Vector3();
-                    this.camera.getWorldDirection(r);
-                    r.multiplyScalar(d);
-                    p_end = lookat.position.clone().sub(r);  // 终点 = p(物体) - d*r(相机)
+                    this.camera.getWorldDirection(front);
+                    let delta = front.clone();
+                    delta.multiplyScalar(d);
+                    p_end = lookat.position.clone().sub(delta);  // 终点 = p(物体) - d*r(相机)
                     moveCamera = -1;
                 }
                 if(moveCamera < 0){  // 移动中
                     frameCounter++;
-                    this.camera0.position.lerpVectors(p_start, p_end, frameCounter/60);
-                    let target = this.camera0.position.clone();
+                    this.cameraMovable.position.lerpVectors(p_start, p_end, frameCounter/60);
+                    let target = this.cameraMovable.position.clone();
                     this.camera.position.copy(target);
-                    this.camera0.getWorldDirection(front);
                     new THREE.Ray(target, front).intersectPlane(Ground, this.orbitControl.target);
-                    if(frameCounter >= 60){  // 结束移动
+                    if (frameCounter >= 60){  // 结束移动
                         this.orbitControl.enableRotate = true;
                         frameCounter = moveCamera = 0;
                     }
@@ -832,7 +905,8 @@ export default class SceneBuilder{
         this.updatePhysics(clock.getDelta());
         //this.renderer.render(SCENE, this.camera);
         this.composer.render();
-        gizmo.render(this.renderer);
+        this.gizmoPersp.render(this.renderer);
+        this.gizmoOrtho.render(this.renderer);
         this.orbitControl.update();
     } 
     setSkyboxByColor(DTScene) {  // 根据上中下三种颜色设置天空盒
