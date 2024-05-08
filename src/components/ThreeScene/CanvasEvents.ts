@@ -20,7 +20,6 @@ var dragPoint;  // 拖动开始时的拖动点
 var front = new THREE.Vector3();
 var fullscreen = false;
 var isDrag = false;  // 是否在用鼠标移动模型
-var moveStart = null;  // 用左键移动镜头之前，射线检测器与地面的交点
 var keys = { space: false };  // 按下的按键
 var mouseType = [false, false, false];  // 左、中、右键是否按下
 const ray = new THREE.Raycaster();  // 从鼠标发出的射线检测器
@@ -67,10 +66,10 @@ export default defineComponent({
   methods: {
     castRay(e) {  // 射线检测
       const mouse = new THREE.Vector2(
-        e.offsetX * 2 / e.target.width - 1, 
-        1 - e.offsetY * 2 / e.target.height
+        e.offsetX * 2 / e.target.clientWidth - 1, 
+        1 - e.offsetY * 2 / e.target.clientHeight
       );
-      ray.setFromCamera(mouse, this.scene.camera);
+      ray.setFromCamera(mouse, this.scene.camera);        
     },
     intersectObject(e) {  // 求鼠标发出的射线与物体的交点
       this.castRay(e);  // 射线检测
@@ -80,13 +79,6 @@ export default defineComponent({
         if (mesh.isMesh && mesh != dragModel && mesh != tempModel) {
           return [mesh, intersect.point];
         }
-      }
-      return new THREE.Vector3(999, 999, 999)  // 若无交点
-    },
-    intersectGround(e) {  // 求鼠标发出的射线与地面的交点
-      this.castRay(e);  // 射线检测
-      for (let intersect of ray.intersectObject(this.scene.ground)) {
-        if (intersect.object.isMesh) { return [intersect.object, intersect.point]; }
       }
       return new THREE.Vector3(999, 999, 999)  // 若无交点
     },
@@ -282,9 +274,8 @@ export default defineComponent({
           }
         }
       }
-      else {  // 中键或右键点击
-        this.castRay(e);  // 射线检测
-        moveStart = ray.intersectObject(this.scene.ground)[0].point;
+      else {
+        // 中键或右键点击
       };
     },
     onMousemove(e) {
@@ -306,13 +297,6 @@ export default defineComponent({
         };
       }
       if (isDrag) this.onDragover(e);
-      if (moveStart) {
-        this.castRay(e);  // 射线检测
-        try {
-          let move = ray.intersectObject(this.scene.ground)[0].point;
-        }
-        catch (e) { }
-      }
     },
     onMouseup(e) {
       mouseType[e.button] = false;
@@ -320,7 +304,6 @@ export default defineComponent({
         this.onDrop();
         isDrag = false;
       }
-      else { moveStart = null; }
     },
     onWheel(e) {  // 滚轮事件
       if (dragModel) {  // 拖动物体+滚轮=旋转物体
@@ -340,6 +323,7 @@ export default defineComponent({
         height = tab.clientHeight - tab.children[0].clientHeight - 4;
       }  // 否则全屏预览
       this.scene.renderer.setSize(width, height);
+      this.scene.cssRenderer.setSize(width, height);
       this.scene.camera.aspect = width / height;
       this.scene.camera.updateProjectionMatrix();
     },

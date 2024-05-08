@@ -508,14 +508,14 @@
     <template #overlay>
       <a-menu @click="action">
         <!--导入-->
-        <a-sub-menu key="导入" title="导入" :disabled="loadingModel">
+        <a-sub-menu title="导入" :disabled="loadingModel">
           <a-menu-item v-for="asset in ['模型','材质']" :key="asset" 
           @click="createAsset(asset)">
             {{asset}}
           </a-menu-item>
         </a-sub-menu>
         <!--新建-->
-        <a-sub-menu key="新建" title="新建">
+        <a-sub-menu title="新建">
           <a-menu-item v-for="asset in ['文件夹','代码']" :key="asset" 
           @click="createAsset(asset)">
             {{asset}}
@@ -526,7 +526,7 @@
           重命名
         </a-menu-item>
         <!--排序方式-->
-        <a-sub-menu key="排序方式" title="排序方式">
+        <a-sub-menu title="排序方式">
           <a-menu-item v-for="mode in ['无','按组件名排序（文件夹在前）','按组件类型排序']" 
           :disabled="sortMethod==mode" :key="mode" @click="sort(mode)">
             {{mode}}
