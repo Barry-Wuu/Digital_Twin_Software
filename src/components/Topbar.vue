@@ -112,14 +112,22 @@
                 BottomSpeed.textContent = marks[speed.value];
             },
             changeLayers(){  // 更改各类物体的显隐性
+                global.updateLayers(layers.value);
                 global.emit("changeControllerVisibility", layers.value.includes("物体控制器"));
                 global.emit("changeGizmoVisibility", layers.value.includes("Gizmo"));
                 global.DTScene().mesh.traverse(mesh => {
-                    if(mesh.userData.indicator) mesh.visible = layers.value.includes("指示箭头");
-                    ;
-                    if(mesh.DT && mesh.DT.temp) mesh.visible = layers.value.includes("货物");
-                    if(mesh.DT && mesh.DT.special) mesh.visible = layers.value.includes("特殊物体");
-                    ;
+                    if(mesh.userData.indicator) {
+                        mesh.visible = layers.value.includes("指示箭头");
+                    }
+                    if(mesh.userData.rigidHelper) {
+                        mesh.visible = layers.value.includes("碰撞体");
+                    }
+                    if(mesh.DT && mesh.DT.special) {
+                        mesh.visible = layers.value.includes("特殊物体");
+                    }
+                    if(mesh.DT && mesh.DT.temp) {
+                        mesh.visible = layers.value.includes("货物");
+                    }
                 });
             },
             changeSpeed(value){  // 更改速度，value为滑动条百分比，marks[value]为实际速度倍率
@@ -497,11 +505,10 @@
 
     <!--可视化-->
     <span v-if="tab=='可视化'" class="toptab" @click="global.emit('deselect')">
-        <!--层级选择-->
+        <!--图层选择-->
         <div style="align-items:center; display:inline; height:100%" class="marginLR5">
             <span style="align-items:center; display:flex; 
             height: calc(100% - 35px); justify-content:space-evenly;" class="bottom">
-                <!--层级选择-->
                 <a-checkbox-group v-model:value="layers" @change="changeLayers">
                     <a-row :gutter="8" class="layers">
                         <a-col>          
@@ -512,12 +519,12 @@
                         <a-col>
                             <a-checkbox value="货物">货物</a-checkbox><br>
                             <a-checkbox value="特殊物体">特殊物体</a-checkbox><br>
-                            <a-checkbox value="碰撞体" disabled>碰撞体</a-checkbox>
+                            <a-checkbox value="碰撞体">碰撞体</a-checkbox>
                         </a-col>
                     </a-row>
                 </a-checkbox-group>
             </span>
-            <div class="bottomBorder">层级选择</div>
+            <div class="bottomBorder">图层选择</div>
         </div>
         <vr class="splitV"/><!--分隔符-->
 

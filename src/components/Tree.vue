@@ -124,7 +124,7 @@
         },
         doubleClick(){  // 双击将相机拉近至物体
           choices.value = [lastChoice];
-          global.emit("moveCameraTo", lastChoice);
+          global.emit("cameraMoveTo", lastChoice);
         },
         dragFrom(e){  // 开始拖拽
           // console.log(e)
