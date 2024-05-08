@@ -43,8 +43,6 @@ export default defineComponent({
     resizeObserver = new ResizeObserver(() => {
       this.resizeCanvas()
     });
-    global.on("dragModelStart", (data) => { dragData = data });
-    global.on("dropout", () => dragModel.remove());
     global.on("changeFullscreen", () => {  // 全屏或退出全屏
       fullscreen = !fullscreen;
       if (fullscreen) {
@@ -62,10 +60,9 @@ export default defineComponent({
       global.emit("changeQuitFullscreen", fullscreen);
       this.resizeCanvas();
     });
-    return {
-      description: null,
-      rendered: false,
-    }
+    global.on("dragModelStart", (data) => { dragData = data });
+    global.on("dropout", () => dragModel.remove());
+    return { description: null, rendered: false, }
   },
   methods: {
     castRay(e) {  // 射线检测
@@ -208,8 +205,8 @@ export default defineComponent({
               closestAttachPoint2.getWorldPosition(newWorldPosition);
               const offset = newWorldPosition.sub(worldPositionAP1);// 计算从 dragModel 到 ap1 当前世界位置的偏移
               const rotationChange = closestAttachPoint2.parent.rotation
-              dragModel.rotation.x=rotationChange.x;  // X轴旋转
-              dragModel.rotation.y= rotationChange.y;  // Y轴旋转
+              dragModel.rotation.x = rotationChange.x;  // X轴旋转
+              dragModel.rotation.y = rotationChange.y;  // Y轴旋转
               dragModel.position.add(offset);       // 更新 dragModel 的位置
               this.scene.updateMatrixWorld(true); // 确保场景中所有变换都是最新的
             }
@@ -218,9 +215,11 @@ export default defineComponent({
             point = dragPoint.clone();
             point.z = this.intersectPlaneV(e, dragPoint).z;
           }
-          else point = this.intersectPlaneH(e, dragPoint);  // 左键拖动物体在同一高度内移动
-          point.add(delta);
-          tempModel.position.copy(point);
+          else {  // 左键拖动物体在同一高度内移动
+            point = this.intersectPlaneH(e, dragPoint);
+          }
+          point.add(delta);  // 更新模型的全局坐标
+          tempModel.position.copy(dragModel.parent.worldToLocal(point));  // 将模型的全局坐标转换为局部坐标
         }
         else {  // 从外部拖入模型时将其包围盒中心移到鼠标
           let intersect = this.intersectObject(e);
@@ -268,7 +267,8 @@ export default defineComponent({
           if (choice.userData.indicator) choice = choice.parent;  // 点击指示箭头
           if (choice.DT && !choice.userData.ground) {
             global.emit("clickModel", choice.id + ',' + e.shiftKey);
-            delta.subVectors(result[0].position, result[1]);  // Δp = 选中物体的坐标 - 物体上点击处的坐标
+            result[0].getWorldPosition(delta);
+            delta.sub(result[1]);  // Δp = 选中物体的全局坐标 - 物体上点击处的坐标
             dragModel = choice;
             dragModel.isDrag = true;
             tempModel = dragModel.clone();
@@ -317,7 +317,7 @@ export default defineComponent({
     onMouseup(e) {
       mouseType[e.button] = false;
       if (isDrag) {
-        this.onDrop(e);
+        this.onDrop();
         isDrag = false;
       }
       else { moveStart = null; }

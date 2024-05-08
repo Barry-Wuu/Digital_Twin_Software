@@ -6,6 +6,7 @@ import * as THREE from "three"
 
 import { ClearPass } from 'three/examples/jsm/postprocessing/ClearPass.js';
 import { ColladaLoader } from "three/examples/jsm/loaders/COLLADALoader.js"
+import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js"
@@ -19,6 +20,7 @@ import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js"
 import { ViewHelper } from "three/examples/jsm/helpers/ViewHelper.js"
 import { TransformControls } from "three/examples/jsm/controls/TransformControls.js"
 import { computed, ref, watch } from "vue"
+import { throttledRef } from "@vueuse/core";
 
 var BottomFPS, BottomTimer;
 let customModels = {};
@@ -46,31 +48,12 @@ const clock = new THREE.Clock();
 const g = 9.8;
 const G = new Ammo.btVector3( 0, 0, -g );
 const margin = 1e-5;  // rigidShape需要此间隙
-var moveCamera = 0;
-var lookat, p_start, p_end;  // 相机移动的目标物体，起点和终点
+var moveToId = 0;
+var focus, p_start, p_end;  // 相机移动的目标物体，起点和终点
 var renderPass;  // 边缘高亮滤镜
 var T0;  // 开始仿真的时间
 var time = performance.now();
 var timeUpdateFPS = performance.now();
-
-function geom2rigidShape(geom, scale){  // 从几何形状建立刚体形状
-    // points里每三个连续的点定义了一个三角形面
-    let points = geom.attributes.position.array
-    let triangleMesh = new Ammo.btTriangleMesh();
-    for (let i=0; i < points.length; i+=9) {
-        let p0 = new Ammo.btVector3(points[i], points[i+1], points[i+2]);
-        let p1 = new Ammo.btVector3(points[i+3], points[i+4], points[i+5]);
-        let p2 = new Ammo.btVector3(points[i+6], points[i+7], points[i+8]);
-        p0.op_mul(scale)
-        p1.op_mul(scale)
-        p2.op_mul(scale)
-        triangleMesh.addTriangle(p0, p1, p2);  
-    } 
-    //return shape;
-    //let shape = new Ammo.btBvhTriangleMeshShape(triangleMesh);  // 真实碰撞网格，几千个面同时导入后碰撞时会卡死
-    let shape = new Ammo.btConvexTriangleMeshShape(triangleMesh);  // 凸碰撞网格
-    return shape;
-}
 
 // 物理解算器
 var physicsWorld;
@@ -103,7 +86,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
     name: string  // 名称
     rb: object  // 刚体
     rigid: boolean  // 是否为刚体
-    rigidShape: string  // 刚体网格
+    rigidShape: string  // 刚体网格，设成字符串易于存取，若为空则刚体为mesh的凸集
     row: number  // 子树在层级树模块中占几行
     scale: number  // 尺寸
     skybox: object  // 天空盒
@@ -177,10 +160,17 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
     }
     createRigidBody() {  // 添加刚体
         if(!this.rigid) return;
+        let mass = this.mass;
         let pos = this.mesh.position;
         let quat = this.mesh.quaternion;
-        let mass = this.mass;
-        let shape = eval(this.rigidShape);
+        let shape;
+        if(typeof this.rigidShape == "string"){
+            if(this.rigidShape.includes("new")) this.createRigidHelper();
+            shape = eval(this.rigidShape); 
+        }
+        else{
+            shape = this.createRigidShape(this.rigidShape, this.scale);
+        }
         const transform = new Ammo.btTransform();
         transform.setIdentity();
         transform.setOrigin( new Ammo.btVector3(pos.x, pos.y, pos.z) );
@@ -197,6 +187,56 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         physicsWorld.addRigidBody( rb );
         rb_mesh[rb.ptr] = {mesh:this.mesh, rb:rb};
         rb.setFriction( this.friction0 );  // 静摩擦力
+    }
+    createRigidHelper(geom=null){ // 根据刚体形状添加可视化碰撞体网格
+        let result, rule = /\(([^]*)\)/;
+        let material = new THREE.LineBasicMaterial( {color:"red"} );
+        if(!geom){
+            if(typeof this.rigidShape != "string"){
+                geom = this.rigidShape;
+            }
+            else if(this.rigidShape.includes("btBoxShape")){
+                result = eval(this.rigidShape.match(rule)[1]);
+                geom = new THREE.BoxGeometry(result.x()*2, result.y()*2, result.z()*2);
+            }
+        }
+        const mesh = new THREE.LineSegments(geom, material);
+        mesh.userData.rigidHelper = true;  // 可视化碰撞体网格
+        mesh.visible = global.layers().includes("碰撞体");
+        this.mesh.add(mesh);
+    }
+    createRigidShape(geom, scale=1){  // 从几何形状建立刚体形状
+        // points里每三个连续的点定义了一个三角形面
+        let ammoMesh = new Ammo.btTriangleMesh();
+        let threeVertices = [];
+        let points = geom.attributes.position.array;
+        let result;
+        for (let i=0; i < points.length; i+=9) {
+            let p0 = new Ammo.btVector3(points[i], points[i+1], points[i+2]);
+            let p1 = new Ammo.btVector3(points[i+3], points[i+4], points[i+5]);
+            let p2 = new Ammo.btVector3(points[i+6], points[i+7], points[i+8]);
+            p0.op_mul(scale)
+            p1.op_mul(scale)
+            p2.op_mul(scale)
+            ammoMesh.addTriangle(p0, p1, p2);  
+            p0 = new THREE.Vector3(points[i], points[i+1], points[i+2]);
+            p1 = new THREE.Vector3(points[i+3], points[i+4], points[i+5]);
+            p2 = new THREE.Vector3(points[i+6], points[i+7], points[i+8]);
+            //p0.multiplyScalar(scale);
+            //p1.multiplyScalar(scale);
+            //p2.multiplyScalar(scale);
+            threeVertices.push(p0, p1, p2);
+        } 
+        if(typeof this.rigidShape == "string"){  // 凸碰撞网格
+            this.createRigidHelper(new ConvexGeometry(threeVertices));
+            result = new Ammo.btConvexTriangleMeshShape(ammoMesh);
+        }
+        else{
+            let wireframe = new THREE.WireframeGeometry(geom);
+            this.createRigidHelper(wireframe);  // 真实碰撞网格，面太多时会卡死
+            result = new Ammo.btBvhTriangleMeshShape(ammoMesh);
+        }
+        return result;
     }
     destroy(protect = true) {  // 清除自身及其网格和刚体
         let mesh = this.mesh;
@@ -249,11 +289,13 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         this.updateWireframes(true);
         global.emit("init");
     }
-    setProp(prop, newValue) {
-        let node = this, split = prop.split('.');
-        let last = split.splice(-1);
-        for(let p of split){node = node[p];}
-        node[last] = newValue;
+    setProp(prop=null, newValue=null) {  // 改变物体及其刚体的属性
+        if(prop){
+            let node = this, split = prop.split('.');
+            let last = split.splice(-1);
+            for(let p of split){node = node[p];}
+            node[last] = newValue;
+        }
         if(this.rigid){  // 刚体
             let rb = this.mesh.userData.physicsBody;
             let transform = new Ammo.btTransform();
@@ -271,7 +313,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
             rb.setMotionState(motionState);
         }
     }
-    setRow(expanded){
+    setRow(expanded){  // 设置物体在树中的行数
         let children = this.children, lastRow = 0;
         this.expanded = expanded.includes(this.key);
         if(this.expanded){
@@ -390,20 +432,21 @@ export default class SceneBuilder{
         this.cameraPersp.up.copy(UP);  // 在相机里让z轴向上
         this.camera = this.cameraPersp;
         global.setCamera(this.camera);
-        global.on("moveCameraTo", (id)=>{  // 双击将相机拉近至物体
-            moveCamera = id;
+        global.on("cameraMoveTo", (id)=>{  // 双击将相机拉近至物体
+            moveToId = id;
         });   
         global.on("changeCamera", data => {  // 切换相机类型（透视/正交）
             let camera = this.camera;  // 前一个相机
             let position = camera.position;
             let target = this.orbitControl.target;
+            let visible = global.layers().includes("Gizmo");
             this.camera = {"透视": this.cameraPersp, "正交": this.cameraOrtho} [data];
             this.camera.position.copy(position);
             this.orbitControl.object = this.camera;
             this.orbitControl.target.copy(target);
             renderPass.camera = this.camera; 
-            this.gizmoPersp.visible = data == "透视";
-            this.gizmoOrtho.visible = data == "正交";
+            this.gizmoPersp.visible = visible && data == "透视";
+            this.gizmoOrtho.visible = visible && data == "正交";
         })
         global.on("changeView", (key)=>{
             let camera = this.camera;
@@ -489,8 +532,9 @@ export default class SceneBuilder{
                 else {  // 拖动无geometry的物体
                     center = attached.position;
                 }
-                center.multiplyScalar(attached.scale.x);
-                attached.traverseAncestors((mesh)=>{center.multiplyScalar(mesh.scale.x)});
+                let worldScale = center.clone;  // 总比例
+                attached.getWorldScale(worldScale);
+                center.multiplyScalar(worldScale.x);
                 this.controller.position.copy(center);
             }
         };
@@ -513,9 +557,12 @@ export default class SceneBuilder{
             if(!attached.userData.protected) {
                 startControl = true;
                 this.controller.attach(attached);
+            } else {  // 点击地面等则移除控制器
+                global.emit("controlEnd");
             }
         });
-        global.on("controlEnd", ()=>{  // 取消选择时收起控制器
+        global.on("controlEnd", ()=>{  // 取消选择时移除控制器
+            if(attached) attached.DT.setProp();
             attached = null;
             SCENE.remove(this.controller);
             this.controller.detach();
@@ -671,17 +718,36 @@ export default class SceneBuilder{
             animate = () => {
                 try{ requestAnimationFrame(animate) }
                 catch{ return }
-                if(moveCamera > 0){  // 开始移动相机到双击的物体
-                    lookat = SCENE.getObjectById(moveCamera);
-                    const d = 10;  // 相机到物体的距离
+                if(moveToId > 0){  // 开始移动相机到双击的物体
+                    global.emit("controlStart", moveToId);  // 防止相机移动时控制器消失
+                    focus = SCENE.getObjectById(moveToId);     
                     p_start = this.camera.position.clone();  // 起点
+                    let center = focus.position.clone();  // 中心点
+                    var d = 10;  // 默认距离
+                    if(!focus.userData.protected){  // 让物体包围盒越小，相机距离物体越近，反之亦然
+                        // 求物体包围盒中心
+                        focus.getWorldPosition(center);
+                        let worldScale = center.clone();  // 总比例
+                        focus.getWorldScale(worldScale);
+                        let centerDelta = center.clone();
+                        this.controller.getWorldPosition(centerDelta);
+                        center.add(centerDelta);
+                        // 求相机到物体的距离d与d*相机朝向
+                        let wireframe = focus.children.filter(child=>child.userData.wireframe)[0];
+                        if(wireframe){
+                            let r = wireframe.geometry.boundingSphere.radius * focus.scale.x;  // 包围球半径
+                            d = r*2.5;
+                        }
+                    }
+                    d = Math.max(d, 5);  // 让相机不能离物体太近
                     this.camera.getWorldDirection(front);
                     let delta = front.clone();
                     delta.multiplyScalar(d);
-                    p_end = lookat.position.clone().sub(delta);  // 终点 = p(物体) - d*r(相机)
-                    moveCamera = -1;
+                    // 终点 = 物体包围盒中心 - d*相机朝向
+                    p_end = center.sub(delta);
+                    moveToId = -1;
                 }
-                if(moveCamera < 0){  // 移动中
+                if(moveToId < 0){  // 移动中
                     frameCounter++;
                     this.cameraMovable.position.lerpVectors(p_start, p_end, frameCounter/60);
                     let target = this.cameraMovable.position.clone();
@@ -689,7 +755,7 @@ export default class SceneBuilder{
                     new THREE.Ray(target, front).intersectPlane(Ground, this.orbitControl.target);
                     if (frameCounter >= 60){  // 结束移动
                         this.orbitControl.enableRotate = true;
-                        frameCounter = moveCamera = 0;
+                        frameCounter = moveToId = 0;
                     }
                 }
                 this.render();
@@ -744,29 +810,54 @@ export default class SceneBuilder{
             }
             else if(data.modelname == "传感器"){
                 DT.geometry = new THREE.BoxGeometry(3, 0.1, 0.1);
-                DT.rigidShape = new Ammo.btBoxShape(new Ammo.btVector3(1.5, 0.05, 0.05));
+                DT.rigidShape = "new Ammo.btBoxShape(new Ammo.btVector3(1.5, 0.05, 0.05))";
                 DT.material = { color: "lime", opacity: 0.5, transparent: true };
                 DT.code = 'let rb = this.mesh.userData.physicsBody; \n rb.setMassProps(0, new Ammo.btVector3(0, 0, 0));'
             }
             else{
                 DT.scale = 0.05;
-                modelPath = `src/assets/models/传送带-${data.modelname}.stl`;
+                if(data.modelname.includes("弯道")) modelPath = `src/assets/models/传送带-弯道.stl`;
+                else modelPath = `src/assets/models/传送带-${data.modelname}.stl`;
                 DT.geometry = customModels[modelPath];
-                DT.rigidShape = "geom2rigidShape(this.geometry, this.scale)"
                 if(data.modelname == "直道"){
                     DT.material = { color: "lightgray" };
+                    DT.rigidShape = "this.createRigidShape(this.geometry, this.scale)"
                     DT.v0 = 2;
                     indicators = [this.createArrow(0.5, 0, 0)]
                     attachPoint1 = [this.createAttachPoint1(0, 0)]
                     attachPoint2 = [this.createAttachPoint2(150, 0)]
                 }
-                if(data.modelname == "弯道"){
+                if(data.modelname == "弯道（圆环）"){
                     DT.material = { color: "lightgray" };
+                    let shape = new THREE.Shape(), pi = Math.PI, r = 3.6 / DT.scale, R = 6.4 / DT.scale;
+                    shape.moveTo(0, R);
+                    shape.absarc(0, 0, R, pi/2, pi, false);
+                    shape.lineTo(-r, 0);
+                    shape.absarc(0, 0, r, pi, pi/2, true);
+                    shape.closePath();
+                    
+                    let geom = new THREE.ExtrudeGeometry( shape, {
+                        bevelEnabled: false,
+                        curveSegments: 6,  // 曲线上取的点数，越少性能越高，越多精度越高
+                        depth: -12,
+                        steps: 1,
+                    });
+                    
+                    //let geom = new THREE.ShapeGeometry( shape );
+                    DT.rigidShape = geom;
                     DT.v0 = 2;
                     indicators = [this.createArrow(-5, 0, 90)]
                     attachPoint1 = [this.createAttachPoint1(-100, 0)]
                     attachPoint2 = [this.createAttachPoint2(0, 100)]
-                }   
+                }
+                if(data.modelname == "弯道（凸集）"){
+                    DT.material = { color: "lightgray" };
+                    DT.rigidShape = "this.createRigidShape(this.geometry, this.scale)"
+                    DT.v0 = 2;
+                    indicators = [this.createArrow(-5, 0, 90)]
+                    attachPoint1 = [this.createAttachPoint1(-100, 0)]
+                    attachPoint2 = [this.createAttachPoint2(0, 100)]
+                }      
             }
             attachObjects.add(DT.mesh);
             localStorage.setItem('attachObjects', JSON.stringify(attachObjects));
@@ -814,13 +905,14 @@ export default class SceneBuilder{
         if(data.modeltype == "基本几何体"){mesh.rotateX(Math.PI/2);}
         DT.name = data.modelname;
         mesh.geometry = DT.geometry;
-
         DT.setTitle();
         DT.updateWireframes();
+
         if(indicators.length){  // 指示箭头
             for(let i of indicators){
                 i.scale.setScalar(1/DT.scale);
                 i.userData.indicator = true;
+                i.visible = global.layers().includes("指示箭头");
                 mesh.add(i);
             }
         } 
@@ -1003,7 +1095,7 @@ export default class SceneBuilder{
                     F.op_mul(k*m*g);
                     rb0.applyCentralForce(F);
                 }
-                else if(mesh1.DT.name == "弯道"){
+                else if(mesh1.DT.name && mesh1.DT.name.includes("弯道")){
                     let r = new THREE.Vector3();
                     r.add(mesh0.position).sub(mesh1.position);
                     r.setZ(0);
@@ -1087,8 +1179,11 @@ export default class SceneBuilder{
             };
             if(!DT.mesh.userData.physicsBody) continue;
             if(!mesh.isDrag){  // 刚体未被拖动时才计算
-                if(mesh.position.manhattanDistanceTo(origin) > 10000){
-                    mesh.DT.destroy();  // 物体太远则清除
+                if (mesh.position.manhattanDistanceTo(origin) > 10000 || 
+                    Number.isNaN(mesh.position.x) ||
+                    Number.isNaN(mesh.position.y) ||
+                    Number.isNaN(mesh.position.z)){
+                    mesh.DT.destroy();  // 物体太远或位置变为NaN时则清除
                 }
                 const motionState = rb.getMotionState();
                 if ( motionState ) {
