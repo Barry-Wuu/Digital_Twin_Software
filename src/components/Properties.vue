@@ -38,9 +38,13 @@
       },
       setColor(e){  // 更改材质颜色
         if(e.type=='keydown' && e.key=='Enter'){
-          DT.value.mesh.material.color.setStyle(e.target.value);
-          if(DT.value.mesh.userData.ground){  // 更改地面颜色时同时更改雾的颜色
-            global.emit("changeFogColor");
+          if(DT.value.mesh.isLight){  // 更改光源颜色
+            DT.value.mesh.color.setStyle(e.target.value);
+          } else {  // 更改材质颜色
+            DT.value.mesh.material.color.setStyle(e.target.value);
+            if(DT.value.mesh.userData.ground){  // 更改地面颜色时同时更改雾的颜色
+              global.emit("changeFogColor");
+            }
           }
         }
       },
@@ -183,7 +187,6 @@
           <a-input class="input" :style="propStyle(prop[0], 80)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
             @keydown="(e)=>setProp({e:e, unit:angle, min:0, max:360, fixed:2, loop:true})" 
-           
           />
           <a-input :style="propStyle(prop[0], 80)" v-else
             :value="loop(Math.round(prop[1]/angle), 360)"
@@ -196,7 +199,6 @@
           <a-input class="input" :style="propStyle(prop[0], 80)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
             @keydown="(e)=>setProp({e:e, unit:angle, min:0, max:360, fixed:2, loop:true})" 
-           
           />
           <a-input :style="propStyle(prop[0], 80)" v-else
             :value="loop(Math.round(prop[1]/angle), 360)"
@@ -209,7 +211,6 @@
           <a-input class="input" :style="propStyle(prop[0], 80)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
             @keydown="(e)=>setProp({e:e, unit:angle, min:0, max:360, fixed:2, loop:true})" 
-           
           />
           <a-input :style="propStyle(prop[0], 80)" v-else
             :value="loop(Math.round(prop[1]/angle), 360)"
@@ -220,6 +221,68 @@
         <!--比例-->
         <div v-if="DT.scale" class="row">
           <strong>比例：</strong>{{DT.scale}}
+        </div>
+
+        <!--光源属性-->
+        <div v-if="DT.mesh.isLight" class="row">
+          <!--光源颜色-->
+          <strong>光源颜色：</strong><br/>
+
+          <span :title="helpChange" v-for="prop in hasProp('mesh.color.r')">
+            <strong>R:</strong>
+            <a-input class="input" :style="propStyle(prop[0], 80)"
+              v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+              @keydown="(e)=>setProp({e:e, unit:1/255, min:0, max:255})" 
+            />
+            <a-input :style="propStyle(prop[0], 80)" v-else
+              :value="parseInt(prop[1]*255)"
+              @wheel="(e)=>setProp({e:e, unit:1/255, min:0, max:255})"
+            />&nbsp;
+          </span>
+
+          <span :title="helpChange" v-for="prop in hasProp('mesh.color.g')">
+            <strong>G:</strong>
+            <a-input class="input" :style="propStyle(prop[0], 80)"
+              v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+              @keydown="(e)=>setProp({e:e, unit:1/255, min:0, max:255})"        
+            />
+            <a-input :style="propStyle(prop[0], 80)" v-else
+              :value="parseInt(prop[1]*255)"
+              @wheel="(e)=>setProp({e:e, unit:1/255, min:0, max:255})"
+            />&nbsp;
+          </span>
+
+          <span :title="helpChange" v-for="prop in hasProp('mesh.color.b')">
+            <strong>B:</strong>
+            <a-input class="input" :style="propStyle(prop[0], 80)"
+              v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+              @keydown="(e)=>setProp({e:e, unit:1/255, min:0, max:255})" 
+            />
+            <a-input :style="propStyle(prop[0], 80)" v-else
+              :value="parseInt(prop[1]*255)"
+              @wheel="(e)=>setProp({e:e, unit:1/255, min:0, max:255})"
+            />&nbsp;
+          </span><br>
+
+          <!--更改颜色-->
+          更改颜色：
+          <span :title="helpChange">
+            <a-input style="width: 120px" placeholder="输入CSS颜色"
+            @keydown="setColor"/>
+          </span> 
+
+          <!--光照强度-->
+          <span :title="helpChange" v-for="prop in hasProp('mesh.intensity')" class="row">
+            <strong>光照强度：</strong>
+            <a-input class="input" :style="propStyle(prop[0], 80)"
+              v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
+              @keydown="(e)=>setProp({e:e, min:0, fixed:2})"
+            />
+            <a-input :style="propStyle(prop[0], 80)" v-else
+              :value="prop[1].toFixed(2)"
+              @wheel="(e)=>setProp({e:e, delta:0.1, min:0, fixed:2})"
+            />
+          </span>
         </div>
 
         <!--发生时间间隔-->
@@ -241,7 +304,6 @@
           <a-input class="input" :style="propStyle(prop[0], 120)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
             @keydown="(e)=>{setProp({e:e, type:typeof prop[1]}); global.emit('updateSkybox')}" 
-           
           />
           <a-input :style="propStyle(prop[0], 120)" v-else :value="prop[1]"/>
         </span>
@@ -252,7 +314,6 @@
           <a-input class="input" :style="propStyle(prop[0], 120)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
             @keydown="(e)=>{setProp({e:e, type:typeof prop[1]}); global.emit('updateSkybox')}" 
-           
           />
           <a-input :style="propStyle(prop[0], 120)" v-else :value="prop[1]"/>
         </span>
@@ -263,7 +324,6 @@
           <a-input class="input" :style="propStyle(prop[0], 120)"
             v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
             @keydown="(e)=>{setProp({e:e, type:typeof prop[1]}); global.emit('updateSkybox')}" 
-           
           />
           <a-input :style="propStyle(prop[0], 120)" v-else :value="prop[1]"/>
         </span>
@@ -401,7 +461,6 @@
             <a-input class="input" :style="propStyle(prop[0], 80)"
               v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
               @keydown="(e)=>setProp({e:e, unit:1/255, min:0, max:255})" 
-             
             />
             <a-input :style="propStyle(prop[0], 80)" v-else
               :value="parseInt(prop[1]*255)"
@@ -414,7 +473,6 @@
             <a-input class="input" :style="propStyle(prop[0], 80)"
               v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
               @keydown="(e)=>setProp({e:e, unit:1/255, min:0, max:255})" 
-             
             />
             <a-input :style="propStyle(prop[0], 80)" v-else
               :value="parseInt(prop[1]*255)"
@@ -427,7 +485,6 @@
             <a-input class="input" :style="propStyle(prop[0], 80)"
               v-model:value="chosenDOM_value" v-if="chosenDOM == prop[0]" 
               @keydown="(e)=>setProp({e:e, unit:1/255, min:0, max:255})"
-             
             />
             <a-input :style="propStyle(prop[0], 80)" v-else
               :value="parseInt(prop[1]*255)"

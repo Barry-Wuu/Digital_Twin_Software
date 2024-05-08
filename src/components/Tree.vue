@@ -84,6 +84,12 @@
           let option = e.key;
           var DT;
           if(option == "取消选择") choices.value = []; 
+          if(option == "添加平行光"){
+            global.emit("createLight", "DirectionalLight");
+          }
+          if(option == "添加环境光"){
+            global.emit("createLight", "AmbientLight");
+          }
           if(option == "克隆"){
             if(!choices.value.includes(DT.id)) choices.value = [DT.id]
             let temp = []
@@ -307,6 +313,10 @@
     <template #overlay v-if="!searchValue">
       <a-menu @click="action">
         <a-menu-item :disabled="!choices.length" key="取消选择">取消选择</a-menu-item>
+        <a-sub-menu title="添加">
+          <a-menu-item key="添加平行光">平行光</a-menu-item>
+          <a-menu-item key="添加环境光">环境光</a-menu-item>
+        </a-sub-menu>
         <a-menu-item key="全部展开">全部展开</a-menu-item>
         <a-menu-item key="全部折叠">全部折叠</a-menu-item>
         <a-menu-item key="删除">删除</a-menu-item>
