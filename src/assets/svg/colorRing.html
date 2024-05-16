@@ -1,0 +1,39 @@
+<script src="https://cdn.staticfile.net/vue/3.2.36/vue.global.min.js"></script>
+
+<div id="app">
+	<svg width="160" height="160" xmlns="http://www.w3.org/2000/svg">
+		<path v-for="item of parts" :fill="item.fill" :d="item.path"/>
+	</svg>
+</div>
+
+<script>
+	const parts = [];
+  	const pieces = 800;
+  	const R = [];
+  	const r = [];
+  	for (let i=0; i<pieces; i++) {
+    	let theta = 2*Math.PI*i/pieces
+    	R.push([(80 + 80 * Math.cos(theta)).toFixed(2), (80 - 80 * Math.sin(theta)).toFixed(2)]);
+    	r.push([(80 + 60 * Math.cos(theta)).toFixed(2), (80 - 60 * Math.sin(theta)).toFixed(2)]);
+  	}
+	for (let i=0; i<pieces; i++) {
+		let p1 = R[i], p2 = R[(i+1)%pieces], p3 = r[(i+1)%pieces], p4 = r[i];
+		p1 = p1[0] + ',' + p1[1];
+		p2 = p2[0] + ',' + p2[1];
+		p3 = p3[0] + ',' + p3[1];
+		p4 = p4[0] + ',' + p4[1];
+		parts.push({
+			fill: `hsl(${i*360/pieces}, 100%, 50%)`,
+			path: `
+				M ${p1} 
+				A 80 80 0 0 0 ${p2}
+				L ${p3} 
+				A 60 60 0 0 1 ${p4}
+				L ${p1}
+			`,
+		});
+	}
+	const app = { data() { return { parts } } }
+	Vue.createApp(app).mount('#app')
+</script>
+

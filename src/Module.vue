@@ -1,14 +1,13 @@
 <script lang="ts">
     import { defineComponent, ref } from 'vue'
-    import Assets from './Assets.vue'
-    import Canvas from './ThreeScene/Canvas.vue'
-    import Console from './Console.vue'
-    import Menu from './Menu.vue'
-    import Models from './Models.vue'
-    import Properties from './Properties.vue'
-    import Tree from './Tree.vue'
+    import Assets from './components/Assets.vue'
+    import Canvas from './components/ThreeScene/Canvas.vue'
+    import Console from './components/Console.vue'
+    import Models from './components/Models.vue'
+    import Properties from './components/Properties.vue'
+    import Tree from './components/Tree.vue'
     export default defineComponent({
-        components:{Assets, Canvas, Console, Menu, Models, Properties, Tree},
+        components:{Assets, Canvas, Console, Models, Properties, Tree},
         methods:{
         },
         props:{modules:[], tabs:[]}, 

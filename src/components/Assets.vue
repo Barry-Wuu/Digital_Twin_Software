@@ -9,9 +9,9 @@
     GiftTwoTone,
     PictureTwoTone,
     RollbackOutlined
-  } from '@ant-design/icons-vue'
-  import global from "./Global"
-  import { DTObject } from './ThreeScene/DTScene'
+  } from "@ant-design/icons-vue"
+  import global from "../Global"
+  import { DTObject } from "./ThreeScene/DTScene"
   import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js"
   const path = require("path");
   import * as THREE from 'three'
@@ -80,8 +80,7 @@
         } else {
           dragAsset.value = asset;  // 选择
           if(asset.type == "model"){
-            window.assetDT = asset.DT;
-            global.emit("showProperty", "asset");
+            global.emit("showProperty", asset.DT);
           }
           if(asset.type == "return"){
             currentFolder.value = asset.parent;
@@ -542,4 +541,4 @@
       </a-menu>
     </template>
   </a-dropdown>
-</template>./Global./Global
+</template>

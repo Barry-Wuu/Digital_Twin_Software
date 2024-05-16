@@ -3,7 +3,7 @@
   import {
     CloseOutlined,  // 清除图标
   } from "@ant-design/icons-vue";
-  import global from "./Global"
+  import global from "../Global"
   var models = ref({
     "传送带": [
       ["直道","直道.jpg"],
@@ -45,16 +45,7 @@
         return new URL(`${path}`, import.meta.url).href
       },
       transfer(e, data) {
-        let result;
-        function findImg(DOM){
-          for(let child of DOM.children){
-            if(child.localName == "img") {result = child; return;}
-            findImg(child);
-          }
-        }
-        findImg(e.srcElement);
         e.dataTransfer.setDragImage(document.createElement("img"), 0, 0); 
-        //e.dataTransfer.setDragImage(result, 0, 0);
         global.emit("dragModelStart", {type: "model", data: data});
       },
       onRightClick(e){
@@ -93,13 +84,15 @@
 
 <style>
   .img {  
-    display:flex; 
-    width:100%; 
-    height:100%; 
+    display: flex; 
+    width: 100%; 
+    height: 100%; 
     object-fit: contain;
   }  
-  .title {
-    display:flex; margin-top: -36px; margin-left: 45px;
+  .modelTitle {
+    font-weight: bold;
+    margin-top: -36px; 
+    margin-left: 45px;
   }
 </style>
 
@@ -131,7 +124,7 @@
             ">
               <img :src="getIMG(item[1])" class="img" draggable="false"/>
             </div>
-            <div class="title">{{item[0]}}</div>
+            <div class="modelTitle">{{item[0]}}</div>
           </a-card>
         </a-collapse-panel>
       </a-collapse>
@@ -150,7 +143,7 @@
           ">
             <img :src="getIMG(item[2])" class="img" draggable="false"/>
           </div>
-          <div class="title">
+          <div class="modelTitle">
             <span>{{ item[1].substring(0, item[1].indexOf(searchValue)) }}</span>
             <span style="color: red"><strong>{{ searchValue }}</strong></span>
             <span>{{ item[1].substring(item[1].indexOf(searchValue) + searchValue.length) }}</span>
@@ -167,4 +160,3 @@
     </template>
   </a-dropdown>
 </template>
-./Global./Global

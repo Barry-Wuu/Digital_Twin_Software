@@ -1,12 +1,12 @@
 <script setup lang="ts">
   import {onMounted, ref} from "vue"
   import BottomBar from "./components/BottomBar.vue"
-  import Layout from "./components/Layout.vue"
+  import Layout from "./Layout.vue"
   import Popup from "./components/Popup.vue"
   import Topbar from "./components/Topbar.vue"
   import "ant-design-vue"
   import { FullscreenExitOutlined } from '@ant-design/icons-vue';
-  import global from "./components/Global"
+  import global from "./Global"
 
   var dragPoint = [0, 0];
   var draggedSpliter;
@@ -139,4 +139,4 @@
     </a-config-provider>
   </div>
 </template>
-./components/Global./components/Global
+./components/Global./components/Global./Global

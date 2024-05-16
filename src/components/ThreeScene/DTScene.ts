@@ -1,5 +1,5 @@
 import * as Ammo from "ammo.js"
-import global from "../Global"
+import global from "../../Global"
 import * as fs from "fs";
 const path = require("path");
 import * as THREE from "three"
@@ -52,7 +52,7 @@ const g = 9.8;
 const G = new Ammo.btVector3( 0, 0, -g );
 const margin = 1e-5;  // rigidShape需要此间隙
 var moveToId = 0;
-var focus, p_start, p_end;  // 相机移动的目标物体，起点和终点
+var targetObject, p_start, p_end;  // 相机移动的目标物体，起点和终点
 var renderPass;  // 边缘高亮滤镜
 var T0;  // 开始仿真的时间
 var time = performance.now();
@@ -71,7 +71,7 @@ var rb_mesh = {};
 
 global.on("changeEmulateMode", (mode: string)=>{emulateMode = mode});
 global.on("changeSpeed", (k: string)=>{speed = parseInt(k.slice(0, k.length-1))});
-global.on("clearTemp", ()=>{SCENE.DT.clearTemp()});
+global.on("clearLoads", ()=>{SCENE.DT.clearLoads()});
 
 export class DTObject {  // 用DTObject类包裹场景中的对象
     children  // 子物体（自动计算）
@@ -109,7 +109,6 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         this.rigid = false;
         this.row = 0;
         this.scale = 1;
-        this.skybox = {};
         this.timer = performance.now(); 
         if(mesh){
             this.id = this.key = mesh.id;
@@ -126,10 +125,10 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         if(newScene) DTObjects.value.push(this);
         return this;
     }  
-    clearTemp() {  // 重置仿真动画时遍历清除所有临时物体
+    clearLoads() {  // 重置仿真动画时遍历清除所有临时物体
         if(this.temp) this.destroy();
         for(let child of this.children){
-            child.clearTemp();
+            child.clearLoads();
         }
     }
     clone() {  // 保存时返回去除一些属性的DTObject，以节省DTObject文件大小
@@ -209,6 +208,19 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
                 result = eval(this.rigidShape.match(rule)[1]);
                 geom = new THREE.BoxGeometry(result.x()*2, result.y()*2, result.z()*2);
             }
+            else if(this.rigidShape.includes("btConeShape")){
+                result = this.rigidShape.match(rule)[1];
+                geom = eval(`new THREE.ConeGeometry(${result})`);
+            }
+            else if(this.rigidShape.includes("btCylinderShape")){
+                result = eval(this.rigidShape.match(rule)[1]);
+                geom = new THREE.CylinderGeometry(result.x(), result.z(), result.y());
+            }
+            else if(this.rigidShape.includes("btSphereShape")){
+                result = eval(this.rigidShape.match(rule)[1]);
+                geom = new THREE.SphereGeometry(result);
+            }
+            else return;
         }
         const mesh = new THREE.LineSegments(geom, material);
         mesh.userData.rigidHelper = true;  // 可视化碰撞体网格
@@ -357,8 +369,9 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
             if(this.name.length <= 20) title = this.name;
             else title = this.name.slice(0, 20) + "...";
         }
-        else if(this.mesh.name){  // + this.id
-            if(this.mesh.name.length <= 20) title = this.mesh.name;
+        else if(this.mesh.name){
+            if(this.temp) this.mesh.name += this.id  // 创建货物时为物体名称添加id
+            if(this.mesh.name.length <= 20) title = this.mesh.name;  // 物体名称太长则省略
             else title = this.mesh.name.slice(0, 20) + "...";
         } 
         else if(name) title = this.name = name;
@@ -434,7 +447,11 @@ export default class SceneBuilder{
         // 场景
         SCENE.userData.protected = true;
         global.setDTScene(new DTObject(SCENE, true));
-        global.DTScene().skybox = {skyColor:"skyblue", skyline:"white", groundColor:"darkkhaki"};
+        global.DTScene().skybox = {
+            skyColor: new THREE.Color("skyblue"), 
+            skyline: new THREE.Color("white"), 
+            groundColor: new THREE.Color("darkkhaki"), 
+        };
         // 场景渲染器
         this.renderer = new THREE.WebGLRenderer({antialias: true});
         this.renderer.autoClear = false;
@@ -533,6 +550,8 @@ export default class SceneBuilder{
             if(!controllerVisible) return;
             SCENE.add(controller);
             if(!attached.userData.protected) {
+                controller.mode = "translate";  // 开始控制时总是平移
+                controller.space = "local";  // 开始控制时控制器的坐标系为世界坐标系
                 controller.attach(attached);
                 let center = new THREE.Vector3();
                 if(attached.isGroup) {  // 拖动Group
@@ -714,8 +733,8 @@ export default class SceneBuilder{
         global.on("updateSkybox", ()=>{this.setSkyboxByColor(SCENE.DT)});
         // 远处雾化
         SCENE.fog = new THREE.Fog(this.ground.material.color, 5, 200);
-        global.on("changeFogColor", ()=>{  // 更改地面颜色时同时更改雾的颜色
-            SCENE.fog.color.copy(this.ground.material.color);
+        global.on("changeFogColor", (isGround)=>{  // 更改地面颜色时同时更改雾的颜色
+            if(isGround) SCENE.fog.color.copy(this.ground.material.color);
         });
         emulateMode = "stop";
         loading = false;
@@ -725,23 +744,21 @@ export default class SceneBuilder{
                 catch{ return }
                 if(moveToId > 0){  // 开始移动相机到双击的物体
                     global.emit("controlStart", moveToId);  // 防止相机移动时控制器消失
-                    focus = SCENE.getObjectById(moveToId);     
+                    targetObject = SCENE.getObjectById(moveToId);     
                     p_start = this.camera.position.clone();  // 起点
-                    let center = focus.position.clone();  // 中心点
+                    let center = targetObject.position.clone();  // 中心点
                     var d = 10;  // 默认距离
-                    if(!focus.userData.protected){  // 让物体包围盒越小，相机距离物体越近，反之亦然
+                    if(!targetObject.userData.protected){  // 让物体包围盒越小，相机距离物体越近，反之亦然
                         // 求物体包围盒中心
-                        focus.getWorldPosition(center);
-                        let worldScale = center.clone();  // 总比例
-                        focus.getWorldScale(worldScale);
+                        targetObject.getWorldPosition(center);
                         let centerDelta = center.clone();
                         controller.getWorldPosition(centerDelta);
                         center.add(centerDelta);
                         // 求相机到物体的距离d与d*相机朝向
-                        let wireframe = focus.children.filter(child=>child.userData.wireframe)[0];
+                        let wireframe = targetObject.children.filter(child=>child.userData.wireframe)[0];
                         if(wireframe){
-                            let r = wireframe.geometry.boundingSphere.radius * focus.scale.x;  // 包围球半径
-                            d = r*2.5;
+                            let r = wireframe.geometry.boundingSphere.radius;  // 包围球半径
+                            d = r * targetObject.DT.scale * 2.5;  // 距离 = 包围球半径 * 物体缩放 * 2.5
                         }
                     }
                     d = Math.max(d, 5);  // 让相机不能离物体太近
@@ -894,18 +911,30 @@ export default class SceneBuilder{
         else if(name == "基本几何体-正方体"){
             DT.geometry = new THREE.BoxGeometry( 1, 1, 1 );
             DT.material = { color: "lime" };
+            DT.mass = 1;
+            DT.rigid = true;
+            DT.rigidShape = "new Ammo.btBoxShape(new Ammo.btVector3( 0.5, 0.5, 0.5 ))"; 
         }
         else if(name == "基本几何体-球"){
             DT.geometry = new THREE.SphereGeometry( 0.5 );
             DT.material = { color: "red" };
+            DT.mass = 1;
+            DT.rigid = true;
+            DT.rigidShape = "new Ammo.btSphereShape(0.5)";
         }
         else if(name == "基本几何体-锥体"){
             DT.geometry = new THREE.ConeGeometry( 0.5, 1, 12 );
             DT.material = { color: "yellow" };
+            DT.mass = 1;
+            DT.rigid = true;
+            DT.rigidShape = "new Ammo.btConeShape(0.5, 1, 12)";
         }
         else if(name == "基本几何体-圆柱"){
-            DT.geometry = new THREE.CylinderGeometry(0.5, 0.5);
+            DT.geometry = new THREE.CylinderGeometry(0.5, 0.5, 1);
             DT.material = { color: "blue" };
+            DT.mass = 1;
+            DT.rigid = true;
+            DT.rigidShape = "new Ammo.btCylinderShape(new Ammo.btVector3( 0.5, 1, 0.5 ))";
         }
 
         mesh.material = new THREE.MeshPhongMaterial(DT.material);
@@ -980,6 +1009,28 @@ export default class SceneBuilder{
             light.shadow.camera.far = 50;
             light.shadow.mapSize.x = 1024;
             light.shadow.mapSize.y = 1024;
+            // 平行光图标
+            iconDOM.src = bulb;
+            iconDOM.style.width = "30px";
+            iconDOM.addEventListener('mousedown', () => {  // 点击时选中物体
+                console.log()
+            })
+            // 辅助箭头
+            let dir = light.target.position.clone();
+            dir.sub(light.position);
+            dir.normalize();
+            let origin = light.position.clone();
+            origin.addScaledVector(dir, 2.5);
+            let arrow = new THREE.ArrowHelper(
+                dir, // 方向
+                origin, // 原点 
+                3,  // 总长度
+                0xff8000,  // 颜色
+                0.6,  // 头部长度
+                0.3  // 头部宽度
+            );
+            arrow.setColor("orange");
+            light.attach( arrow );
             // 设置平行光朝向，并使平行光旋转时，光照方向也一并旋转
             light.target = new THREE.Object3D();
             SCENE.add( light.target );
@@ -988,24 +1039,6 @@ export default class SceneBuilder{
             iconMesh.onBeforeRender = () => {
                 target.getWorldPosition(light.target.position);
             }
-            // 平行光图标
-            iconDOM.src = bulb;
-            iconDOM.style.width = "30px";
-            // 辅助箭头
-            let dir = light.target.position.clone();
-            dir.sub(light.position);
-            dir.normalize();
-            let origin = light.position.clone();
-            origin.addScaledVector(dir, 2.5);
-            let arrow = new THREE.ArrowHelper( 
-                dir, // 方向
-                origin, // 原点
-                3,  // 长度
-            );
-            arrow.setColor("orange");
-            light.rotation.x = Math.PI / 2;
-            light.add( arrow );
-            light.add( arrow );
         }
         if(type == "AmbientLight"){  // 环境光
             light = new THREE.AmbientLight( "white" );
@@ -1016,6 +1049,7 @@ export default class SceneBuilder{
         SCENE.add(light);
         new DTObject(light, true).setTitle();
         light.position.set(x, y, z);
+        light.rotation.x = Math.PI / 2;
         iconMesh.center.set( 0.5, 0.5 );  // 图标居中
         iconMesh.position.set( 0, 0, 0 );  // 图标的三维相对位置
         light.add( iconMesh );
@@ -1065,24 +1099,15 @@ export default class SceneBuilder{
         this.gizmoOrtho.render(this.renderer);
     } 
     setSkyboxByColor(DTScene) {  // 根据上中下三种颜色设置天空盒
-        function isColor(color, defaultColor){  // 测试字符串是否能解析成颜色，否则将颜色恢复为默认值
-            const temp = document.createElement("div");  
-            temp.style.color = color;  
-            return temp.style.color ? color : defaultColor;  
-        }  
-        let skyColor = isColor(DTScene.skybox.skyColor, "skyblue");
-        let skyline = isColor(DTScene.skybox.skyline, "white");
-        let groundColor = isColor(DTScene.skybox.groundColor, "darkkhaki");
-        DTScene.skybox = {skyColor:skyColor, skyline:skyline, groundColor:groundColor};
-
+        let skybox = DTScene.skybox;
         const radius: number = 600;
         const widthSegments: number = 32;
         const heightSegments: number = 15;
         const skyGeo = new THREE.SphereGeometry(radius, widthSegments, heightSegments);
         const uniforms = {
-            topColor: { value: new THREE.Color(skyColor) },
-            skylineColor: { value: new THREE.Color(skyline) },
-            bottomColor: { value: new THREE.Color(groundColor) },
+            topColor: { value: skybox.skyColor },
+            skylineColor: { value: skybox.skyline },
+            bottomColor: { value: skybox.groundColor },
             offset: { value: 0 },
             exponent: { value: 0.6 },
             skyCenter: { value: new THREE.Vector3() }

@@ -1,7 +1,7 @@
 import { defineComponent, ref, watch } from "vue"
 import * as THREE from "three"
 import DTScene from "./DTScene"
-import global from "../Global"
+import global from "../../Global"
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { LuminosityShader } from 'three/examples/jsm/shaders/LuminosityShader.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
