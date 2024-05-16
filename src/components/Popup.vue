@@ -1,5 +1,5 @@
 <script lang="ts">
-  import global from "./Global"
+  import global from "../Global"
   import { ref } from 'vue'
   import {
     CheckCircleOutlined,
@@ -109,19 +109,19 @@
         startM = [e.clientX, e.clientY]
         startP = [popup.getBoundingClientRect().left, popup.getBoundingClientRect().top]
         var onMousemove = function(e) {  
-            e.preventDefault();  
-            popup.style.left = startP[0] + (e.clientX - startM[0]) + "px";  
-            popup.style.top = startP[1] + (e.clientY - startM[1]) + "px";  
+          e.preventDefault();  
+          popup.style.left = startP[0] + (e.clientX - startM[0]) + "px";  
+          popup.style.top = startP[1] + (e.clientY - startM[1]) + "px";  
         };  
         document.addEventListener("mousemove", onMousemove);  
-        document.addEventListener("mouseup", function() {  
-        document.removeEventListener("mousemove", onMousemove);  
+        document.addEventListener("mouseup", () => {  
+          document.removeEventListener("mousemove", onMousemove);  
         });  
       })
       // 退出按钮  
-      var popupCloseBtn = document.getElementById('popup-quit');  
-      popupCloseBtn.addEventListener('click', function() {  
-          popup.style.display = 'none';  
+      var popupQuit = document.getElementById('popup-quit');  
+      popupQuit.addEventListener('click', () => {  
+        popup.style.display = 'none';  
       }); 
     }
   }
@@ -348,4 +348,4 @@
     z-index: 100;
   "/>
 </template>
-./Global
+./Global../Global

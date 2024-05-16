@@ -1,5 +1,5 @@
 <script lang="ts">
-    import global from "./Global"
+    import global from "../Global"
     import {
         BorderlessTableOutlined,  // 网格图标
         BulbOutlined,  // 灯光图标
@@ -324,4 +324,3 @@
     </template>
   </a-dropdown> 
 </template>
-./Global./Global

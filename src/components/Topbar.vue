@@ -1,5 +1,5 @@
 <script lang="ts">
-    import global from "./Global"
+    import global from "../Global"
     const electron = require("electron");
     const fs = require("fs");
     const JSZip = require("jszip");  // 用于压缩解压文件的库
@@ -131,8 +131,8 @@
                 });
             },
             changeSpeed(value){  // 更改速度，value为滑动条百分比，marks[value]为实际速度倍率
-                if(value.key) value=value.key;
-                if(value>=75) value=50;
+                if(value.key) value = value.key;
+                if(value>=75) value = 50;
                 emulateMode.value = value==0 ? "play" : "fast";
                 this.message(value==0 ? "仿真开始" : "仿真快进"); 
                 speed.value = value;
@@ -152,7 +152,7 @@
             clearViewName(){
                 this.$nextTick(()=>{viewName.value = ''});
             },
-            clearTemp(){global.emit("clearTemp")},  // 清除临时实体
+            clearLoads(){global.emit("clearLoads")},  // 清除所有货物
             ipcRenderer(data){   // 刷新页面 
                 electron.ipcRenderer.send(data); 
             },
@@ -413,7 +413,7 @@
             height: calc(100% - 78px); justify-content:space-evenly;" class="bottom">
                 <div class="marginLR10" style="display:flex; margin-top:16px">
                     <!--重置-->
-                    <div class="logo" @click="clearTemp(); changeEmulateMode('stop')" 
+                    <div class="logo" @click="clearLoads(); changeEmulateMode('stop')" 
                     @mousedown.prevent @mouseenter = "lightON" @mouseleave = "lightOFF">          
                         <DeleteTwoTone twoToneColor="red"/>重置&nbsp;&nbsp;
                     </div>
@@ -638,4 +638,4 @@
         <vr class="splitV"/><!--分隔符-->
     </span>
 </template>
-  ./Global./Global
+  

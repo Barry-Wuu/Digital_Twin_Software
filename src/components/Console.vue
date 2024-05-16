@@ -1,6 +1,6 @@
 <script lang="ts">
     import { defineComponent, ref } from 'vue'
-    import global from "./Global"
+    import global from "../Global"
     import * as THREE from 'three';  // 导入库以便在控制台中执行相应命令
     var Console = document.createElement("div");
     var command = ref('')
@@ -57,4 +57,4 @@
   <div id="console" class="console">
     <strong>输出：</strong>
   </div>
-</template> ./Global./Global
+</template> ./Global./Global../Global
