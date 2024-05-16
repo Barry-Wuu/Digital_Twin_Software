@@ -140,22 +140,50 @@ export default defineComponent({
       e.preventDefault();
       if (tempModel && dragModel) {
         const attachPoint1 = dragModel.getObjectByName('ap1');
-        //   if (attachPoint1) {
-        //   // 获取物体的局部位置
-        //   const localPosition = attachPoint1.position;
-        //   console.log("Local Position of attachPoint1:", localPosition);
-        //   // 获取物体在世界坐标系中的位置
-        //   const worldPosition = new THREE.Vector3();
-        //   attachPoint1.getWorldPosition(worldPosition);
-        //   console.log("World Position of attachPoint1:", worldPosition);
-        // } else {
-        //   console.log("attachPoint1 not found in the dragged model.");
-        // }
         tempModel.position.set(0, 0, 0);
         let box = new THREE.Box3().setFromObject(tempModel);
         if (!dragFromOutside) {  // 拖动时，物体位置 = 鼠标与平面z=H的交点坐标 + Δp
           let point;
           if (keys.space) {  // 检查空格键和左键是否同时被按下
+            let minDistance = Infinity;  // 初始化最小距离为无穷大
+            let closestAttachPoint2 = null;
+            let worldPositionAP1 = new THREE.Vector3();
+            attachPoint1.getWorldPosition(worldPositionAP1);  // 获取ap1在世界坐标系中的位置
+            this.scene.SCENE.traverse((child) => {  // 遍历场景中的所有对象，寻找名为'ap2'的物体
+              if (child.name === 'ap2') {
+                let worldPositionAP2 = new THREE.Vector3();
+                child.getWorldPosition(worldPositionAP2);  // 获取ap2在世界坐标系中的位置
+                // console.log("ap2 position is" , worldPositionAP2);
+                let distance = worldPositionAP1.distanceTo(worldPositionAP2);
+                if (distance < minDistance) { // 更新最近的ap2
+                  minDistance = distance;
+                  closestAttachPoint2 = child;
+                  
+                }
+              }
+            });
+            if (closestAttachPoint2 && minDistance < 1) {// 如果找到最近的ap2，并且距离小于1
+              const newWorldPosition = new THREE.Vector3();
+              closestAttachPoint2.getWorldPosition(newWorldPosition);
+              const offset = newWorldPosition.sub(worldPositionAP1);// 计算从 dragModel 到 ap1 当前世界位置的偏移
+              const rotationChange = closestAttachPoint2.parent.rotation
+              dragModel.rotation.x = rotationChange.x;  // X轴旋转
+              dragModel.rotation.y = rotationChange.y;  // Y轴旋转
+              if (dragModel.DT.name=="直道"){
+                 dragModel.rotation.z = rotationChange.z;}
+                 else{
+                  dragModel.rotation.z = rotationChange.z-Math.PI/2;
+                  console.log(dragModel)
+                 }
+              dragModel.position.add(offset);       // 更新 dragModel 的位置
+              this.scene.updateMatrixWorld(true); // 确保场景中所有变换都是最新的
+            }
+          };
+          if (e.shiftKey) {  // 左键+shift拖动物体以改变其高度
+            point = dragPoint.clone();
+            point.z = this.intersectPlaneV(e, dragPoint).z;
+          }
+          else {  // 左键拖动物体在同一高度内移动
             let minDistance = Infinity;  // 初始化最小距离为无穷大
             let closestAttachPoint2 = null;
             let worldPositionAP1 = new THREE.Vector3();
@@ -192,22 +220,6 @@ export default defineComponent({
               }
               hasColorChanged = false; // 更新颜色改变标记
             }
-            if (closestAttachPoint2 && minDistance < 1) {// 如果找到最近的ap2，并且距离小于1
-              const newWorldPosition = new THREE.Vector3();
-              closestAttachPoint2.getWorldPosition(newWorldPosition);
-              const offset = newWorldPosition.sub(worldPositionAP1);// 计算从 dragModel 到 ap1 当前世界位置的偏移
-              const rotationChange = closestAttachPoint2.parent.rotation
-              dragModel.rotation.x = rotationChange.x;  // X轴旋转
-              dragModel.rotation.y = rotationChange.y;  // Y轴旋转
-              dragModel.position.add(offset);       // 更新 dragModel 的位置
-              this.scene.updateMatrixWorld(true); // 确保场景中所有变换都是最新的
-            }
-          };
-          if (e.shiftKey) {  // 左键+shift拖动物体以改变其高度
-            point = dragPoint.clone();
-            point.z = this.intersectPlaneV(e, dragPoint).z;
-          }
-          else {  // 左键拖动物体在同一高度内移动
             point = this.intersectPlaneH(e, dragPoint);
           }
           point.add(delta);  // 更新模型的全局坐标
