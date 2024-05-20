@@ -847,12 +847,14 @@ export default class SceneBuilder{
                     DT.material = { color: "lightgray" };
                     DT.rigidShape = "this.createRigidShape(this.geometry, this.scale)"
                     DT.v0 = 2;
+                    mesh.userData.isConveyor = true;  // 传送带标记
                     indicators = [this.createArrow(0.5, 0, 0)]
                     attachPoint1 = [this.createAttachPoint1(0, 0)]
                     attachPoint2 = [this.createAttachPoint2(150, 0)]
                 }
-                if(data.modelname == "弯道（圆环）"){
+                if(data.modelname == "弯道"){
                     DT.material = { color: "lightgray" };
+                    mesh.userData.isConveyor = true;  // 传送带标记
                     let shape = new THREE.Shape(), pi = Math.PI, r = 3.6 / DT.scale, R = 6.4 / DT.scale;
                     shape.moveTo(0, R);
                     shape.absarc(0, 0, R, pi/2, pi, false);
@@ -878,6 +880,7 @@ export default class SceneBuilder{
                     DT.material = { color: "lightgray" };
                     DT.rigidShape = "this.createRigidShape(this.geometry, this.scale)"
                     DT.v0 = 2;
+                    mesh.userData.isConveyor = true;  // 传送带标记
                     indicators = [this.createArrow(-5, 0, 90)]
                     attachPoint1 = [this.createAttachPoint1(-100, 0)]
                     attachPoint2 = [this.createAttachPoint2(0, 100)]
@@ -997,6 +1000,9 @@ export default class SceneBuilder{
         let light, iconDOM = document.createElement('img');
         const iconMesh = new CSS2DObject( iconDOM );
         iconMesh.userData.dom = iconDOM;
+        iconDOM.addEventListener('mousedown', e => {  // 点击图标时选中光源
+            global.emit("clickLight", {choice: light, e: e})
+        });
         if(type == "DirectionalLight"){  // 平行光
             light = new THREE.DirectionalLight( "white", 3 );
             light.castShadow = true;
@@ -1012,9 +1018,6 @@ export default class SceneBuilder{
             // 平行光图标
             iconDOM.src = bulb;
             iconDOM.style.width = "30px";
-            iconDOM.addEventListener('mousedown', () => {  // 点击时选中物体
-                console.log()
-            })
             // 辅助箭头
             let dir = light.target.position.clone();
             dir.sub(light.position);
@@ -1030,6 +1033,7 @@ export default class SceneBuilder{
                 0.3  // 头部宽度
             );
             arrow.setColor("orange");
+            arrow.visible = false;
             light.attach( arrow );
             // 设置平行光朝向，并使平行光旋转时，光照方向也一并旋转
             light.target = new THREE.Object3D();

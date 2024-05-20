@@ -362,7 +362,7 @@
       assetInput = document.getElementById("assetInput");
       this.setAssets(assets.value);
       this.sort();
-      window.addEventListener("keydown", (e)=>{
+      window.addEventListener("keydown", e=>{
         if(searchValue.value) return;
         if(e.key == "Delete"){  // 按Delete键删除组件
           this.action({key:"删除"});
@@ -432,7 +432,7 @@
       style="display: flex;">
         <!--拖拽排序条-->
         <div v-if="asset.type!='return'" class="split" @dragenter.prevent @dragover.prevent 
-        @dragenter="show" @drop="(e)=>dropOnSplit(e, index)" @dragleave="hide"/>
+        @dragenter="show" @drop="e=>dropOnSplit(e, index)" @dragleave="hide"/>
         <!--加载中卡片-->
         <a-card v-if="asset.loading" class="card">
           <span class="content" style="margin-top:11px;">
@@ -450,8 +450,8 @@
         @click="clickAsset(asset)" 
         @contextmenu="onRightClick(asset)"
         @dblclick="doubleClickAsset(asset);"
-        @dragstart="(e)=>{dragStart(e, asset, index)}"
-        @drop="(e)=>dropOnCard(e, asset)"
+        @dragstart="e=>{dragStart(e, asset, index)}"
+        @drop="e=>dropOnCard(e, asset)"
         >
           <span class="content">
             <RollbackOutlined v-if="asset.type == 'return'" class="icon" style="color:red"/>
@@ -499,7 +499,7 @@
       </div>
       <!--末尾拖拽排序条-->
       <div v-if="!searchValue" class="split" @dragenter.prevent @dragover.prevent @dragenter="show"
-      @drop="(e)=>dropOnSplit(e, currentFolder.children.length)" @dragleave="hide"/>
+      @drop="e=>dropOnSplit(e, currentFolder.children.length)" @dragleave="hide"/>
       <!--末尾无效拖拽排序条-->
       <div v-else class="split"/>
     </span>

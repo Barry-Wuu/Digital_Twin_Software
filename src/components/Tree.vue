@@ -48,11 +48,9 @@
       },
       data(){
         global.on("changeWireframe", (x)=>{wireframe = x;}) 
-        global.on("clickModel", (id_shift: string)=>{  // 点击屏幕中的物体
-          let id_shift_split = id_shift.split(',');
-          let selection = JSON.parse(id_shift_split[0]);
-          let shift = JSON.parse(id_shift_split[1]);
-          if(shift){  // 按住shift为多选模式
+        global.on("clickModel", (data)=>{  // 点击屏幕中的物体
+          let selection = data.id;
+          if(data.shift){  // 按住shift为多选模式
             if(choices.value.includes(selection))  // 多选取消
               choices.value = choices.value.filter(k => k != selection);
             else choices.value.push(selection);  // 多选选择
@@ -168,7 +166,6 @@
             global.emit("controlStart", selection);  // 选中物体开始控制
             lastChoice = selection;
           }
-          global.emit("deselectAsset")  // 点击外部则取消选择组件
         },
         onKeydown(k){
           if(k.code == "Delete") {this.deleteChoices();}
@@ -178,14 +175,22 @@
         search(){  // 搜索栏内容改变时
           if(searchValue.value){
             TREEs.value = DTObjects.filter(DT => DT.title.indexOf(searchValue.value) > -1);
+            console.log(TREEs.value)
           }
         },
         update(){  // 更新线框和属性栏
           emitProperty();
           if(wireframe == "包围盒"){  // 更新物体包围盒线框
             for(let DT of global.DTScene().getDTObjects()){
+              let chosen = choices.value.includes(DT.id);
               if(DT.wireframe) 
-                DT.wireframe.visible = choices.value.includes(DT.id);
+                DT.wireframe.visible = chosen;
+              else if(DT.mesh.isLight){  // 更新光源图标的边框与箭头的可见度
+                let arrow = DT.mesh.children.filter(mesh => mesh.type == "ArrowHelper")[0];
+                if(arrow) arrow.visible = chosen;
+                let icon = DT.mesh.children.filter(mesh => mesh.isCSS2DObject)[0].element;
+                if(icon) icon.style.border = chosen ? "1px solid cyan" : "";
+              }
             };
           }
           if(wireframe == "边缘发光"){  // 更新物体边缘线框
@@ -264,10 +269,10 @@
       <!--层级树-->
       <a-tree v-if="!searchValue" @click.stop draggable multiple selectable
       v-model:expandedKeys = "expanded"
-      :selectedKeys = "choices" 
-      style="margin-left: 6px"
+      :selectedKeys="choices" 
       :tree-data="TREE" 
-      @contextmenu="(e)=>console.log(e)"
+      style="margin-left: 6px"
+      @contextmenu="e=>console.log(e)"
       @dblclick="doubleClick" @expand="update" @select="onClick"
       @dragstart="dragFrom" @drop="dragTo">
         <!--各个结点-->
@@ -294,7 +299,8 @@
         </template>
       </a-tree>  
       <!--搜索树-->
-      <a-tree v-else :tree-data="TREEs" multiple @select="onClick" :selectedKeys = "choices">
+      <a-tree v-else :tree-data="TREEs" @click.stop multiple :selectedKeys="choices"
+      @dblclick="doubleClick" @select="onClick">
         <template #title="DT">
           <span style="margin-left: -18px">
             <BorderlessTableOutlined v-if="DT.type=='GridHelper'"/>

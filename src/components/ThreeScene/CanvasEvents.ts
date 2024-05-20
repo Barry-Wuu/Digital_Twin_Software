@@ -20,7 +20,7 @@ var dragPoint;  // 拖动开始时的拖动点
 var front = new THREE.Vector3();
 var fullscreen = false;
 var isDrag = false;  // 是否在用鼠标移动模型
-var keys = { space: false };  // 按下的按键
+var keys = { shift:false, space: false };  // 按下的按键
 var mouseType = [false, false, false];  // 左、中、右键是否按下
 const ray = new THREE.Raycaster();  // 从鼠标发出的射线检测器
 var resizeObserver;
@@ -107,7 +107,7 @@ export default defineComponent({
         }
       }
       findImg(e.fromElement);
-      data.setDragImage(document.createElement("img"), 0, 0); console.log()
+      data.setDragImage(document.createElement("img"), 0, 0);
       // 拖入模型
       let DT, modelName;
       dragFromOutside = true;
@@ -138,87 +138,91 @@ export default defineComponent({
     },
     onDragover(e) {
       e.preventDefault();
-      if (tempModel && dragModel) {
-        const attachPoint1 = dragModel.getObjectByName('ap1');
+      if (dragModel && tempModel) {
+        var attachPoint1;
         tempModel.position.set(0, 0, 0);
         let box = new THREE.Box3().setFromObject(tempModel);
         if (!dragFromOutside) {  // 拖动时，物体位置 = 鼠标与平面z=H的交点坐标 + Δp
           let point;
-          if (keys.space) {  // 检查空格键和左键是否同时被按下
-            let minDistance = Infinity;  // 初始化最小距离为无穷大
-            let closestAttachPoint2 = null;
-            let worldPositionAP1 = new THREE.Vector3();
-            attachPoint1.getWorldPosition(worldPositionAP1);  // 获取ap1在世界坐标系中的位置
-            this.scene.SCENE.traverse((child) => {  // 遍历场景中的所有对象，寻找名为'ap2'的物体
-              if (child.name === 'ap2') {
-                let worldPositionAP2 = new THREE.Vector3();
-                child.getWorldPosition(worldPositionAP2);  // 获取ap2在世界坐标系中的位置
-                // console.log("ap2 position is" , worldPositionAP2);
-                let distance = worldPositionAP1.distanceTo(worldPositionAP2);
-                if (distance < minDistance) { // 更新最近的ap2
-                  minDistance = distance;
-                  closestAttachPoint2 = child;
-                  
+          if (dragModel.userData.isConveyor){  // 拖入传送带时
+            attachPoint1 = dragModel.getObjectByName('ap1');;
+            if (keys.space) {  // 检查空格键和左键是否同时被按下
+              let minDistance = Infinity;  // 初始化最小距离为无穷大
+              let closestAttachPoint2 = null;
+              let worldPositionAP1 = new THREE.Vector3();
+              attachPoint1.getWorldPosition(worldPositionAP1);  // 获取ap1在世界坐标系中的位置
+              this.scene.SCENE.traverse((child) => {  // 遍历场景中的所有对象，寻找名为'ap2'的物体
+                if (child.name === 'ap2') {
+                  let worldPositionAP2 = new THREE.Vector3();
+                  child.getWorldPosition(worldPositionAP2);  // 获取ap2在世界坐标系中的位置
+                  // console.log("ap2 position is" , worldPositionAP2);
+                  let distance = worldPositionAP1.distanceTo(worldPositionAP2);
+                  if (distance < minDistance) { // 更新最近的ap2
+                    minDistance = distance;
+                    closestAttachPoint2 = child;
+                  }
                 }
+              });
+              if (closestAttachPoint2 && minDistance < 1) {// 如果找到最近的ap2，并且距离小于1
+                const newWorldPosition = new THREE.Vector3();
+                closestAttachPoint2.getWorldPosition(newWorldPosition);
+                const offset = newWorldPosition.sub(worldPositionAP1);// 计算从 dragModel 到 ap1 当前世界位置的偏移
+                const rotationChange = closestAttachPoint2.parent.rotation
+                dragModel.rotation.x = rotationChange.x;  // X轴旋转
+                dragModel.rotation.y = rotationChange.y;  // Y轴旋转
+                if (dragModel.DT.name=="直道"){
+                  dragModel.rotation.z = rotationChange.z;}
+                  else{
+                    dragModel.rotation.z = rotationChange.z-Math.PI/2;
+                    console.log(dragModel)
+                  }
+                dragModel.position.add(offset);  // 更新 dragModel 的位置
+                this.scene.updateMatrixWorld(true);  // 确保场景中所有变换都是最新的
               }
-            });
-            if (closestAttachPoint2 && minDistance < 1) {// 如果找到最近的ap2，并且距离小于1
-              const newWorldPosition = new THREE.Vector3();
-              closestAttachPoint2.getWorldPosition(newWorldPosition);
-              const offset = newWorldPosition.sub(worldPositionAP1);// 计算从 dragModel 到 ap1 当前世界位置的偏移
-              const rotationChange = closestAttachPoint2.parent.rotation
-              dragModel.rotation.x = rotationChange.x;  // X轴旋转
-              dragModel.rotation.y = rotationChange.y;  // Y轴旋转
-              if (dragModel.DT.name=="直道"){
-                 dragModel.rotation.z = rotationChange.z;}
-                 else{
-                  dragModel.rotation.z = rotationChange.z-Math.PI/2;
-                  console.log(dragModel)
-                 }
-              dragModel.position.add(offset);       // 更新 dragModel 的位置
-              this.scene.updateMatrixWorld(true); // 确保场景中所有变换都是最新的
-            }
-          };
+            };
+          }
           if (e.shiftKey) {  // 左键+shift拖动物体以改变其高度
             point = dragPoint.clone();
             point.z = this.intersectPlaneV(e, dragPoint).z;
           }
-          else {  // 左键拖动物体在同一高度内移动
-            let minDistance = Infinity;  // 初始化最小距离为无穷大
-            let closestAttachPoint2 = null;
-            let worldPositionAP1 = new THREE.Vector3();
-            let initialColor1 = attachPoint1.material.color.clone();  // 存储原始颜色
-            let hasColorChanged = false;  // 标记颜色是否已经被改变
-            attachPoint1.getWorldPosition(worldPositionAP1);  // 获取ap1在世界坐标系中的位置
-            this.scene.SCENE.traverse((child) => {  // 遍历场景中的所有对象，寻找名为'ap2'的物体
-              if (child.name === 'ap2') {
-                let worldPositionAP2 = new THREE.Vector3();
-                child.getWorldPosition(worldPositionAP2);  // 获取ap2在世界坐标系中的位置
-                // console.log("ap2 position is" , worldPositionAP2);
-                let distance = worldPositionAP1.distanceTo(worldPositionAP2);
-                if (distance < minDistance) { // 更新最近的ap2
-                  minDistance = distance;
-                  closestAttachPoint2 = child;
-                  if (distance < 1.5) {
-                    // 在距离小于1.5时变金色
-                    attachPoint1.material.color.set('gold');
-                    child.material.color.set('gold');
-                    hasColorChanged = true;
+          else {  // 左键拖动物体在水平面内移动
+            if (dragModel.userData.isConveyor){  // 拖动传送带时
+              let minDistance = Infinity;  // 初始化最小距离为无穷大
+              let closestAttachPoint2 = null;
+              let worldPositionAP1 = new THREE.Vector3();
+              let initialColor1 = attachPoint1.material.color.clone();  // 存储原始颜色
+              let hasColorChanged = false;  // 标记颜色是否已经被改变
+              attachPoint1.getWorldPosition(worldPositionAP1);  // 获取ap1在世界坐标系中的位置
+              this.scene.SCENE.traverse((child) => {  // 遍历场景中的所有对象，寻找名为'ap2'的物体
+                if (child.name === 'ap2') {
+                  let worldPositionAP2 = new THREE.Vector3();
+                  child.getWorldPosition(worldPositionAP2);  // 获取ap2在世界坐标系中的位置
+                  // console.log("ap2 position is" , worldPositionAP2);
+                  let distance = worldPositionAP1.distanceTo(worldPositionAP2);
+                  if (distance < minDistance) { // 更新最近的ap2
+                    minDistance = distance;
+                    closestAttachPoint2 = child;
+                    if (distance < 1.5) {
+                      // 在距离小于1.5时变金色
+                      attachPoint1.material.color.set('gold');
+                      child.material.color.set('gold');
+                      hasColorChanged = true;
+                    }
+                    else { 
+                      attachPoint1.material.color.set('red');
+                      closestAttachPoint2.material.color.set('lime');
+                    }
                   }
-                  else { 
-                    attachPoint1.material.color.set('red');
-                    closestAttachPoint2.material.color.set('lime');
                 }
+              });
+              if (minDistance > 1.5 && hasColorChanged) {
+                // 如果距离大于1.5，并且颜色已经改变了，恢复原始颜色
+                attachPoint1.material.color.set('red');
+                if (closestAttachPoint2) {
+                  closestAttachPoint2.material.color.set('lime');  // 假设我们也存储了closestAttachPoint2的原始颜色
                 }
+                hasColorChanged = false; // 更新颜色改变标记
               }
-            });
-            if (minDistance > 1.5 && hasColorChanged) {
-              // 如果距离大于1.5，并且颜色已经改变了，恢复原始颜色
-              attachPoint1.material.color.set('red');
-              if (closestAttachPoint2) {
-                closestAttachPoint2.material.color.set('lime');  // 假设我们也存储了closestAttachPoint2的原始颜色
-              }
-              hasColorChanged = false; // 更新颜色改变标记
             }
             point = this.intersectPlaneH(e, dragPoint);
           }
@@ -236,17 +240,36 @@ export default defineComponent({
         }
         dragModel.position.copy(tempModel.position);
       }
+      else if(dragModel.isLight){  // 拖动光源
+        e = {
+          offsetX: e.offsetX + delta.x,
+          offsetY: e.offsetY + delta.y,
+          shiftKey: e.shiftKey,
+          target:{
+            clientWidth: e.target.clientWidth,
+            clientHeight: e.target.clientHeight,
+          }
+        };
+        if (e.shiftKey) {  // 左键+shift拖动物体以改变其高度
+          dragModel.position.z = this.intersectPlaneV(e, delta.pos).z;
+        } else {  // 左键拖动物体在水平面内移动
+          dragModel.position.copy(this.intersectPlaneH(e, delta.pos));
+        }
+      }
     },
     onDrop() {
       if (dragModel) {
         dragFromOutside = dragModel.isDrag = false;
-        dragModel.material.opacity = tempOpacity;
+        if (tempOpacity) {
+          dragModel.material.opacity = tempOpacity;
+          tempOpacity = null;
+        }
         if (dragModel.DT.rigid) { dragModel.DT.createRigidBody() }
         if (!this.scene.DTObjects.value.includes(dragModel.DT)) {
           this.scene.DTObjects.value.push(dragModel.DT);
         }
-        dragModel = null;
         if (tempModel) tempModel.clear();
+        dragModel = tempModel = null;
       }
       global.emit("updateTree");
     },
@@ -270,7 +293,8 @@ export default defineComponent({
           dragPoint = result[1];
           if (choice.userData.indicator) choice = choice.parent;  // 点击指示箭头
           if (choice.DT && !choice.userData.ground) {
-            global.emit("clickModel", choice.id + ',' + e.shiftKey);
+            global.emit("clickModel", {id: choice.id, shift: e.shiftKey});
+            delta = new THREE.Vector3();
             result[0].getWorldPosition(delta);
             delta.sub(result[1]);  // Δp = 选中物体的全局坐标 - 物体上点击处的坐标
             dragModel = choice;
@@ -281,8 +305,8 @@ export default defineComponent({
             if (dragModel.DT.rigid) {
               this.scene.removeRigidBody(dragModel);
             }
-          } else {
-            global.emit("deselect")
+          } else {  // 取消选择
+            if(e.target.localName == "div") global.emit("deselect");  // 避免点击img时取消选择
           }
         }
       }
@@ -354,8 +378,31 @@ export default defineComponent({
     }
   },
   mounted() {
-    canvas = document.getElementById("canvas");
     app = document.getElementById("app");
+    canvas = document.getElementById("canvas");
+    global.on("clickLight", data=>{  // 拖动灯光
+      global.emit("deselectAsset"); 
+      mouseType[data.e.button] = true;
+      if (mouseType[0]) {
+        if (mouseType[2]) { }  // 双击左右键则移动
+        else if (global.mode() == "edit") {  // 左键点击
+          let result = this.intersectObject(data.e);
+          let choice = data.choice;
+          dragPoint = result[1];
+          global.emit("clickModel", {id: choice.id, shift: data.e.shiftKey});
+          let e = data.e, rect = e.target.getBoundingClientRect();
+          let P = new THREE.Vector2(
+            rect.left + e.target.clientWidth / 2,
+            rect.top + e.target.clientHeight / 2
+          );
+          let P_e = new THREE.Vector2(e.clientX, e.clientY);
+          P.sub(P_e);  // Δp = 选中物体的全局坐标 - 物体上点击处的坐标
+          delta = {x: P.x, y: P.y, pos: choice.position};
+          dragModel = choice;
+          isDrag = true;
+        }
+      }
+    });
     this.scene = new DTScene(canvas);
     this.scene.init();
     this.rendered = true;

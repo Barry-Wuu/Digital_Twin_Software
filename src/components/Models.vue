@@ -6,23 +6,23 @@
   import global from "../Global"
   var models = ref({
     "传送带": [
-      ["直道","直道.jpg"],
-      ["弯道（圆环）","弯道.jpg"],
-      ["弯道（凸集）","弯道.jpg"],
-      ["护栏","护栏.jpg"],
-      ["传感器","传感器.jpg"],
+      ["直道", "直道.jpg"],
+      ["弯道", "弯道.jpg"],
+      ["弯道（凸集）", "弯道.jpg"],
+      ["护栏", "护栏.jpg"],
+      ["传感器", "传感器.jpg"],
     ],
     "货物": [
-      ["发生器","发生器.jpg"],
-      ["货物","货物.jpg"],
-      ["回收器","回收器.jpg"],
-      ["模型","cube.jpg"],
+      ["发生器", "发生器.jpg"],
+      ["货物", "货物.jpg"],
+      ["回收器", "回收器.jpg"],
+      ["模型", "cube.jpg"],
     ],
     "基本几何体":[
-      ["正方体","cube.jpg"],
-      ["球","sphere.jpg"],
-      ["锥体","cone.jpg"],
-      ["圆柱","cylinder.jpg"],
+      ["正方体", "cube.jpg"],
+      ["球", "sphere.jpg"],
+      ["锥体", "cone.jpg"],
+      ["圆柱", "cylinder.jpg"],
     ],
   })
   const activeKeys = ref([]);
@@ -112,7 +112,7 @@
         <a-collapse-panel v-for="(items, key) in models" 
         :header="key" :key="key" style="text-align: left;">
           <a-card v-for="item in items" :draggable="true" hoverable 
-          @dragstart="(e)=>transfer(e, {modeltype:key, modelname:item[0]})" 
+          @dragstart="e=>transfer(e, {modeltype:key, modelname:item[0]})" 
           style="display:flex; width:100%; height:50px; text-align: center;">
             <div style="
               border-right: 1px solid lightgrey; 
@@ -131,7 +131,7 @@
       <!--搜索列表-->
       <div v-else>
         <a-card v-for="item of searchResult" hoverable draggable="true" 
-        @dragstart="(e)=>transfer(e, {modeltype:item[0], modelname:item[1]})" 
+        @dragstart="e=>transfer(e, {modeltype:item[0], modelname:item[1]})" 
         style="display:flex; width:100%; height:50px; text-align: center;">
           <div style="
             border-right: 1px solid lightgrey; 
