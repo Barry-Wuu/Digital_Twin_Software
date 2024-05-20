@@ -50,18 +50,18 @@
         let i = parseInt(index);
         if(children[i].info){
           let info = children[i].info, DOM = document.getElementById(children[i].id);
-          let addEventListener = (e)=>{
+          let addEventListener = e=>{
             dragPoint = [e.clientX, e.clientY];
             initSize = [children[i-1].size, children[i+1].size];
             target = e.target;
           };
           if(info == "col-split"){  // 列分隔模块
-            DOM.addEventListener("mousedown", (e)=>{
+            DOM.addEventListener("mousedown", e=>{
               document.body.style.userSelect = "none";  // 拖动时禁止选中文本
               addEventListener(e);
               draggedSpliter = DOM;
             })
-            window.addEventListener("mousemove", (e)=>{
+            window.addEventListener("mousemove", e=>{
               if(draggedSpliter == DOM){
                 let dX = e.clientX - dragPoint[0];
                 dX = Math.floor(dX / target.parentElement.offsetWidth * 1000);
@@ -70,12 +70,12 @@
               }
             });
           } else if (info == "row-split"){  // 行分隔模块
-            DOM.addEventListener("mousedown", (e)=>{
+            DOM.addEventListener("mousedown", e=>{
               document.body.style.userSelect = "none";  // 拖动时禁止选中文本
               addEventListener(e);
               draggedSpliter = DOM;
             })
-            window.addEventListener("mousemove", (e)=>{
+            window.addEventListener("mousemove", e=>{
               if(draggedSpliter == DOM){
                 let dY = e.clientY - dragPoint[1];
                 dY = Math.floor(dY / target.parentElement.offsetHeight * 1000);

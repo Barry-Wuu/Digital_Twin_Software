@@ -48,6 +48,10 @@
           if(chosenProp.value == this.prop) input_value.value = value;  // 编辑中
           else{
             let result = "DT.value." + this.prop;
+            if(DT.value.mesh.isLight) {  // 显示或隐藏光源图标
+              let e = DT.value.mesh.children.filter(mesh => mesh.isCSS2DObject)[0].element;
+              e.style.height = value ? "30px" : "0px";
+            }
             if(this.type == "inputColor") eval(result).setStyle(value);  // 更改颜色
             else if(item) eval(`${result+'.'+item} = ${value}`);  // 更改分量
             else eval(`${result} = ${value}`);  // 更改属性
@@ -251,7 +255,6 @@
       output(prop, N=1){  // 将输出参数格式化
         try{
           prop = JSON.parse(prop);
-          if(typeof prop == "boolean") return prop ? "是" : "否";  // 将布尔值转换为字符串
           if(N!=1) return Math.floor(prop*N);  // 将属性值放大N或unit倍
           if(this.options.unit) prop /= this.options.unit; 
           if(typeof this.options.fixed == "number"){  // 保留fixed位小数
@@ -264,6 +267,10 @@
       },
       propStyle(){  // 属性样式
         return { "width": this.width + "px" };
+      },
+      selectAll(e){  // 全选input中的内容（避免双击颜色代码时井号未选中）
+        let x = e.target;
+		    x.setSelectionRange(0, x.value.length);  
       },
       startEdit(e, item=''){  // 开始编辑
         input_value.value = e.target.value;
@@ -336,10 +343,10 @@
     <span v-else-if="type=='inputNumber'">
       <a-input class="propInput" :style="propStyle()" :title="help.input" 
       v-model:value="computedProp"
+      @blur="e=>changeValue(getOptions(e))" 
       @click="startEdit" 
-      @blur="(e)=>changeValue(getOptions(e))" 
-      @keydown="(e)=>changeValue(getOptions(e))"
-      @wheel="(e)=>changeValue(getOptions(e))" @wheel.prevent/>
+      @keydown="e=>changeValue(getOptions(e))"
+      @wheel="e=>changeValue(getOptions(e))" @wheel.prevent/>
       <div v-if="options.suffix" class="inline">{{ options.suffix }}</div>
     </span> 
 
@@ -347,9 +354,10 @@
     <span v-else-if="type=='inputColor'">
       <a-input class="propInput" :style="propStyle()" :title="help.input" 
       v-model:value="computedProp"
+      @blur="e=>changeValue({e:e, type:'string'})" 
       @click="startEdit" 
-      @blur="(e)=>changeValue({e:e, type:'string'})" 
-      @keydown="(e)=>changeValue({e:e, type:'string'})"/>
+      @dblclick="selectAll" 
+      @keydown="e=>changeValue({e:e, type:'string'})"/>
     </span> 
 
     <!--编辑三维向量属性，chosenProp=prop代表正在编辑-->
@@ -359,26 +367,26 @@
         <strong>x:</strong>
         <a-input class="propInput" :style="propStyle()" :title="help.input" 
         v-model:value="computedX"
-        @click="(e)=>startEdit(e, 'x')"
-        @blur="(e)=>changeValue(getOptions(e, 'x'))" 
-        @keydown="(e)=>changeValue(getOptions(e, 'x'))"
-        @wheel="(e)=>changeValue(getOptions(e, 'x'))" @wheel.prevent/>
+        @blur="e=>changeValue(getOptions(e, 'x'))" 
+        @click="e=>startEdit(e, 'x')"
+        @keydown="e=>changeValue(getOptions(e, 'x'))"
+        @wheel="e=>changeValue(getOptions(e, 'x'))" @wheel.prevent/>
         <div v-if="options.suffix" class="inline">{{ options.suffix }}</div>&nbsp;
         <strong>y:</strong>
         <a-input class="propInput" :style="propStyle()" :title="help.input" 
         v-model:value="computedY"
-        @click="(e)=>startEdit(e, 'y')" 
-        @blur="(e)=>changeValue(getOptions(e, 'y'))" 
-        @keydown="(e)=>changeValue(getOptions(e, 'y'))"
-        @wheel="(e)=>changeValue(getOptions(e, 'y'))" @wheel.prevent/>
+        @blur="e=>changeValue(getOptions(e, 'y'))" 
+        @click="e=>startEdit(e, 'y')" 
+        @keydown="e=>changeValue(getOptions(e, 'y'))"
+        @wheel="e=>changeValue(getOptions(e, 'y'))" @wheel.prevent/>
         <div v-if="options.suffix" class="inline">{{ options.suffix }}</div>&nbsp; 
         <strong>z:</strong>
         <a-input class="propInput" :style="propStyle()" :title="help.input" 
         v-model:value="computedZ"
-        @click="(e)=>startEdit(e, 'z')" 
-        @blur="(e)=>changeValue(getOptions(e, 'z'))" 
-        @keydown="(e)=>changeValue(getOptions(e, 'z'))"
-        @wheel="(e)=>changeValue(getOptions(e, 'z'))" @wheel.prevent/>
+        @blur="e=>changeValue(getOptions(e, 'z'))" 
+        @click="e=>startEdit(e, 'z')" 
+        @keydown="e=>changeValue(getOptions(e, 'z'))"
+        @wheel="e=>changeValue(getOptions(e, 'z'))" @wheel.prevent/>
         <div v-if="options.suffix" class="inline">{{ options.suffix }}</div>
       </span>
       <!--THREE颜色向量-->
@@ -386,26 +394,26 @@
         <strong>R:</strong>
         <a-input class="propInput" :style="propStyle()" :title="help.input" 
         v-model:value="computedX"
-        @click="(e)=>startEdit(e, 'r')" 
-        @blur="(e)=>changeColor(e, 'r')" 
-        @keydown="(e)=>changeColor(e, 'r')"
-        @wheel="(e)=>changeColor(e, 'r')" @wheel.prevent/>
+        @blur="e=>changeColor(e, 'r')" 
+        @click="e=>startEdit(e, 'r')" 
+        @keydown="e=>changeColor(e, 'r')"
+        @wheel="e=>changeColor(e, 'r')" @wheel.prevent/>
         &nbsp;
         <strong>G:</strong>
         <a-input class="propInput" :style="propStyle()" :title="help.input" 
         v-model:value="computedY"
-        @click="(e)=>startEdit(e, 'g')" 
-        @blur="(e)=>changeColor(e, 'g')" 
-        @keydown="(e)=>changeColor(e, 'g')"
-        @wheel="(e)=>changeColor(e, 'g')" @wheel.prevent/>
+        @blur="e=>changeColor(e, 'g')" 
+        @click="e=>startEdit(e, 'g')" 
+        @keydown="e=>changeColor(e, 'g')"
+        @wheel="e=>changeColor(e, 'g')" @wheel.prevent/>
         &nbsp; 
         <strong>B:</strong>
         <a-input class="propInput" :style="propStyle()" :title="help.input" 
         v-model:value="computedZ"
-        @click="(e)=>startEdit(e, 'b')" 
-        @blur="(e)=>changeColor(e, 'b')" 
-        @keydown="(e)=>changeColor(e, 'b')"
-        @wheel="(e)=>changeColor(e, 'b')" @wheel.prevent/>
+        @blur="e=>changeColor(e, 'b')" 
+        @click="e=>startEdit(e, 'b')" 
+        @keydown="e=>changeColor(e, 'b')"
+        @wheel="e=>changeColor(e, 'b')" @wheel.prevent/>
         <!--预览与编辑颜色-->
         <a-popconfirm :draggable="false" icon="" style="user-select: none;">
           <template #cancelButton></template>
