@@ -75,7 +75,7 @@ export default defineComponent({
       this.castRay(e);  // 射线检测
       for (let intersect of ray.intersectObject(this.scene.SCENE)) {
         let mesh = intersect.object;
-        if (mesh.isTransformControlsPlane) continue;
+        if (mesh.isTransformControlsPlane) continue;  // 忽略控制器
         if (mesh.isMesh && mesh != dragModel && mesh != tempModel) {
           return [mesh, intersect.point];
         }
@@ -109,17 +109,18 @@ export default defineComponent({
       findImg(e.fromElement);
       data.setDragImage(document.createElement("img"), 0, 0);
       // 拖入模型
-      let DT, modelName;
       dragFromOutside = true;
-      if (dragData.type == "asset") {
-        DT = dragData.data.DT;
-        dragModel = this.scene.createGeometryFromAsset(DT, this.intersectObject(e)[1]);
+      switch(dragData.type){
+        case "asset":
+          let DT = dragData.data.DT;
+          dragModel = this.scene.createMeshFromAsset(DT, this.intersectObject(e)[1]);
+          break;
+        case "model":
+          let item = dragData.item;
+          dragModel = this.scene.createMesh(item, this.intersectObject(e)[1]);
+          break;
+        default: return;
       }
-      if (dragData.type == "model") {
-        modelName = dragData.data;
-        dragModel = this.scene.createGeometry(modelName, this.intersectObject(e)[1]);
-      }
-      else return;
       dragModel.isDrag = true;
       dragModel.material.transparent = true;
       tempOpacity = dragModel.material.opacity;
@@ -145,7 +146,7 @@ export default defineComponent({
         if (!dragFromOutside) {  // 拖动时，物体位置 = 鼠标与平面z=H的交点坐标 + Δp
           let point;
           if (dragModel.userData.isConveyor){  // 拖入传送带时
-            attachPoint1 = dragModel.getObjectByName('ap1');;
+            attachPoint1 = dragModel.getObjectByName('ap1');
             if (keys.space) {  // 检查空格键和左键是否同时被按下
               let minDistance = Infinity;  // 初始化最小距离为无穷大
               let closestAttachPoint2 = null;
@@ -289,9 +290,11 @@ export default defineComponent({
         else if (global.mode() == "edit") {  // 左键点击
           let result = this.intersectObject(e);
           let choice = result[0];
+          let parent = choice.parent;
           if (choice.userData.controller) return;  // 点击控制器则忽略后文
           dragPoint = result[1];
-          if (choice.userData.indicator) choice = choice.parent;  // 点击指示箭头
+          if (parent.userData.indicator) choice = parent;  // 点击指示箭头
+          if (parent.userData.rigidHelper) choice = parent;  // 点击碰撞体
           if (choice.DT && !choice.userData.ground) {
             global.emit("clickModel", {id: choice.id, shift: e.shiftKey});
             delta = new THREE.Vector3();
