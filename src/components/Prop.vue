@@ -255,7 +255,7 @@
       output(prop, N=1){  // 将输出参数格式化
         try{
           prop = JSON.parse(prop);
-          if(N!=1) return Math.floor(prop*N);  // 将属性值放大N或unit倍
+          if(N!=1) return Math.floor(prop*N);  // 将属性值放大N或unit倍    
           if(this.options.unit) prop /= this.options.unit; 
           if(typeof this.options.fixed == "number"){  // 保留fixed位小数
             prop = prop.toFixed(this.options.fixed);
@@ -270,7 +270,7 @@
       },
       selectAll(e){  // 全选input中的内容（避免双击颜色代码时井号未选中）
         let x = e.target;
-		    x.setSelectionRange(0, x.value.length);  
+        x.setSelectionRange(0, x.value.length);  
       },
       startEdit(e, item=''){  // 开始编辑
         input_value.value = e.target.value;
@@ -332,7 +332,7 @@
 <template>
   <div v-if="hasProp(prop)" class="inputRow">
     <!--属性名-->
-    <strong>{{title}}：</strong>
+    <strong> {{title}}：</strong>
 
     <!--编辑布尔变量属性-->
     <a-checkbox v-if="type=='checkbox'" v-model:checked="computedProp">
@@ -464,6 +464,9 @@
     </div>
 
     <!--只显示属性-->
-    <div v-else class="inline">{{ output(computedProp) }}</div>
+    <div v-else v-for="prop of [output(computedProp)]" class="inline">
+      <div v-if="typeof prop == 'boolean'" class="inline"> {{ prop ? "是" : "否"}} </div>
+      <div v-else class="inline"> {{ prop }} </div>
+    </div>
   </div>
 </template>

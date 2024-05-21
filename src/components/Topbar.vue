@@ -103,10 +103,10 @@
             changeEmulateMode(mode){  // 切换仿真状态
                 emulateMode.value = mode;
                 global.emit("changeEmulateMode", mode);
-                if(mode == "stop") {this.message("仿真停止");}
-                if(mode == "play") {this.message("仿真开始");}
-                if(mode == "step") {this.message("仿真步进");}
-                if(mode == "fast") {this.message("仿真快进");}
+                if(mode == "stop") this.message("仿真停止");
+                if(mode == "play") this.message("仿真开始");
+                if(mode == "step") this.message("仿真步进");
+                if(mode == "fast") this.message("仿真快进");
                 speed.value = mode == "fast" ? fast.value : 0;
                 global.emit("changeSpeed", marks[speed.value]);
                 BottomSpeed.textContent = marks[speed.value];
@@ -115,12 +115,14 @@
                 global.updateLayers(layers.value);
                 global.emit("changeControllerVisibility", layers.value.includes("物体控制器"));
                 global.emit("changeGizmoVisibility", layers.value.includes("Gizmo"));
+                for(let DT of global.DTScene().getDTObjects()){
+                    if(DT.layers.rigidHelper) {
+                        DT.layers.rigidHelper.visible = layers.value.includes("碰撞体");
+                    }
+                }
                 global.DTScene().mesh.traverse(mesh => {
                     if(mesh.userData.indicator) {
                         mesh.visible = layers.value.includes("指示箭头");
-                    }
-                    if(mesh.userData.rigidHelper) {
-                        mesh.visible = layers.value.includes("碰撞体");
                     }
                     if(mesh.DT && mesh.DT.special) {
                         mesh.visible = layers.value.includes("特殊物体");
@@ -294,13 +296,14 @@
                 mode, recentOpened, savepath:"", selectedKey, speed, tab, viewName, wireframe
             };
         },
-        mounted(){
+        mounted(){  
             this.ipcRenderer("closeDevTools");  // 默认关闭开发人员工具
             BottomMessage = document.getElementById("BottomMessage");
             BottomSpeed = document.getElementById("BottomSpeed");
             fileInput = document.getElementById("fileInput");
             fileOutput = document.getElementById("fileOutput");
             fileOutput.download = this.savepath;
+            global.updateLayers(layers.value);
             try {  // 有历史打开记录和自定义视角则加载
                 let file;
                 file = fs.readFileSync("src/recentOpened.txt", "utf-8"); 
