@@ -40,7 +40,25 @@
     var fileOutput;  // 文件保存器
     const GLTFexporter = new GLTFExporter();
     const GLTFloader = new GLTFLoader();
-    const layers = ref(["特殊物体", "货物", "指示箭头", "Gizmo", "物体控制器"]);
+    const layers = ref([
+        "特殊物体", 
+        "货物", 
+        "Gizmo", 
+        "物体控制器",
+        "指示箭头",
+        "传送带吸附点",
+        "光源方向",
+    ]);
+    const layersAll = ref([
+        "特殊物体", 
+        "货物", 
+        "Gizmo", 
+        "物体控制器",
+        "指示箭头",
+        "碰撞体",
+        "传送带吸附点",
+        "光源方向",
+    ]);
     const marks = {0:'1x', 25: '2x', 50: '4x', 
         75: {style: {color: 'lightgrey', textDecoration: "line-through"}, label: '8x'}, 
         100: {style: {color: 'lightgrey', textDecoration: "line-through"}, label: '10x'}
@@ -292,7 +310,7 @@
         setup() {
             const selectedKey = ref([]);
             return {
-                cameraMode, customViews, global, emulateMode, fast, layers, marks, menu, 
+                cameraMode, customViews, global, emulateMode, fast, layers, layersAll, marks, menu, 
                 mode, recentOpened, savepath:"", selectedKey, speed, tab, viewName, wireframe
             };
         },
@@ -332,16 +350,25 @@
 
 <style>
     .bottom {margin-bottom:10px;}
-    .bottomBorder {border-top:2px solid grey; width:100%}
-    .layers {margin-top: 10px; text-align:left; padding: 10px;}
-    .logo {border-radius:5px; cursor:pointer}
+    .bottomBorder {border-top:2px solid grey; width:100%;}
+    .layerSelect {
+        padding-left:8px; 
+        user-select: none; 
+        width:120px;
+    }
+    .logo {border-radius:5px; cursor:pointer;}
     .logoBig {font-size:36px;}
     .marginLR5 {margin-left:5px; margin-right:5px;}
     .marginLR10 {margin-left:10px; margin-right:10px;}
     .splitH {border:1px solid lightgrey;}
     .splitV {border:1px solid lightgrey;}
     .top {margin-top:10px;}
-    .toptab {border:2px solid grey; display: flex; height:100px; user-select: none}
+    .toptab {
+        border:2px solid grey; 
+        display: flex; 
+        height:100px; 
+        user-select: none;
+    }
     .top16 {margin-top:16px;}
 </style>
 
@@ -508,26 +535,54 @@
 
     <!--可视化-->
     <span v-if="tab=='可视化'" class="toptab" @click="global.emit('deselect')">
-        <!--图层选择-->
+        <!--屏幕-->
         <div style="align-items:center; display:inline; height:100%" class="marginLR5">
             <span style="align-items:center; display:flex; 
             height: calc(100% - 35px); justify-content:space-evenly;" class="bottom">
-                <a-checkbox-group v-model:value="layers" @change="changeLayers">
-                    <a-row :gutter="8" class="layers">
-                        <a-col>          
-                            <a-checkbox value="指示箭头">指示箭头</a-checkbox><br>
-                            <a-checkbox value="Gizmo">Gizmo</a-checkbox><br>
-                            <a-checkbox value="物体控制器">物体控制器</a-checkbox><br> 
-                        </a-col>
-                        <a-col>
-                            <a-checkbox value="货物">货物</a-checkbox><br>
-                            <a-checkbox value="特殊物体">特殊物体</a-checkbox><br>
-                            <a-checkbox value="碰撞体">碰撞体</a-checkbox>
-                        </a-col>
-                    </a-row>
-                </a-checkbox-group>
+                <!--显示图层--> 
+                <a-dropdown :trigger="['click']">
+                    <div class="logo marginLR10 top16 ant-dropdown-link" @click.prevent>
+                        <BlockOutlined class="logoBig"/>
+                        <br>显示图层
+                    </div>
+                    <!--左键菜单-->
+                    <template #overlay>
+                        <a-menu class="layerSelect">
+                            <a-checkbox-group v-model:value="layers" @change="changeLayers">
+                                <a-row>
+                                    <a-col v-for="layer of layersAll" :span="24">
+                                        <a-checkbox :value="layer">{{layer}}</a-checkbox>
+                                    </a-col>
+                                </a-row>
+                            </a-checkbox-group>
+                        </a-menu>
+                    </template>
+                </a-dropdown>
+                <!--物体边框--> 
+                <a-dropdown :trigger="['click']">
+                    <div class="logo marginLR10 top16 ant-dropdown-link" @click.prevent>
+                        <CodepenOutlined class="logoBig"/>
+                        <br>物体边框
+                    </div>
+                    <!--左键菜单-->
+                    <template #overlay>
+                        <a-menu @click="changeWireframe">
+                            <a-menu-item v-for="item in ['包围盒', '边缘发光']" :key="item"
+                            :disabled="item==wireframe">
+                                {{item}}&nbsp;
+                                <CheckOutlined v-if="item==wireframe"/>
+                            </a-menu-item>
+                        </a-menu>
+                    </template>
+                </a-dropdown>
+                <!--全屏显示-->   
+                <div class="logo marginLR10 top16" @click="changeFullscreen"
+                @mousedown = "global.emit('help')">
+                    <FullscreenOutlined class="logoBig"/>
+                    <br>全屏显示
+                </div>     
             </span>
-            <div class="bottomBorder">图层选择</div>
+            <div class="bottomBorder">屏幕</div>
         </div>
         <vr class="splitV"/><!--分隔符-->
 
@@ -605,38 +660,6 @@
                 </a-dropdown>
             </span>
             <div class="bottomBorder">相机控制</div>
-        </div>
-        <vr class="splitV"/><!--分隔符-->
-
-        <!--屏幕-->
-        <div style="align-items:center; display:inline; height:100%" class="marginLR5">
-            <span style="align-items:center; display:flex; 
-            height: calc(100% - 35px); justify-content:space-evenly;" class="bottom">
-                <!--物体边框--> 
-                <a-dropdown :trigger="['click']">
-                    <div class="logo marginLR10 top16 ant-dropdown-link" @click.prevent>
-                        <CodepenOutlined class="logoBig"/>
-                        <br>物体边框
-                    </div>
-                    <!--左键菜单-->
-                    <template #overlay>
-                        <a-menu @click="changeWireframe">
-                            <a-menu-item v-for="item in ['包围盒', '边缘发光']" :key="item"
-                            :disabled="item==wireframe">
-                                {{item}}&nbsp;
-                                <CheckOutlined v-if="item==wireframe"/>
-                            </a-menu-item>
-                        </a-menu>
-                    </template>
-                </a-dropdown>
-                <!--全屏显示-->   
-                <div class="logo marginLR10 top16" @click="changeFullscreen"
-                @mousedown = "global.emit('help')">
-                    <FullscreenOutlined class="logoBig"/>
-                    <br>全屏显示
-                </div>     
-            </span>
-            <div class="bottomBorder">屏幕</div>
         </div>
         <vr class="splitV"/><!--分隔符-->
     </span>
