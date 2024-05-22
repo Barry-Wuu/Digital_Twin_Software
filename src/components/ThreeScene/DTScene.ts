@@ -81,6 +81,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
     friction0 = 0.5  // 静摩擦力
     friction = 0.8  // 滑动摩擦力
     geometry: THREE.object  // 模型几何体
+    icon: HTMLElement  // 物体图标
     id: number  // 序号
     key: number  // 层级树的键，应等于序号
     layers = {}  // 物体及其子孙的图层
@@ -88,6 +89,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
     material: THREE.object  // 模型材质
     mesh: THREE.object  // 模型网格
     name: string  // 名称
+    protected: boolean
     rb: object  // 刚体
     rigid = false  // 是否为刚体
     rigidShape: string  // 刚体网格，设成字符串易于存取，若为空则刚体为mesh的凸集
@@ -258,7 +260,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
     }
     destroy(protect = true) {  // 清除自身及其网格和刚体
         let mesh = this.mesh;
-        if(protect && mesh.userData.protected) return;  // 不能删除场景和地面
+        if(protect && this.protected) return;  // 不能删除场景和地面
         // 如果子物体中有CSS2DObject，则先删除相应的DOM，以免其残留在屏幕上
         let css2d = mesh.children.filter(child => child.isCSS2DObject);
         if(css2d.length){
@@ -285,6 +287,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         rb.setMassProps(0, new Ammo.btVector3(0, 0, 0));
     }   
     findDTObjectById(id, loadingFile=false) {  // 根据id寻找物体 
+        id = parseInt(id);  // 若id为数字字符串则转换为数字
         if(!loadingFile){
             let mesh = SCENE.getObjectById(id);
             return mesh ? mesh.DT : null;
@@ -441,13 +444,13 @@ export default class SceneBuilder{
             temp = true;
         });
         // 场景
-        SCENE.userData.protected = true;
         global.setDTScene(new DTObject(SCENE, true));
         global.DTScene().skybox = {
             skyColor: new THREE.Color("skyblue"), 
             skyline: new THREE.Color("white"), 
             groundColor: new THREE.Color("darkkhaki"), 
         };
+        SCENE.DT.protected = true;
         // 场景渲染器
         this.renderer = new THREE.WebGLRenderer({antialias: true});
         this.renderer.autoClear = false;
@@ -525,7 +528,7 @@ export default class SceneBuilder{
         var controllerVisible = true;
         controller.children[0].children[0].children[0].onBeforeRender = ()=>{  // 在控制器显现之前调整其位置
             // 自动将控制器移动到物体包围盒中心
-            if(!attached.userData.protected) {
+            if(!attached.DT.protected) {
                 // 物体旋转时将控制器移到包围盒中心
             }
         };
@@ -542,10 +545,11 @@ export default class SceneBuilder{
             }
         });
         global.on("controlStart", (id)=>{  // 选中物体开始控制
+            id = parseInt(id);  // 若id为数字字符串则转换为数字
             attached = SCENE.getObjectById(id);
             if(!controllerVisible) return;
             SCENE.add(controller);
-            if(!attached.userData.protected) {
+            if(!attached.DT.protected) {
                 controller.mode = "translate";  // 开始控制时总是平移
                 controller.space = "local";  // 开始控制时控制器的坐标系为世界坐标系
                 controller.attach(attached);
@@ -581,9 +585,8 @@ export default class SceneBuilder{
                 attached.getWorldScale(worldScale);
                 center.multiplyScalar(worldScale.x);
                 controller.position.copy(center);
-            } else {  // 点击地面等则移除控制器
-                global.emit("controlEnd");
             }
+            else global.emit("controlEnd");  // 点击地面等则移除控制器
         });
         global.on("controlEnd", ()=>{
             if(attached) attached.DT.controlEnd()
@@ -609,8 +612,8 @@ export default class SceneBuilder{
         this.ground.castShadow = true;
         this.ground.receiveShadow = true;
         this.ground.userData.ground = true;
-        this.ground.userData.protected = true;
         this.ground.DT.mass = 0 // 不可动
+        this.ground.DT.protected = true;
         this.ground.DT.rigid = true;
         this.ground.DT.rigidShape = "new Ammo.btBoxShape(new Ammo.btVector3(groundSize, groundSize, margin))";
         this.ground.DT.createRigidBody();
@@ -744,18 +747,16 @@ export default class SceneBuilder{
                     p_start = this.camera.position.clone();  // 起点
                     let center = targetObject.position.clone();  // 中心点
                     var d = 10;  // 默认距离
-                    if(!targetObject.userData.protected){  // 让物体包围盒越小，相机距离物体越近，反之亦然
-                        // 求物体包围盒中心
-                        targetObject.getWorldPosition(center);
-                        let centerDelta = center.clone();
-                        controller.getWorldPosition(centerDelta);
-                        center.add(centerDelta);
-                        // 求相机到物体的距离d与d*相机朝向
-                        let wireframe = targetObject.children.filter(child=>child.userData.wireframe)[0];
-                        if(wireframe){
-                            let r = wireframe.geometry.boundingSphere.radius;  // 包围球半径
-                            d = r * targetObject.DT.scale * 2.5;  // 距离 = 包围球半径 * 物体缩放 * 2.5
-                        }
+                    // 求物体包围盒中心
+                    targetObject.getWorldPosition(center);
+                    let centerDelta = center.clone();
+                    controller.getWorldPosition(centerDelta);
+                    center.add(centerDelta);
+                    // 求相机到物体的距离d与d*相机朝向
+                    let wireframe = targetObject.children.filter(child=>child.userData.wireframe)[0];
+                    if(wireframe){
+                        let r = wireframe.geometry.boundingSphere.radius;  // 包围球半径
+                        d = r * targetObject.DT.scale * 2.5;  // 距离 = 包围球半径 * 物体缩放 * 2.5
                     }
                     d = Math.max(d, 5);  // 让相机不能离物体太近
                     this.camera.getWorldDirection(front);
@@ -814,14 +815,12 @@ export default class SceneBuilder{
         return point;
     }
     createLight(type, x=0, y=0, z=24) {  // 创建光源
-        let light, iconDOM = document.createElement('img');
-        const iconMesh = new CSS2DObject( iconDOM );
-        iconMesh.userData.dom = iconDOM;
-        iconDOM.addEventListener('mousedown', e => {  // 点击图标时选中光源
-            global.emit("clickLight", {choice: light, e: e})
-        });
+        let light, lightDOM = document.createElement('img');
+        // 光源物体
+        const iconMesh = new CSS2DObject( lightDOM );
+        iconMesh.userData.dom = lightDOM;
         if(type == "DirectionalLight"){  // 平行光
-            light = new THREE.DirectionalLight( "white", 3 );
+            light = new THREE.DirectionalLight("white", 3);
             light.castShadow = true;
             light.shadow.bias = - 0.003;
             light.shadow.camera.left = - 10;
@@ -833,8 +832,7 @@ export default class SceneBuilder{
             light.shadow.mapSize.x = 1024;
             light.shadow.mapSize.y = 1024;
             // 平行光图标
-            iconDOM.src = bulb;
-            iconDOM.style.width = "30px";
+            lightDOM.src = bulb;
             // 辅助箭头
             let dir = light.target.position.clone();
             dir.sub(light.position);
@@ -862,18 +860,27 @@ export default class SceneBuilder{
             }
         }
         if(type == "AmbientLight"){  // 环境光
-            light = new THREE.AmbientLight( "white" );
+            light = new THREE.AmbientLight("white");
             // 环境光图标
-            iconDOM.src = sun;
-            iconDOM.style.width = "30px";
+            lightDOM.src = sun;
         }  
+        // 光源图标
+        lightDOM.id = light.id;
+        lightDOM.style.width = "30px";
+        lightDOM.addEventListener('mousedown', e => {  // 点击图标时选中光源
+            global.emit("clickLight", {choice: light, e: e})
+        });
+        // 光源物体
         SCENE.add(light);
-        new DTObject(light, true).setTitle();
         light.position.set(x, y, z);
         light.rotation.x = Math.PI / 2;
         iconMesh.center.set( 0.5, 0.5 );  // 图标居中
         iconMesh.position.set( 0, 0, 0 );  // 图标的三维相对位置
         light.add( iconMesh );
+        // 光源DT
+        let lightDT = new DTObject(light, true)
+        lightDT.icon = lightDOM; 
+        lightDT.setTitle();
     }
     createMesh(item, position: Object){  // 定义拖入的物体属性
         let indicators = [];  // 传送带的指示箭头

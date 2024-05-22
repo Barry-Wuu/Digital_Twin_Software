@@ -12,6 +12,7 @@
         PlusSquareOutlined,
         MinusSquareOutlined
     } from '@ant-design/icons-vue';
+import { fixControlledValue } from "ant-design-vue/es/vc-input/utils/commonUtils";
     import { computed, defineComponent, ref, watch } from 'vue';
 
     var choices = ref([]);  // 已选项，内为各个被选中模型的ID
@@ -28,9 +29,9 @@
 
     function emitProperty(){  // 将物体id发送到属性栏
       let len = choices.value.length;
-      if(len == 0){global.emit("showProperty", "未选择对象")}
-      else if(len == 1){global.emit("showProperty", choices.value[0])}
-      else {global.emit("showProperty", `已选择${len}个对象`)}
+      if(len == 0) global.emit("hideProperty");
+      else if(len == 1) global.emit("showProperty", choices.value[0]);
+      else global.emit("showMultipleProperty", len);
     }
 
     export default defineComponent({
@@ -48,21 +49,23 @@
       },
       data(){
         global.on("changeWireframe", (x)=>{wireframe = x;}) 
-        global.on("clickModel", (data)=>{  // 点击屏幕中的物体
-          let selection = data.id;
+        global.on("clickModel", (data: {id, shift})=>{  // 点击屏幕中的物体
+          let choice = data.id;
           if(data.shift){  // 按住shift为多选模式
-            if(choices.value.includes(selection))  // 多选取消
-              choices.value = choices.value.filter(k => k != selection);
-            else choices.value.push(selection);  // 多选选择
-            global.emit("controlEnd")  // 收起控制器
+            if(choices.value.includes(choice))  // 多选取消
+              choices.value = choices.value.filter(k => k != choice);
+            else choices.value.push(choice);  // 多选选择
+            if(choices.value.length == 1)  // 只有一个物体被选时控制该物体
+              global.emit("controlStart", choices.value[0]);
+            else global.emit("controlEnd");  // 选中多个物体时收起控制器
           }
           else{  // 单选
-            choices.value = [selection];
-            global.emit("controlStart", selection);  // 选中物体开始控制
+            choices.value = [choice];
+            global.emit("controlStart", choice);  // 选中物体开始控制
           }
         });
         global.on("deselect", ()=>{  // 取消选择
-          this.deselect();
+          this.deselect(); 
           global.emit("controlEnd")  // 收起控制器
         });
         global.on("deleteChoices", ()=>{this.deleteChoices()});
@@ -119,19 +122,18 @@
             let DTObject = global.DTScene().findDTObjectById(id);
             if(DTObject) DTObject.destroy();
           }
+          global.emit("hideProperty");  // 清空属性栏
           global.emit("updateTree");
         },  // 删除所选模型
         deselect(){  // 点别处取消点选模型
           global.emit("deselectAsset");
           choices.value = [];
           global.emit("controlEnd");  // 收起控制器
+          global.emit("hideProperty");  // 清空属性栏
         },
         doubleClick(){  // 双击将相机拉近至物体
           choices.value = [lastChoice];
           global.emit("cameraMoveTo", lastChoice);
-        },
-        dragFrom(e){  // 开始拖拽
-          // console.log(e)
         },
         dragTo(e){  // 结束拖拽
           let sourceDT = e.dragNode.dataRef, targetDT = e.node.dataRef;
@@ -174,8 +176,9 @@
         },
         search(){  // 搜索栏内容改变时
           if(searchValue.value){
-            TREEs.value = DTObjects.filter(DT => DT.title.indexOf(searchValue.value) > -1);
-            console.log(TREEs.value)
+            TREEs.value = DTObjects.filter(
+              DT => DT.title.indexOf(searchValue.value) > -1
+            );
           }
         },
         update(){  // 更新线框和属性栏

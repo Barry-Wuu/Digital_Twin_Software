@@ -288,28 +288,45 @@ export default defineComponent({
       if (mouseType[0]) {
         if (mouseType[2]) { }  // 双击左右键则移动
         else if (global.mode() == "edit") {  // 左键点击
-          let result = this.intersectObject(e);
-          let choice = result[0];
-          let parent = choice.parent;
-          if (choice.userData.controller) return;  // 点击控制器则忽略后文
-          dragPoint = result[1];
-          if (parent.userData.indicator) choice = parent;  // 点击指示箭头
-          if (parent.userData.rigidHelper) choice = parent;  // 点击碰撞体
-          if (choice.DT && !choice.userData.ground) {
-            global.emit("clickModel", {id: choice.id, shift: e.shiftKey});
-            delta = new THREE.Vector3();
-            result[0].getWorldPosition(delta);
-            delta.sub(result[1]);  // Δp = 选中物体的全局坐标 - 物体上点击处的坐标
-            dragModel = choice;
-            dragModel.isDrag = true;
-            tempModel = dragModel.clone();
-            tempOpacity = dragModel.material.opacity;
-            isDrag = true;
-            if (dragModel.DT.rigid) {
-              this.scene.removeRigidBody(dragModel);
+          if (e.target.localName == "div"){
+            let result = this.intersectObject(e);
+            let choice = result[0];
+            let parent = choice.parent;
+            if (choice.userData.controller) return;  // 点击控制器则忽略后文
+            dragPoint = result[1];
+            if (parent.userData.indicator) choice = parent;  // 点击指示箭头
+            if (parent.userData.rigidHelper) choice = parent;  // 点击碰撞体
+            if (choice.DT && !choice.userData.ground) {
+              global.emit("clickModel", {id: choice.id, shift: e.shiftKey});
+              delta = new THREE.Vector3();
+              result[0].getWorldPosition(delta);
+              delta.sub(result[1]);  // Δp = 选中物体的全局坐标 - 物体上点击处的坐标
+              dragModel = choice;
+              dragModel.isDrag = true;
+              tempModel = dragModel.clone();
+              tempOpacity = dragModel.material.opacity;
+              isDrag = true;
+              if (dragModel.DT.rigid) {
+                this.scene.removeRigidBody(dragModel);
+              }
+            } else {  // 取消选择
+              if(e.target.localName == "div") global.emit("deselect");  // 避免点击img时取消选择
             }
-          } else {  // 取消选择
-            if(e.target.localName == "div") global.emit("deselect");  // 避免点击img时取消选择
+          }
+          else if(e.target.localName == "img"){  // 拖动灯光
+            let id = parseInt(e.target.id);  // 若id为数字字符串则转换为数字
+            global.emit("clickModel", {id: id, shift: e.shiftKey}); 
+            let choice = this.scene.SCENE.getObjectById(id);
+            let rect = e.target.getBoundingClientRect();
+            let P = new THREE.Vector2(
+              rect.left + e.target.clientWidth / 2,
+              rect.top + e.target.clientHeight / 2
+            );
+            let P_e = new THREE.Vector2(e.clientX, e.clientY);
+            P.sub(P_e);  // Δp = 选中物体的全局坐标 - 物体上点击处的坐标
+            delta = {x: P.x, y: P.y, pos: choice.position};
+            dragModel = choice;
+            isDrag = true;
           }
         }
       }
@@ -383,29 +400,6 @@ export default defineComponent({
   mounted() {
     app = document.getElementById("app");
     canvas = document.getElementById("canvas");
-    global.on("clickLight", data=>{  // 拖动灯光
-      global.emit("deselectAsset"); 
-      mouseType[data.e.button] = true;
-      if (mouseType[0]) {
-        if (mouseType[2]) { }  // 双击左右键则移动
-        else if (global.mode() == "edit") {  // 左键点击
-          let result = this.intersectObject(data.e);
-          let choice = data.choice;
-          dragPoint = result[1];
-          global.emit("clickModel", {id: choice.id, shift: data.e.shiftKey});
-          let e = data.e, rect = e.target.getBoundingClientRect();
-          let P = new THREE.Vector2(
-            rect.left + e.target.clientWidth / 2,
-            rect.top + e.target.clientHeight / 2
-          );
-          let P_e = new THREE.Vector2(e.clientX, e.clientY);
-          P.sub(P_e);  // Δp = 选中物体的全局坐标 - 物体上点击处的坐标
-          delta = {x: P.x, y: P.y, pos: choice.position};
-          dragModel = choice;
-          isDrag = true;
-        }
-      }
-    });
     this.scene = new DTScene(canvas);
     this.scene.init();
     this.rendered = true;
@@ -417,5 +411,4 @@ export default defineComponent({
       }
     });
   },
-}
-);
+});

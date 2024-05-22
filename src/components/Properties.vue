@@ -3,7 +3,7 @@
   import Prop from "./Prop.vue"
   import { ref } from 'vue'
 
-  const DT = ref("未选择对象");
+  const DT = ref("未选择物体");
   const tube = new EyeDropper();  // 颜色吸管
 
   export default{
@@ -22,10 +22,11 @@
     },
     provide:{ tube },
     mounted(){
-      global.on("showProperty", (data)=>{
-        if('未已'.includes(data[0])) DT.value = data;
-        else if(typeof data == "number") DT.value = global.DTScene().findDTObjectById(data);
-        else DT.value = data;
+      global.on("hideProperty", ()=>DT.value = "未选择物体");  // 清空属性
+      global.on("showMultipleProperty", (x)=>DT.value = `已选择${x}个物体`);  // 选择多个物体
+      global.on("showProperty", (id)=>{  // 显示单个物体的属性
+        id = parseInt(id);  // 若id为数字字符串则转换为数字
+        DT.value = global.DTScene().findDTObjectById(id);
       })
     },
   }
