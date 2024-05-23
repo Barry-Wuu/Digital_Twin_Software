@@ -184,21 +184,21 @@ import { fixControlledValue } from "ant-design-vue/es/vc-input/utils/commonUtils
         update(){  // 更新线框和属性栏
           emitProperty();
           if(wireframe == "包围盒"){  // 更新物体包围盒线框
+            global.emit("hideEdgeGlow");  // 熄灭被选中物体的边缘
             for(let DT of global.DTScene().getDTObjects()){
               let chosen = choices.value.includes(DT.id);
               if(DT.wireframe) 
                 DT.wireframe.visible = chosen;
               else if(DT.mesh.isLight){  // 更新光源图标的边框与箭头的可见度
                 let arrow = DT.mesh.children.filter(mesh => mesh.type == "ArrowHelper")[0];
-                if(arrow) arrow.visible = chosen;
+                if(arrow) arrow.visible = chosen && global.layers().includes("lightArrow");
                 let icon = DT.mesh.children.filter(mesh => mesh.isCSS2DObject)[0].element;
                 if(icon) icon.style.border = chosen ? "1px solid cyan" : "";
               }
             };
           }
-          if(wireframe == "边缘发光"){  // 更新物体边缘线框
-            global.emit("lightWireframe", null);
-            global.emit("lightWireframe", global.DTScene().getDTObjects()
+          if(wireframe == "边缘发光"){  // 点亮被选中物体的边缘
+            global.emit("setEdgeGlow", global.DTScene().getDTObjects()
               .filter(DT => choices.value.includes(DT.id))
               .map(DT => DT.mesh)
             );

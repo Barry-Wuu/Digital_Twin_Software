@@ -40,25 +40,25 @@
     var fileOutput;  // 文件保存器
     const GLTFexporter = new GLTFExporter();
     const GLTFloader = new GLTFLoader();
-    const layers = ref([
-        "特殊物体", 
-        "货物", 
-        "Gizmo", 
-        "物体控制器",
-        "指示箭头",
-        "传送带吸附点",
-        "光源方向",
+    const Layers = ref([
+        "special", 
+        "temp", 
+        "gizmo", 
+        "controller",
+        "indicator",
+        "attachPoint",
+        "lightArrow",
     ]);
-    const layersAll = ref([
-        "特殊物体", 
-        "货物", 
-        "Gizmo", 
-        "物体控制器",
-        "指示箭头",
-        "碰撞体",
-        "传送带吸附点",
-        "光源方向",
-    ]);
+    const layersAll = ref({
+        "special": "特殊物体", 
+        "temp": "临时物体", 
+        "gizmo": "Gizmo", 
+        "controller": "物体控制器",
+        "indicator": "指示箭头",
+        "rigidHelper": "碰撞体",
+        "attachPoint": "传送带吸附点",
+        "lightArrow": "光照方向",
+    });
     const marks = {0:'1x', 25: '2x', 50: '4x', 
         75: {style: {color: 'lightgrey', textDecoration: "line-through"}, label: '8x'}, 
         100: {style: {color: 'lightgrey', textDecoration: "line-through"}, label: '10x'}
@@ -129,24 +129,32 @@
                 global.emit("changeSpeed", marks[speed.value]);
                 BottomSpeed.textContent = marks[speed.value];
             },
-            changeLayers(){  // 更改各类物体的显隐性
-                global.updateLayers(layers.value);
-                global.emit("changeControllerVisibility", layers.value.includes("物体控制器"));
-                global.emit("changeGizmoVisibility", layers.value.includes("Gizmo"));
+            changeLayers(e){  // 更改各类物体的显隐性
+                let layer = e.target.value;  // 更改的图层中文名
+                let layers = Layers.value;  // 显示的图层，其用中文名表示
+                let show = !layers.includes(layer);  // 显示或隐藏
+                layers = show ? [...layers, layer] : layers.filter(item => item!=layer);  // 更改显示图层
+                global.updateLayers(layers);
+                if(layer == "controller") 
+                    global.emit("changeControllerVisibility", show);
+                if(layer == "gizmo") 
+                    global.emit("changeGizmoVisibility", show);
                 for(let DT of global.DTScene().getDTObjects()){
-                    if(DT.layers.rigidHelper) {
-                        DT.layers.rigidHelper.visible = layers.value.includes("碰撞体");
+                    if(layer in DT.layers){
+                        for(let mesh of DT.layers[layer]){
+                            mesh.visible = show;
+                        }
+                    }
+                    else if(layer == DT.label){
+                        DT.mesh.visible = show;
                     }
                 }
                 global.DTScene().mesh.traverse(mesh => {
-                    if(mesh.userData.indicator) {
-                        mesh.visible = layers.value.includes("指示箭头");
-                    }
                     if(mesh.DT && mesh.DT.special) {
-                        mesh.visible = layers.value.includes("特殊物体");
+                        mesh.visible = layers.includes("特殊物体");
                     }
                     if(mesh.DT && mesh.DT.temp) {
-                        mesh.visible = layers.value.includes("货物");
+                        mesh.visible = layers.includes("货物");
                     }
                 });
             },
@@ -310,7 +318,7 @@
         setup() {
             const selectedKey = ref([]);
             return {
-                cameraMode, customViews, global, emulateMode, fast, layers, layersAll, marks, menu, 
+                cameraMode, customViews, global, emulateMode, fast, Layers, layersAll, marks, menu, 
                 mode, recentOpened, savepath:"", selectedKey, speed, tab, viewName, wireframe
             };
         },
@@ -321,7 +329,7 @@
             fileInput = document.getElementById("fileInput");
             fileOutput = document.getElementById("fileOutput");
             fileOutput.download = this.savepath;
-            global.updateLayers(layers.value);
+            global.updateLayers(Layers.value);
             try {  // 有历史打开记录和自定义视角则加载
                 let file;
                 file = fs.readFileSync("src/recentOpened.txt", "utf-8"); 
@@ -548,10 +556,12 @@
                     <!--左键菜单-->
                     <template #overlay>
                         <a-menu class="layerSelect">
-                            <a-checkbox-group v-model:value="layers" @change="changeLayers">
+                            <a-checkbox-group v-model:value="Layers">
                                 <a-row>
-                                    <a-col v-for="layer of layersAll" :span="24">
-                                        <a-checkbox :value="layer">{{layer}}</a-checkbox>
+                                    <a-col v-for="(title, layer) of layersAll" :span="24">
+                                        <a-checkbox :value="layer" @click="changeLayers">
+                                            {{title}}
+                                        </a-checkbox>
                                     </a-col>
                                 </a-row>
                             </a-checkbox-group>
