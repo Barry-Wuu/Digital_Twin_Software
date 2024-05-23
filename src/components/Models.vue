@@ -11,11 +11,11 @@
       {title: "顺时针弯道", model: "传送带-弯道.stl", icon: "弯道1.jpg"},
       {title: "逆时针弯道", model: "传送带-弯道.stl", icon: "弯道2.jpg"},
       {title: "护栏", model: "", icon: "护栏.jpg"},
-      {title: "传感器", model: "", icon: "传感器.jpg"},
     ]},
     {title: "货物", children: [
-      {title: "发生器", model: "", icon: "发生器.jpg"},
       {title: "货物", model: "", icon: "货物.jpg"},
+      {title: "发生器", model: "", icon: "发生器.jpg"},
+      {title: "传感器", model: "", icon: "传感器.jpg"},
       {title: "回收器", model: "", icon: "回收器.jpg"},
     ]},
     {title: "基本几何体", children: [

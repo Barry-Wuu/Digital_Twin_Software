@@ -4,6 +4,8 @@
     <div 
         class="sketch-container"
         id="canvas"
+        style="outline:none;"
+        tabindex="0"
         @dragenter = "onDragenter"
         @dragleave = "onDragleave"
         @dragover = "onDragover" 
@@ -14,7 +16,5 @@
         @mousemove = "onMousemove"
         @mouseup = "onMouseup"
         @wheel = "onWheel"
-        style="outline:none;"
-        tabindex="0"
     />
 </template>

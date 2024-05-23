@@ -39,7 +39,7 @@ export default defineComponent({
   props: {},
   components: {},
   data() {
-    resizeObserver = new ResizeObserver(() => {
+    resizeObserver = new ResizeObserver(() => {  // 画布大小改变时的事件
       this.resizeCanvas()
     });
     global.on("changeFullscreen", () => {  // 全屏或退出全屏
@@ -304,7 +304,11 @@ export default defineComponent({
               dragModel = choice;
               dragModel.isDrag = true;
               tempModel = dragModel.clone();
+              tempModel.children = tempModel.children.filter(
+                mesh => !mesh.isTransformControls
+              )
               tempOpacity = dragModel.material.opacity;
+              //this.scene.outlinePass.selectedObjects = [tempModel];
               isDrag = true;
               if (dragModel.DT.rigid) {
                 this.scene.removeRigidBody(dragModel);
@@ -378,10 +382,12 @@ export default defineComponent({
         width = canvas.clientWidth;
         height = tab.clientHeight - tab.children[0].clientHeight - 4;
       }  // 否则全屏预览
-      this.scene.renderer.setSize(width, height);
       this.scene.cssRenderer.setSize(width, height);
+      this.scene.renderer.setPixelRatio(width / height);
+      this.scene.renderer.setSize(width, height);
       this.scene.camera.aspect = width / height;
       this.scene.camera.updateProjectionMatrix();
+      global.emit("updateEdgeGlow", {width: width, height: height});
     },
     setControl(key, action) {  // 设置快捷键（左键、中间、右键：平移、旋转、放缩）
       var map = {

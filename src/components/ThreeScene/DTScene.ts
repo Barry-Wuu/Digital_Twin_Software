@@ -4,12 +4,11 @@ import * as fs from "fs";
 const path = require("path");
 import * as THREE from "three"
 
-import { ClearPass } from 'three/examples/jsm/postprocessing/ClearPass.js';
 import { ColladaLoader } from "three/examples/jsm/loaders/COLLADALoader.js"
-import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
-import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
+import { ConvexGeometry } from "three/examples/jsm/geometries/ConvexGeometry.js"
+import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js'
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
-import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
+import { FXAAShader } from "three/examples/jsm/shaders/FXAAShader.js"
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { OutlinePass } from "three/examples/jsm/postprocessing/OutlinePass.js"
@@ -84,8 +83,13 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
     icon: HTMLElement  // 物体图标
     id: number  // 序号
     key: number  // 层级树的键，应等于序号
-    layers = {}  // 物体及其子孙的图层
-    mass: number  // 质量
+    label: string  // 物体类型
+    layers = {
+        indicator: [],
+        lightArrow: [],
+        rigidHelper: [],
+    }  // 物体及其子孙的图层
+    mass = 0  // 质量
     material: THREE.object  // 模型材质
     mesh: THREE.object  // 模型网格
     name: string  // 名称
@@ -96,12 +100,10 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
     row = 0  // 子树在层级树模块中占几行
     scale = 1  // 尺寸
     skybox: object  // 天空盒
-    special: boolean  // 特殊实体（如传感器
-    temp: boolean  // 临时实体（如货物）
     timer = performance.now()  // 定时器（自动计算）
     timeInterval: number  // 定时器触发时间
     title: string  // 标题 = 物体类型 + 名称 + 序号（自动计算）
-    type: string  // 模型类型
+    type: string  // 物体的网格类型
     v0: number  // 传送带中轴线速度
     wireframe
     constructor(mesh=null, newScene=false, asset=null) {  
@@ -121,7 +123,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         return this;
     }  
     clearLoads() {  // 重置仿真动画时遍历清除所有临时物体
-        if(this.temp) this.destroy();
+        if(this.label == "temp") this.destroy();
         for(let child of this.children){
             child.clearLoads();
         }
@@ -196,6 +198,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         rb.setFriction( this.friction0 );  // 静摩擦力
     }
     createRigidHelper(geom=null){ // 根据刚体形状添加可视化碰撞体网格
+        if(this.layers.rigidHelper.length) return;
         let result, rule = /\(([^]*)\)/;
         let material = new THREE.LineBasicMaterial({  // 红色透明材质
             color: "red",
@@ -226,9 +229,9 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         }
         geom = new THREE.WireframeGeometry(geom);
         const rigidHelper = new THREE.LineSegments(geom, material);  // 可视化碰撞体网格
-        rigidHelper.visible = global.layers().includes("碰撞体");
+        rigidHelper.visible = global.layers().includes("rigidHelper");
         this.mesh.add(rigidHelper);
-        this.layers.rigidHelper = rigidHelper;
+        this.layers.rigidHelper = [rigidHelper];
     }
     createRigidShape(geom){  // 从几何形状建立刚体形状
         // points里每三个连续的点定义了一个三角形面
@@ -369,7 +372,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
             else title = this.name.slice(0, 20) + "...";
         }
         else if(this.mesh.name){
-            if(this.temp) this.mesh.name += this.id  // 创建货物时为物体名称添加id
+            if(this.label == "temp") this.mesh.name += this.id  // 创建货物时为物体名称添加id
             if(this.mesh.name.length <= 20) title = this.mesh.name;  // 物体名称太长则省略
             else title = this.mesh.name.slice(0, 20) + "...";
         } 
@@ -426,6 +429,7 @@ export default class SceneBuilder{
     gizmoPersp: THREE.ViewHelper
     ground
     orbitControl: OrbitControls
+    outlinePass: OutlinePass
     pointerControl: PointerLockControls
     renderer: THREE.WebGLRenderer
     SCENE = SCENE
@@ -455,14 +459,14 @@ export default class SceneBuilder{
         this.renderer = new THREE.WebGLRenderer({antialias: true});
         this.renderer.autoClear = false;
         this.renderer.shadowMap.enabled = true;
-        const DOM = this.renderer.domElement;
-        this.canvas.appendChild(DOM);
+        const canvasDOM = this.renderer.domElement;
+        this.canvas.appendChild(canvasDOM);
         // CSS渲染器
         this.cssRenderer = new CSS2DRenderer();
-        let cssDOM = this.cssRenderer.domElement;
-        cssDOM.style.position = 'absolute';
-        cssDOM.style.top = '0px';
-        this.canvas.appendChild(cssDOM);
+        let cssRendererDOM = this.cssRenderer.domElement;
+        cssRendererDOM.style.position = 'absolute';
+        cssRendererDOM.style.top = '0px';
+        this.canvas.appendChild(cssRendererDOM);
         // 透视相机
         const near = 0.1;
         const far = 1000;
@@ -481,12 +485,12 @@ export default class SceneBuilder{
             let camera = this.camera;  // 前一个相机
             let position = camera.position;
             let target = this.orbitControl.target;
-            let visible = global.layers().includes("Gizmo");
+            let visible = global.layers().includes("gizmo");
             this.camera = {"透视": this.cameraPersp, "正交": this.cameraOrtho} [data];
             this.camera.position.copy(position);
             this.orbitControl.object = this.camera;
             this.orbitControl.target.copy(target);
-            renderPass.camera = this.camera; 
+            renderPass.camera = this.camera; console.log(renderPass)
             this.gizmoPersp.visible = visible && data == "透视";
             this.gizmoOrtho.visible = visible && data == "正交";
         })
@@ -500,7 +504,7 @@ export default class SceneBuilder{
             this.orbitControl.target.set(0, 0, 0)
         })
         // 透视/正交相机的轨道控制器
-        this.orbitControl = new OrbitControls(this.camera, cssDOM);
+        this.orbitControl = new OrbitControls(this.camera, cssRendererDOM);
         this.orbitControl.mouseButtons = {  // 设置默认快捷键
             LEFT: -1, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE
         };
@@ -511,7 +515,7 @@ export default class SceneBuilder{
         this.orbitControl.screenSpacePanning = false;  // 平移时沿地面拖动
         // 平移相机及其平移控制器
         this.cameraMovable = this.camera.clone();  // 克隆一个无orbitControl相机，用于控制原相机的角度
-        this.pointerControl = new PointerLockControls(this.cameraMovable, cssDOM);
+        this.pointerControl = new PointerLockControls(this.cameraMovable, cssRendererDOM);
         // 正交相机
         const k = 10;
         this.cameraOrtho = new THREE.OrthographicCamera(-k*ratio, k*ratio, k, -k, 0, 1000);
@@ -522,7 +526,7 @@ export default class SceneBuilder{
         this.createLight("DirectionalLight", -16, -16, 24);
         global.on("createLight", (type)=>{this.createLight(type)});
         // 物体控制器 
-        controller = new TransformControls(this.camera, cssDOM);
+        controller = new TransformControls(this.camera, cssRendererDOM);
         controller.size = 0.8;
         controller.traverse((child)=>{child.userData.controller = true});  // 对控制器做标记，以在点击时区分它和其它物体
         var controllerVisible = true;
@@ -592,16 +596,12 @@ export default class SceneBuilder{
             if(attached) attached.DT.controlEnd()
         });
         // 透视和正交相机导向器（Gizmo）
-        this.gizmoPersp = new ViewHelper(this.cameraPersp, DOM);
-        this.gizmoOrtho = new ViewHelper(this.cameraOrtho, DOM);
+        this.gizmoPersp = new ViewHelper(this.cameraPersp, canvasDOM);
+        this.gizmoOrtho = new ViewHelper(this.cameraOrtho, canvasDOM);
         this.gizmoOrtho.visible = false;
         global.on("changeGizmoVisibility", visible => {
-            if(visible){
-                this.gizmoPersp.visible = this.camera == this.cameraPersp;
-                this.gizmoOrtho.visible = this.camera == this.cameraOrtho;
-            } else {
-                this.gizmoPersp.visible = this.gizmoOrtho.visible = false;
-            }      
+            this.gizmoPersp.visible = visible && this.camera == this.cameraPersp;
+            this.gizmoOrtho.visible = visible && this.camera == this.cameraOrtho;
         });
         // 地面
         this.ground = new THREE.Mesh( 
@@ -646,32 +646,46 @@ export default class SceneBuilder{
         const lineMaterial = new THREE.LineBasicMaterial({color: "black"});
         const line = new THREE.Line(lineGeometry, lineMaterial);
         SCENE.add( line );
-        this.composer = new EffectComposer(this.renderer);  // 物体边缘着色器
+        // 物体边缘发光渲染器
+        this.composer = new EffectComposer(this.renderer);
         // 渲染器滤镜
-        const renderPass = new RenderPass(SCENE, this.camera); console.log(renderPass)
+        renderPass = new RenderPass(SCENE, this.camera);
         this.composer.addPass(renderPass);
         // 边缘滤镜
-        const outlinePass = new OutlinePass(new THREE.Vector2(), SCENE, this.camera);
-        outlinePass.visibleEdgeColor.set("red");
-        outlinePass.hiddenEdgeColor.set("red");
-        outlinePass.downSampleRatio = 1;
-        outlinePass.edgeGlow = 3;
-        outlinePass.edgeStrength = 3;
-        outlinePass.edgeThickness = 3;  // console.log(outlinePass)
+        let dom = document.getElementById("canvas");
+        this.outlinePass = new OutlinePass(
+            new THREE.Vector2(dom.clientWidth, dom.clientHeight), 
+            SCENE, this.camera);
+        // 在边缘发光颜色中设负值可以将边缘颜色与浅色背景区分开，滤镜中将边缘和背景的颜色直接相加
+        this.outlinePass.visibleEdgeColor.set(1, -0.9, -0.9);
+        this.outlinePass.hiddenEdgeColor.set(0.5, -0.9, -0.9);
+        this.outlinePass.edgeGlow = 0.8;
+        this.outlinePass.edgeStrength = 3;
+        // 输出滤镜（使屏幕在任何模式下都变得模糊）
+        const outputPass = new OutputPass();
         // 抗锯齿滤镜
-        const effectFXAA = new ShaderPass( FXAAShader );
-        // 点亮或熄灭某些物体的边缘
-        global.on("lightWireframe", meshes => {
-            outlinePass.selectedObjects = meshes;
+        const antialiasingPass = new ShaderPass( FXAAShader );
+        global.on("hideEdgeGlow", ()=>{  // 隐藏被选中物体边缘的发光
+            this.composer.passes = [renderPass];
+        })
+        global.on("setEdgeGlow", meshes => {  // 显示被选中物体边缘的发光
+            this.outlinePass.selectedObjects = meshes;
             if(meshes && meshes.length){
-                if(!this.composer.passes.includes(outlinePass)) {
-                    this.composer.addPass(outlinePass);
-                    this.composer.addPass(effectFXAA);
-                }
-            } else {
-                this.composer.removePass(outlinePass);
-                this.composer.removePass(effectFXAA);
+                this.composer.passes = [
+                    renderPass, 
+                    this.outlinePass,
+                    outputPass, 
+                    antialiasingPass
+                ];
             }
+            global.emit("updateEdgeGlow", {width: dom.clientWidth, height: dom.clientHeight});
+        })
+        global.on("updateEdgeGlow", options => {  // 更新滤镜的分辨率
+            let width = options.width, height = options.height;
+            this.composer.setPixelRatio(width / height);
+            this.composer.setSize(width, height);
+            this.outlinePass.resolution.set(options.width, options.height);
+            antialiasingPass.uniforms["resolution"].value.set(1/width, 1/height);
         })
         // 快捷键设置
         this.canvas.addEventListener("keydown", e => {
@@ -815,7 +829,7 @@ export default class SceneBuilder{
         return point;
     }
     createLight(type, x=0, y=0, z=24) {  // 创建光源
-        let light, lightDOM = document.createElement('img');
+        let arrow, light, lightDOM = document.createElement('img');
         // 光源物体
         const iconMesh = new CSS2DObject( lightDOM );
         iconMesh.userData.dom = lightDOM;
@@ -867,9 +881,6 @@ export default class SceneBuilder{
         // 光源图标
         lightDOM.id = light.id;
         lightDOM.style.width = "30px";
-        lightDOM.addEventListener('mousedown', e => {  // 点击图标时选中光源
-            global.emit("clickLight", {choice: light, e: e})
-        });
         // 光源物体
         SCENE.add(light);
         light.position.set(x, y, z);
@@ -880,148 +891,156 @@ export default class SceneBuilder{
         // 光源DT
         let lightDT = new DTObject(light, true)
         lightDT.icon = lightDOM; 
+        if(arrow) lightDT.layers.lightArrow = [arrow];
         lightDT.setTitle();
     }
     createMesh(item, position: Object){  // 定义拖入的物体属性
-        let indicators = [];  // 传送带的指示箭头
         let attachPoint1 = [];//连接点1
         let attachPoint2 = [];//连接点2
         let modelPath = `src/assets/models/${item.modelpath}`;
         let mesh = new THREE.Mesh();
         let DT = new DTObject(mesh);
-        if(item.group == "传送带" || item.group == "其它"){
-            DT.mass = 0;
-            DT.rigid = true; 
-            if(item.modelname == "护栏"){  // 将刚体形状设为函数以便导出，否则读取刚体形状后只有指针
+        const pi = Math.PI;
+        let shape = new THREE.Shape(), r, R;
+        
+        switch(item.modelname){
+            case "直道":
+                DT.geometry = customModels[modelPath];
+                DT.material = { color: "lightgray" };
+                DT.rigid = true; 
+                DT.rigidShape = "convex";
+                DT.scale = 0.05;
+                DT.v0 = 2;
+                DT.label = "conveyor";  // 传送带标记
+                DT.layers.indicator = [this.createArrow(0.5, 0, 0)];
+                attachPoint1 = [this.createAttachPoint1(0, 0)];
+                attachPoint2 = [this.createAttachPoint2(150, 0)];
+                break;
+            case "顺时针弯道":
+                DT.geometry = customModels[modelPath];
+                DT.material = { color: "lightgray" };
+                DT.rigid = true; 
+                DT.scale = 0.05;
+                DT.v0 = 2;
+                DT.label = "conveyor";  // 传送带标记
+                r = 3.6 / DT.scale, R = 6.4 / DT.scale;
+                shape.moveTo(0, R);
+                shape.absarc(0, 0, R, pi/2, pi, false);
+                shape.lineTo(-r, 0);
+                shape.absarc(0, 0, r, pi, pi/2, true);
+                shape.closePath();  
+                DT.rigidShape = new THREE.ExtrudeGeometry( shape, {
+                    bevelEnabled: false,
+                    curveSegments: 5,  // 曲线上取的点数，越少性能越好，越多精度越高
+                    depth: -12,
+                    steps: 1,
+                });
+                DT.layers.indicator = [this.createArrow(-5, 0, 90)];
+                attachPoint1 = [this.createAttachPoint1(-100, 0)];
+                attachPoint2 = [this.createAttachPoint2(0, 100)];
+                break;
+            case "逆时针弯道":
+                DT.geometry = customModels[modelPath];
+                DT.material = { color: "lightgray" };
+                DT.rigid = true; 
+                DT.scale = 0.05;
+                DT.v0 = 2;
+                DT.label = "conveyor";  // 传送带标记
+                r = 3.6 / DT.scale, R = 6.4 / DT.scale;
+                shape.moveTo(0, R);
+                shape.absarc(0, 0, R, pi/2, pi, false);
+                shape.lineTo(-r, 0);
+                shape.absarc(0, 0, r, pi, pi/2, true);
+                shape.closePath();  
+                DT.rigidShape = new THREE.ExtrudeGeometry( shape, {
+                    bevelEnabled: false,
+                    curveSegments: 5,  // 曲线上取的点数，越少性能越高，越多精度越高
+                    depth: -12,
+                    steps: 1,
+                });
+                DT.layers.indicator = [this.createArrow(0, 5, 180)];
+                attachPoint1 = [this.createAttachPoint1(0, 100)];
+                attachPoint2 = [this.createAttachPoint2(-100, 0)];
+                break;
+            case "弯道（凸集）":
+                DT.geometry = customModels[modelPath];
+                DT.material = { color: "lightgray" };
+                DT.rigid = true; 
+                DT.rigidShape = "convex";
+                DT.scale = 0.05;
+                DT.v0 = 2;
+                DT.label = "conveyor";  // 传送带标记
+                DT.layers.indicator = [this.createArrow(-5, 0, 90)]
+                attachPoint1 = [this.createAttachPoint1(-100, 0)]
+                attachPoint2 = [this.createAttachPoint2(0, 100)]
+                break;      
+            case "护栏":  // 将刚体形状设为函数以便导出，否则读取刚体形状后只有指针
                 DT.geometry = new THREE.BoxGeometry( 2, 0.5, 1 );
+                DT.material = { color: "lightgray" };
+                DT.rigid = true; 
                 DT.rigidShape = "new Ammo.btBoxShape(new Ammo.btVector3( 1, 0.25, 0.5 ))";
-            }
-            else if(item.modelname == "传感器"){
+                break;  
+            case "货物":  
+                DT.geometry = new THREE.BoxGeometry( 1, 1, 1 );
+                DT.label = "temp";  // 临时实体
+                DT.mass = 1;
+                DT.material = { color: "blue" };
+                DT.rigid = true;
+                DT.rigidShape = "new Ammo.btBoxShape(new Ammo.btVector3( 0.5, 0.5, 0.5 ))";
+                break; 
+            case "发生器":
+                DT.geometry = new THREE.BoxGeometry( 1, 1, 1 );
+                DT.label = "special";
+                DT.material = { color: "lime", opacity: 0.5, transparent: true };
+                DT.timeInterval = 5000;
+                break;
+            case "回收器":
+                DT.geometry = new THREE.BoxGeometry( 1, 1, 1 );
+                DT.label = "special";
+                DT.material = { color: "red", opacity: 0.5, transparent: true };
+                DT.rigid = true;
+                DT.rigidShape = "new Ammo.btBoxShape(new Ammo.btVector3( 0.5, 0.5, 0.5 ))";
+                break;
+            case "传感器":
                 DT.geometry = new THREE.BoxGeometry(3, 0.1, 0.1);
+                DT.label = "special";
+                DT.rigid = true; 
                 DT.rigidShape = "new Ammo.btBoxShape(new Ammo.btVector3(1.5, 0.05, 0.05))";
                 DT.material = { color: "lime", opacity: 0.5, transparent: true };
                 DT.code = 'let rb = this.mesh.userData.physicsBody; \n rb.setMassProps(0, new Ammo.btVector3(0, 0, 0));'
-            }
-            else{
-                DT.scale = 0.05;
-                DT.geometry = customModels[modelPath];
-                if(item.modelname == "直道"){
-                    DT.material = { color: "lightgray" };
-                    DT.rigidShape = "convex";
-                    DT.v0 = 2;
-                    mesh.userData.isConveyor = true;  // 传送带标记
-                    indicators = [this.createArrow(0.5, 0, 0)]
-                    attachPoint1 = [this.createAttachPoint1(0, 0)]
-                    attachPoint2 = [this.createAttachPoint2(150, 0)]
-                }
-                if(item.modelname == "顺时针弯道"){
-                    DT.material = { color: "lightgray" };
-                    DT.v0 = 2;
-                    mesh.userData.isConveyor = true;  // 传送带标记
-                    let shape = new THREE.Shape(), pi = Math.PI, r = 3.6 / DT.scale, R = 6.4 / DT.scale;
-                    shape.moveTo(0, R);
-                    shape.absarc(0, 0, R, pi/2, pi, false);
-                    shape.lineTo(-r, 0);
-                    shape.absarc(0, 0, r, pi, pi/2, true);
-                    shape.closePath();  
-                    DT.rigidShape = new THREE.ExtrudeGeometry( shape, {
-                        bevelEnabled: false,
-                        curveSegments: 5,  // 曲线上取的点数，越少性能越好，越多精度越高
-                        depth: -12,
-                        steps: 1,
-                    });
-                    indicators = [this.createArrow(-5, 0, 90)]
-                    attachPoint1 = [this.createAttachPoint1(-100, 0)]
-                    attachPoint2 = [this.createAttachPoint2(0, 100)]
-                }
-                if(item.modelname == "逆时针弯道"){
-                    DT.material = { color: "lightgray" };
-                    DT.v0 = 2;
-                    mesh.userData.isConveyor = true;  // 传送带标记
-                    let shape = new THREE.Shape(), pi = Math.PI, r = 3.6 / DT.scale, R = 6.4 / DT.scale;
-                    shape.moveTo(0, R);
-                    shape.absarc(0, 0, R, pi/2, pi, false);
-                    shape.lineTo(-r, 0);
-                    shape.absarc(0, 0, r, pi, pi/2, true);
-                    shape.closePath();  
-                    DT.rigidShape = new THREE.ExtrudeGeometry( shape, {
-                        bevelEnabled: false,
-                        curveSegments: 5,  // 曲线上取的点数，越少性能越高，越多精度越高
-                        depth: -12,
-                        steps: 1,
-                    });
-                    indicators = [this.createArrow(0, 5, 180)]
-                    attachPoint1 = [this.createAttachPoint1(0, 100)]
-                    attachPoint2 = [this.createAttachPoint2(-100, 0)]
-                }
-                if(item.modelname == "弯道（凸集）"){
-                    DT.material = { color: "lightgray" };
-                    DT.rigidShape = "convex"
-                    DT.v0 = 2;
-                    mesh.userData.isConveyor = true;  // 传送带标记
-                    indicators = [this.createArrow(-5, 0, 90)]
-                    attachPoint1 = [this.createAttachPoint1(-100, 0)]
-                    attachPoint2 = [this.createAttachPoint2(0, 100)]
-                }      
-            }
-            attachObjects.add(DT.mesh);
-            localStorage.setItem('attachObjects', JSON.stringify(attachObjects));
-        }
-        else {  
-            if(item.modelname == "发生器"){  
+                break;
+            case "正方体":
                 DT.geometry = new THREE.BoxGeometry( 1, 1, 1 );
-                DT.material = { color: "lime", opacity: 0.5, transparent: true };
-                DT.special = true;
-                DT.timeInterval = 5000;
-            }
-            else if(item.modelname == "回收器"){  
-                DT.geometry = new THREE.BoxGeometry( 1, 1, 1 );
-                DT.material = { color: "red", opacity: 0.5, transparent: true };
-                DT.mass = 0;
-                DT.rigid = true;
-                DT.rigidShape = "new Ammo.btBoxShape(new Ammo.btVector3( 0.5, 0.5, 0.5 ))"; 
-                DT.special = true;
-            }
-            else if(item.modelname == "货物"){  
-                DT.geometry = new THREE.BoxGeometry( 1, 1, 1 );
-                DT.material = { color: "blue" };
-                DT.mass = 1;
-                DT.rigid = true;
-                DT.rigidShape = "new Ammo.btBoxShape(new Ammo.btVector3( 0.5, 0.5, 0.5 ))"; 
-                DT.temp = true;  // 临时实体
-            }
-            else if(item.modelname == "正方体"){
-                DT.geometry = new THREE.BoxGeometry( 1, 1, 1 );
+                DT.label = "temp";  // 临时实体
                 DT.material = { color: "lime" };
                 DT.mass = 1;
                 DT.rigid = true;
                 DT.rigidShape = "new Ammo.btBoxShape(new Ammo.btVector3( 0.5, 0.5, 0.5 ))"; 
-                DT.temp = true;
-            }
-            else if(item.modelname == "球"){
+                break;
+            case "球":
                 DT.geometry = new THREE.SphereGeometry( 0.5 );
+                DT.label = "temp"  // 临时实体
                 DT.material = { color: "red" };
                 DT.mass = 1;
                 DT.rigid = true;
                 DT.rigidShape = "new Ammo.btSphereShape(0.5)";
-                DT.temp = true;
-            }
-            else if(item.modelname == "锥体"){
+                break;
+            case "锥体":
                 DT.geometry = new THREE.ConeGeometry( 0.5, 1, 12 );
+                DT.label = "temp"  // 临时实体
                 DT.material = { color: "yellow" };
                 DT.mass = 1;
                 DT.rigid = true;
                 DT.rigidShape = "new Ammo.btConeShape(0.5, 1, 12)";
-                DT.temp = true;
-            }
-            else if(item.modelname == "圆柱"){
+                break;
+            case "圆柱":
                 DT.geometry = new THREE.CylinderGeometry(0.5, 0.5, 1);
+                DT.label = "temp"  // 临时实体
                 DT.material = { color: "blue" };
                 DT.mass = 1;
                 DT.rigid = true;
                 DT.rigidShape = "new Ammo.btCylinderShape(new Ammo.btVector3( 0.5, 1, 0.5 ))";
-                DT.temp = true;
-            }
+                break;
         }
 
         mesh.material = new THREE.MeshPhongMaterial(DT.material);
@@ -1030,25 +1049,26 @@ export default class SceneBuilder{
         mesh.geometry = DT.geometry;
         DT.setTitle();
         DT.updateWireframes();
-
-        if(indicators.length){  // 指示箭头
-            for(let i of indicators){
-                i.scale.setScalar(1/DT.scale);
-                i.userData.indicator = true; 
-                i.visible = global.layers().includes("指示箭头");
-                mesh.add(i);
-            }
-        } 
-        if (attachPoint1.length) {  // 传送带入口连接点
-            for (let i of attachPoint1) {
-                i.scale.setScalar(1 / DT.scale);
-                mesh.add(i);
+        if(DT.label == "conveyor"){
+            attachObjects.add(DT.mesh);
+            localStorage.setItem('attachObjects', JSON.stringify(attachObjects));
+        }
+        for(let item of DT.layers.indicator){  // 指示箭头
+            item.scale.setScalar(1 / DT.scale);
+            item.userData.indicator = true; 
+            item.visible = global.layers().includes("indicator");
+            mesh.add(item);
+        }
+        if (attachPoint1.length) {
+            for (let item of attachPoint1) {  // 传送带入口连接点
+                item.scale.setScalar(1 / DT.scale);
+                mesh.add(item);
             }
         }
         if (attachPoint2.length) {  // 传送带出口连接点
-            for (let i of attachPoint2) {
-                i.scale.setScalar(1 / DT.scale);
-                mesh.add(i);
+            for (let item of attachPoint2) {
+                item.scale.setScalar(1 / DT.scale);
+                mesh.add(item);
             }
         }  
 
@@ -1187,12 +1207,12 @@ export default class SceneBuilder{
             let mesh0 = rb_mesh[ptr0].mesh, mesh1 = rb_mesh[ptr1].mesh;
             let DT0 = mesh0.DT, DT1 = mesh1.DT;
             
-            if(DT1.temp){// 让临时实体排在前面
+            if(DT1.label == "temp"){// 让临时实体排在前面
                 let t=rb0; rb0=rb1; rb1=t; 
                 t=mesh0; mesh0=mesh1; mesh1=t; 
                 t=DT0; DT0=DT1; DT1=t;
             }
-            if(mesh1.userData.isConveyor){  // 让临时实体遇到货物时受摩擦力作用
+            if(DT1.label == "conveyor"){  // 让临时实体遇到货物时受摩擦力作用
                 let J = 5;  // 转动惯量J
                 let k = Math.min(DT0.friction, DT1.friction);  // 滑动摩擦系数k
                 let kw = k;  // 转动摩擦系数kw
@@ -1235,7 +1255,9 @@ export default class SceneBuilder{
                         rb0.applyTorque(M);  // 同理，摩擦力矩 M = kw*J*(ω0-ω)
                     }  
                 }
-                else if(DT1.name == "回收器"){
+            }
+            else if (DT1.label == "special"){
+                if (DT1.name == "回收器"){
                     DT0.destroy();
                     global.emit("print", `【${DT0.name}${mesh0.id}】被【${DT1.name}${DT1.id}】回收`);
                 }
@@ -1283,8 +1305,7 @@ export default class SceneBuilder{
             if(!DT.rigid){
                 if(!stop && DT.name == "发生器"){  // 未暂停时制造货物
                     if(now - DT.timer >= DT.timeInterval){  // 秒变毫秒
-                        let mesh0 = this.createMesh({group:"货物", modelname:"货物"}, mesh.position);  
-                        // createrigid                    
+                        let mesh0 = this.createMesh({group:"货物", modelname:"货物"}, mesh.position);                 
                         mesh0.rotation.copy(mesh.rotation);
                         DTObjects.value.push(mesh0.DT);
                         SCENE.DT.children.push(mesh0.DT);
