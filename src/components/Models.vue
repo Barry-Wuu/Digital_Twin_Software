@@ -3,32 +3,12 @@
   import {
     CloseOutlined,  // 清除图标
   } from "@ant-design/icons-vue";
+  import modelData from "./Models/modelData.json";
   import global from "../Global"
+
   // JSON格式的模型列表，模型路径为src/assets/models，图标路径为src/assets/icons
-  var models = ref([
-    {title: "传送带", children: [
-      {title: "直道", model: "传送带-直道.stl", icon: "直道.jpg"},
-      {title: "顺时针弯道", model: "传送带-弯道.stl", icon: "弯道1.jpg"},
-      {title: "逆时针弯道", model: "传送带-弯道.stl", icon: "弯道2.jpg"},
-      {title: "护栏", model: "", icon: "护栏.jpg"},
-    ]},
-    {title: "货物", children: [
-      {title: "货物", model: "", icon: "货物.jpg"},
-      {title: "发生器", model: "", icon: "发生器.jpg"},
-      {title: "传感器", model: "", icon: "传感器.jpg"},
-      {title: "回收器", model: "", icon: "回收器.jpg"},
-    ]},
-    {title: "基本几何体", children: [
-      {title: "正方体", model: "", icon: "cube.jpg"},
-      {title: "球", model: "", icon: "sphere.jpg"},
-      {title: "锥体", model: "", icon: "cone.jpg"},
-      {title: "圆柱", model: "", icon: "cylinder.jpg"},
-    ]},
-    {title:"其它", children: [
-      {title: "弯道（凸集）", model: "传送带-弯道.stl", icon: "弯道1.jpg"},
-    ]},
-  ])
   const activeKeys = ref([]);
+  const model_layout = ref(modelData.model_layout);
   const searchResult = ref([]);
   const searchValue = ref("");
 
@@ -39,7 +19,7 @@
     computed: {
       activeAll() {
         let x = [];
-        for(let i in Object.keys(models)){x.push(String(i))};
+        for(let i in Object.keys(model_layout)){x.push(String(i))};
         return x;
       }
     },
@@ -58,7 +38,7 @@
       onRightClick(e){
         let option = e.key;
         if(option == "全部展开"){
-          activeKeys.value = Object.keys(models.value);
+          activeKeys.value = Object.keys(model_layout.value);
         }
         else if(option == "全部折叠"){
           activeKeys.value = [];
@@ -67,7 +47,7 @@
       search(){  // 搜索栏内容改变时
         if(searchValue.value){
           let result = [];
-          for(let group of models.value){
+          for(let group of model_layout.value){
             for(let item of group.children){
               if(item.title.indexOf(searchValue.value) > -1) {
                 let newItem = Object.assign({group: ''}, item);
@@ -88,7 +68,7 @@
         ];
       }
     },
-    setup() {return {activeKeys, models, searchValue, searchResult}},
+    setup() {return {activeKeys, model_layout, searchValue, searchResult}},
     mounted(){}
   }
 </script>
@@ -134,7 +114,7 @@
       <!--模型列表-->
       <a-collapse v-if="!searchValue" v-model:activeKey="activeKeys" 
       id="collapse" style="user-select: none">
-        <a-collapse-panel v-for="group of models" 
+        <a-collapse-panel v-for="group of model_layout" 
         :header="group.title" style="text-align: left;">
           <a-card v-for="item of group.children" class="model-card" draggable="true" hoverable 
           @dragstart="e=>transfer(e, item, group.title)">
