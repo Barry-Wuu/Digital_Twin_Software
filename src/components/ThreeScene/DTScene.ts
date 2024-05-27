@@ -202,7 +202,6 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         rb.setFriction( this.friction0 );  // 静摩擦力
     }
     createRigidHelper(geom=null){  // 根据刚体形状添加可视化碰撞体网格
-        if(this.layers.rigidHelper.length) return;
         let result, rule = /\(([^]*)\)/;
         let material = new THREE.LineBasicMaterial({  // 红色透明材质
             color: "red", 
@@ -899,11 +898,10 @@ export default class SceneBuilder{
             let modelPath = "src/assets/models/" + item.modelpath;
             DT.geometry = customModels[modelPath];  
         }
-        let obj = model_definition[item.modelname];
+        // 先复制JSON中的模型定义再赋值，否则会JSON中的模型定义会被修改
+        let obj = JSON.parse(JSON.stringify(model_definition[item.modelname]));
         for(let key in obj) DT[key] = obj[key];
         if(typeof DT.geometry == "string") DT.geometry = eval(DT.geometry);
-
-        if(DT.rigid) DT.layers.rigidHelper = []; 
         mesh.material = new THREE.MeshPhongMaterial(DT.material);
         if(item.group == "基本几何体"){mesh.rotateX(Math.PI/2);}
         DT.name = item.modelname;
@@ -918,7 +916,7 @@ export default class SceneBuilder{
         for(let layer in DT.layers){  // 解析图层
             let result = DT.layers[layer];
             if(typeof result == "string") DT.layers[layer] = eval(result); 
-        }
+        } console.log(DT.id)
         for(let item of DT.layers.indicator){  // 指示箭头
             item.scale.setScalar(1 / DT.scale);
             item.userData.indicator = true; 
