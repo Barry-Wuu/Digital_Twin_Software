@@ -7,12 +7,12 @@
             {"title": "护栏", "model": "", "icon": "护栏.jpg"},
             {"title": "传感器", "model": "", "icon": "传感器.jpg"}
         ]},
-        {"title": "货物", "children": [
+        {"title": "在制品", "children": [
             {"title": "货物", "model": "", "icon": "货物.jpg"},
             {"title": "发生器", "model": "", "icon": "发生器.jpg"},
             {"title": "回收器", "model": "", "icon": "回收器.jpg"}
         ]},
-        {"title": "基本几何体", "children": [
+        {"title": "基本几何体（在制品）", "children": [
             {"title": "正方体", "model": "", "icon": "cube.jpg"},
             {"title": "球", "model": "", "icon": "sphere.jpg"},
             {"title": "圆柱", "model": "", "icon": "cylinder.jpg"},
@@ -116,7 +116,7 @@
         },
         "货物": {
             "geometry" : "new THREE.BoxGeometry( 1, 1, 1 )",
-            "label" : "temp",
+            "label" : "WIP",
             "mass" : 1,
             "material" : { "color": "blue" },
             "rigid" : true,
@@ -145,7 +145,7 @@
         },
         "正方体": {
             "geometry" : "new THREE.BoxGeometry( 1, 1, 1 )",
-            "label" : "temp",
+            "label" : "WIP",
             "material" : { "color": "lime" },
             "mass" : 1,
             "rigid" : true,
@@ -153,7 +153,7 @@
         },
         "球": {
             "geometry" : "new THREE.SphereGeometry( 0.5 )",
-            "label" : "temp",
+            "label" : "WIP",
             "material" : { "color": "red" },
             "mass" : 1,
             "rigid" : true,
@@ -161,7 +161,7 @@
         },      
         "圆柱": {
             "geometry" : "new THREE.CylinderGeometry(0.5, 0.5, 1)",
-            "label" : "temp",
+            "label" : "WIP",
             "material" : { "color": "blue" },
             "mass" : 1,
             "rigid" : true,
@@ -169,7 +169,7 @@
         },
         "锥体":{
             "geometry" : "new THREE.ConeGeometry( 0.5, 1, 12 )",
-            "label" : "temp",
+            "label" : "WIP",
             "material" : { "color": "yellow" },
             "mass" : 1,
             "rigid" : true,

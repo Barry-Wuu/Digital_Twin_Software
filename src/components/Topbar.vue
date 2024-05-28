@@ -42,7 +42,7 @@
     const GLTFloader = new GLTFLoader();
     const Layers = ref([
         "special", 
-        "temp", 
+        "WIP", 
         "gizmo", 
         "controller",
         "indicator",
@@ -51,7 +51,7 @@
     ]);
     const layersAll = ref({
         "special": "特殊物体", 
-        "temp": "临时物体", 
+        "WIP": "在制品", 
         "gizmo": "Gizmo", 
         "controller": "物体控制器",
         "indicator": "指示箭头",
@@ -149,14 +149,6 @@
                         DT.mesh.visible = show;
                     }
                 }
-                global.DTScene().mesh.traverse(mesh => {
-                    if(mesh.DT && mesh.DT.special) {
-                        mesh.visible = layers.includes("特殊物体");
-                    }
-                    if(mesh.DT && mesh.DT.temp) {
-                        mesh.visible = layers.includes("货物");
-                    }
-                });
             },
             changeSpeed(value){  // 更改速度，value为滑动条百分比，marks[value]为实际速度倍率
                 if(value.key) value = value.key;

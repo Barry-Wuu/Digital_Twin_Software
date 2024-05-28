@@ -85,7 +85,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
     icon: HTMLElement  // 物体图标
     id: number  // 序号
     key: number  // 层级树的键，应等于序号
-    label: string  // 物体类型
+    label = "无"  // 物体类型
     layers = {
         attachPoint1: [],  //传送带入口连接点
         attachPoint2: [],  //传送带出口连接点
@@ -126,8 +126,8 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         if(newScene) DTObjects.value.push(this);
         return this;
     }  
-    clearLoads() {  // 重置仿真动画时遍历清除所有临时物体
-        if(this.label == "temp") this.destroy();
+    clearLoads() {  // 重置仿真动画时遍历清除所有在制品
+        if(this.label == "WIP") this.destroy();
         for(let child of this.children){
             child.clearLoads();
         }
@@ -202,6 +202,8 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         rb.setFriction( this.friction0 );  // 静摩擦力
     }
     createRigidHelper(geom=null){  // 根据刚体形状添加可视化碰撞体网格
+        try{if(this.layers.rigidHelper.length) return;}  // 防止选择物体时重复添加可视化碰撞体
+        catch{}
         let result, rule = /\(([^]*)\)/;
         let material = new THREE.LineBasicMaterial({  // 红色透明材质
             color: "red", 
@@ -373,7 +375,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
             else title = this.name.slice(0, 20) + "...";
         }
         else if(this.mesh.name){
-            if(this.label == "temp") this.mesh.name += this.id  // 创建货物时为物体名称添加id
+            if(this.label == "WIP") this.mesh.name += this.id  // 创建货物时为物体名称添加id
             if(this.mesh.name.length <= 20) title = this.mesh.name;  // 物体名称太长则省略
             else title = this.mesh.name.slice(0, 20) + "...";
         } 
@@ -437,6 +439,7 @@ export default class SceneBuilder{
         // 初始化
         BottomFPS = document.getElementById("BottomFPS");
         BottomTimer = document.getElementById("BottomTimer"); 
+        const DOM = document.getElementById("canvas");
         T0 = performance.now();
         this.canvas = canvas;
         // 物体数量变化时
@@ -471,7 +474,7 @@ export default class SceneBuilder{
         const near = 0.1;
         const far = 1000;
         const fov = 75;
-        const ratio = window.innerWidth / window.innerHeight;
+        const ratio = DOM.offsetWidth / DOM.offsetHeight;
         this.cameraPersp = new THREE.PerspectiveCamera(fov, ratio, near, far);
         this.cameraPersp.position.set(0, -25, 15);
         this.cameraPersp.lookAt(0, 0, 0);
@@ -488,11 +491,12 @@ export default class SceneBuilder{
             let visible = global.layers().includes("gizmo");
             this.camera = {"透视": this.cameraPersp, "正交": this.cameraOrtho} [data];
             this.camera.position.copy(position);
-            this.orbitControl.object = this.camera;
-            this.orbitControl.target.copy(target);
-            renderPass.camera = this.camera; console.log(renderPass)
             this.gizmoPersp.visible = visible && data == "透视";
             this.gizmoOrtho.visible = visible && data == "正交";
+            this.orbitControl.object = this.camera;
+            this.orbitControl.target.copy(target);
+            renderPass.camera = this.camera;
+            this.outlinePass.renderCamera = this.camera;
         })
         global.on("changeView", (key)=>{
             let camera = this.camera;
@@ -543,7 +547,7 @@ export default class SceneBuilder{
                 SCENE.add(controller);
                 controller.attach(attached); 
             }
-            if(!x && attached){  // 隐藏控制器时将其移除出场景，以免仍能被选中
+            if(!x && attached){  // 隐藏控制器时将其移除出场景，以免其仍能被选中
                 SCENE.remove(controller);
                 controller.detach();
             }
@@ -593,7 +597,7 @@ export default class SceneBuilder{
             else global.emit("controlEnd");  // 点击地面等则移除控制器
         });
         global.on("controlEnd", ()=>{
-            if(attached) attached.DT.controlEnd()
+            if(attached) attached.DT.controlEnd();
         });
         // 透视和正交相机导向器（Gizmo）
         this.gizmoPersp = new ViewHelper(this.cameraPersp, canvasDOM);
@@ -652,15 +656,14 @@ export default class SceneBuilder{
         renderPass = new RenderPass(SCENE, this.camera);
         this.composer.addPass(renderPass);
         // 边缘滤镜
-        let dom = document.getElementById("canvas");
         this.outlinePass = new OutlinePass(
-            new THREE.Vector2(dom.clientWidth, dom.clientHeight), 
+            new THREE.Vector2(DOM.clientWidth, DOM.clientHeight), 
             SCENE, this.camera);
         // 在边缘发光颜色中设负值可以将边缘颜色与浅色背景区分开，滤镜中将边缘和背景的颜色直接相加
         this.outlinePass.visibleEdgeColor.set(1, -0.9, -0.9);
         this.outlinePass.hiddenEdgeColor.set(0.5, -0.9, -0.9);
         this.outlinePass.edgeGlow = 0.8;
-        this.outlinePass.edgeStrength = 3;
+        this.outlinePass.edgeStrength = 3; console.log(this.outlinePass)
         // 输出滤镜（使屏幕在任何模式下都变得模糊）
         const outputPass = new OutputPass();
         // 抗锯齿滤镜
@@ -678,7 +681,7 @@ export default class SceneBuilder{
                     antialiasingPass
                 ];
             }
-            global.emit("updateEdgeGlow", {width: dom.clientWidth, height: dom.clientHeight});
+            global.emit("updateEdgeGlow", {width: DOM.clientWidth, height: DOM.clientHeight});
         })
         global.on("updateEdgeGlow", options => {  // 更新滤镜的分辨率
             let width = options.width, height = options.height;
@@ -916,7 +919,7 @@ export default class SceneBuilder{
         for(let layer in DT.layers){  // 解析图层
             let result = DT.layers[layer];
             if(typeof result == "string") DT.layers[layer] = eval(result); 
-        } console.log(DT.id)
+        }
         for(let item of DT.layers.indicator){  // 指示箭头
             item.scale.setScalar(1 / DT.scale);
             item.userData.indicator = true; 
@@ -1066,12 +1069,12 @@ export default class SceneBuilder{
             let mesh0 = rb_mesh[ptr0].mesh, mesh1 = rb_mesh[ptr1].mesh;
             let DT0 = mesh0.DT, DT1 = mesh1.DT;
             
-            if(DT1.label == "temp"){// 让临时实体排在前面
+            if(DT1.label == "WIP"){// 让在制品排在前面
                 let t=rb0; rb0=rb1; rb1=t; 
                 t=mesh0; mesh0=mesh1; mesh1=t; 
                 t=DT0; DT0=DT1; DT1=t;
             }
-            if(DT1.label == "conveyor"){  // 让临时实体遇到货物时受摩擦力作用
+            if(DT1.label == "conveyor"){  // 让在制品遇到货物时受摩擦力作用
                 let J = 5;  // 转动惯量J
                 let k = Math.min(DT0.friction, DT1.friction);  // 滑动摩擦系数k
                 let kw = k;  // 转动摩擦系数kw

@@ -49,6 +49,7 @@
         <Prop prop="type" title="物体类型"/>
         <Prop prop="id" title="物体ID" :options="{fixed:0}"/>
         <Prop prop="name" title="物体名称"/>
+        <Prop prop="label" title="物体标签"/>
         <Prop prop="mesh.visible" title="是否可见" type="checkbox"/>
         <Prop prop="mesh.position" title="位移" type="inputVector"/>
         <Prop prop="mesh.rotation" title="旋转" type="inputVector" 
