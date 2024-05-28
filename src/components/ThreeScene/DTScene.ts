@@ -15,7 +15,7 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { FXAAShader } from "three/examples/jsm/shaders/FXAAShader.js"
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
-import { OutlinePass } from "three/examples/jsm/postprocessing/OutlinePass.js"
+import { OutlinePass } from "./OutlinePass.js"
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js"
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js"
@@ -26,7 +26,6 @@ import { TransformControls } from "three/examples/jsm/controls/TransformControls
 
 var attached;  // 控制器附着的物体
 var BottomFPS, BottomTimer;
-var controller;
 let customModels = {};
 let attachObjects = new THREE.Group();
 var DTObjects = ref([]);
@@ -146,13 +145,6 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         }
         return newDTObject;
     }
-    controlEnd(){  // 取消选择时移除控制器
-        if(attached) attached.DT.setProp();
-        attached = null;
-        SCENE.remove(controller);
-        controller.detach();
-        controller.setMode("translate");  // 取消选择时把控制器恢复为平移模式
-    }
     copyFrom(obj, clearDTObjects = false){  // 将读取的普通对象变回DT对象
         if(clearDTObjects) DTObjects.value = [];  // 清理旧的场景
         DTObjects.value.push(this);
@@ -195,7 +187,6 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         const rb = new Ammo.btRigidBody( rbInfo );
         this.rb = rb;
         this.mesh.userData.physicsBody = rb;
-        //SCENE.add( this.mesh );
         if (mass > 0) {rb.setActivationState( 4 );}  // 质量为0代表为固定的刚体
         physicsWorld.addRigidBody( rb );
         rb_mesh[rb.ptr] = {mesh:this.mesh, rb:rb};
@@ -275,7 +266,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
                 if(dom) dom.remove();
             }
         }
-        this.controlEnd();  // 如果控制器绑定了该物体，则先解绑
+        global.emit("controlEnd");  // 如果控制器绑定了该物体，则先解绑
         if(this.rigid){
             let rb = mesh.userData.physicsBody;
             try {delete rb_mesh[rb.ptr]} catch{};
@@ -425,6 +416,7 @@ export default class SceneBuilder{
     cameraPersp: THREE.PerspectiveCamera  // 透视相机
     canvas: HTMLElement
     composer  // 边缘高亮着色器
+    controller: TransformControls
     cssRenderer: THREE.CSS2DRenderer
     DTObjects = DTObjects
     gizmoOrtho: THREE.ViewHelper
@@ -530,37 +522,37 @@ export default class SceneBuilder{
         this.createLight("DirectionalLight", -16, -16, 24);
         global.on("createLight", (type)=>{this.createLight(type)});
         // 物体控制器 
-        controller = new TransformControls(this.camera, cssRendererDOM);
-        controller.size = 0.8;
-        controller.traverse((child)=>{child.userData.controller = true});  // 对控制器做标记，以在点击时区分它和其它物体
-        var controllerVisible = true;
-        controller.children[0].children[0].children[0].onBeforeRender = ()=>{  // 在控制器显现之前调整其位置
+        this.controller = new TransformControls(this.camera, cssRendererDOM);
+        this.controller.size = 0.8;
+        this.controller.traverse(  // 对控制器做标记，以在点击时区分它和其它物体
+            child => {child.isTransformControls = true}
+        );
+        this.controller.children[0].children[0].children[0].onBeforeRender = ()=>{  // 在控制器显现之前调整其位置
             // 自动将控制器移动到物体包围盒中心
             if(!attached.DT.protected) {
                 // 物体旋转时将控制器移到包围盒中心
             }
         };
         global.on("changeControllerVisibility", (x)=>{  // 改变控制器的可见性
-            controllerVisible = x;
-            controller.visible = x;
+            this.controller.visible = x;
             if(x && attached){  // 显示控制器时将其添加回场景
-                SCENE.add(controller);
-                controller.attach(attached); 
+                SCENE.add(this.controller);
+                this.controller.attach(attached); 
             }
             if(!x && attached){  // 隐藏控制器时将其移除出场景，以免其仍能被选中
-                SCENE.remove(controller);
-                controller.detach();
+                SCENE.remove(this.controller);
+                this.controller.detach();
             }
         });
         global.on("controlStart", (id)=>{  // 选中物体开始控制
             id = parseInt(id);  // 若id为数字字符串则转换为数字
             attached = SCENE.getObjectById(id);
-            if(!controllerVisible) return;
-            SCENE.add(controller);
+            if(!global.layers().includes("controller")) return;
+            SCENE.add(this.controller);
             if(!attached.DT.protected) {
-                controller.mode = "translate";  // 开始控制时总是平移
-                controller.space = "local";  // 开始控制时控制器的坐标系为世界坐标系
-                controller.attach(attached);
+                this.controller.mode = "translate";  // 开始控制时总是平移
+                this.controller.space = "local";  // 开始控制时控制器的坐标系为世界坐标系
+                this.controller.attach(attached);
                 let center = new THREE.Vector3();
                 if(attached.isGroup) {  // 拖动Group
                     let mesh = attached.DT.layers.wireframe[0];
@@ -592,12 +584,18 @@ export default class SceneBuilder{
                 let worldScale = center.clone;  // 总比例
                 attached.getWorldScale(worldScale);
                 center.multiplyScalar(worldScale.x);
-                controller.position.copy(center);
+                this.controller.position.copy(center);
             }
             else global.emit("controlEnd");  // 点击地面等则移除控制器
         });
-        global.on("controlEnd", ()=>{
-            if(attached) attached.DT.controlEnd();
+        global.on("controlEnd", (data)=>{  // 取消选择时移除控制器
+            if(!attached) return;
+            attached.DT.setProp();
+            attached = null;
+            SCENE.children = SCENE.children.filter(mesh => !mesh.isTempGlow);
+            SCENE.remove(this.controller);
+            this.controller.detach();
+            this.controller.setMode("translate");  // 取消选择时把控制器恢复为平移模式
         });
         // 透视和正交相机导向器（Gizmo）
         this.gizmoPersp = new ViewHelper(this.cameraPersp, canvasDOM);
@@ -663,7 +661,7 @@ export default class SceneBuilder{
         this.outlinePass.visibleEdgeColor.set(1, -0.9, -0.9);
         this.outlinePass.hiddenEdgeColor.set(0.5, -0.9, -0.9);
         this.outlinePass.edgeGlow = 0.8;
-        this.outlinePass.edgeStrength = 3; console.log(this.outlinePass)
+        this.outlinePass.edgeStrength = 2.5;
         // 输出滤镜（使屏幕在任何模式下都变得模糊）
         const outputPass = new OutputPass();
         // 抗锯齿滤镜
@@ -671,7 +669,13 @@ export default class SceneBuilder{
         global.on("hideEdgeGlow", ()=>{  // 隐藏被选中物体边缘的发光
             this.composer.passes = [renderPass];
         })
-        global.on("setEdgeGlow", meshes => {  // 显示被选中物体边缘的发光
+        global.on("setEdgeGlow", (meshes: THREE.Object3D[]) => {  // 显示被选中物体边缘的发光
+            /*let clones = [];
+            for(let mesh of meshes){
+                let clone = mesh.clone();
+                clone.isTempGlow = true;
+                clones.push(clone);
+            }*/
             this.outlinePass.selectedObjects = meshes;
             if(meshes && meshes.length){
                 this.composer.passes = [
@@ -693,23 +697,23 @@ export default class SceneBuilder{
         // 快捷键设置
         this.canvas.addEventListener("keydown", e => {
             if(global.mode() == "edit"){  // 在编辑模式下
-                if(e.code == "KeyQ") controller.setMode("translate");  // 按Q平移
-                else if(e.code == "KeyW") controller.setMode("rotate");  // 按W旋转
-                //else if(e.code == "KeyE") controller.setMode("scale");  // 屏蔽缩放
+                if(e.code == "KeyQ") this.controller.setMode("translate");  // 按Q平移
+                else if(e.code == "KeyW") this.controller.setMode("rotate");  // 按W旋转
+                //else if(e.code == "KeyE") this.controller.setMode("scale");  // 屏蔽缩放
                 else if(e.code == "KeyE") {  // 按R切换全局坐标系和局部坐标系
-                    if(controller.space == "world") controller.setSpace("local");
-                    else controller.setSpace("world");
+                    if(this.controller.space == "world") this.controller.setSpace("local");
+                    else this.controller.setSpace("world");
                 }
                 else if(e.code == "KeyE") {  // 按R切换全局坐标系和局部坐标系
-                    if(controller.space == "world") controller.setSpace("local");
-                    else controller.setSpace("world");
+                    if(this.controller.space == "world") this.controller.setSpace("local");
+                    else this.controller.setSpace("world");
                 }
-                else if(e.code == "Escape") controller.reset();  // 按ESC恢复
+                else if(e.code == "Escape") this.controller.reset();  // 按ESC恢复
                 else if(e.ctrlKey) {  // 按Ctrl将移动间距离散化
-                    if(e.code == "KeyZ") controller.reset();  // 按Ctrl+Z恢复
-                    controller.setTranslationSnap( 1 );
-                    controller.setRotationSnap( THREE.MathUtils.degToRad( 15 ) );
-                    controller.setScaleSnap( 0.25 );
+                    if(e.code == "KeyZ") this.controller.reset();  // 按Ctrl+Z恢复
+                    this.controller.setTranslationSnap( 1 );
+                    this.controller.setRotationSnap( THREE.MathUtils.degToRad( 15 ) );
+                    this.controller.setScaleSnap( 0.25 );
                 }
             }
             if(global.mode() == "view"){  // 在浏览模式下
@@ -735,9 +739,9 @@ export default class SceneBuilder{
             }
         })
         this.canvas.addEventListener("keyup", ()=>{
-            controller.setTranslationSnap( null );
-			controller.setRotationSnap( null );
-			controller.setScaleSnap( null );
+            this.controller.setTranslationSnap( null );
+			this.controller.setRotationSnap( null );
+			this.controller.setScaleSnap( null );
         })
         // 预先载入自定义模型
         this.preloadModels();
@@ -767,7 +771,7 @@ export default class SceneBuilder{
                     // 求物体包围盒中心
                     targetObject.getWorldPosition(center);
                     let centerDelta = center.clone();
-                    controller.getWorldPosition(centerDelta);
+                    this.controller.getWorldPosition(centerDelta);
                     center.add(centerDelta);
                     // 求相机到物体的距离d与d*相机朝向
                     let r = targetObject.DT.geometry.boundingSphere.radius;  // 包围球半径
@@ -998,7 +1002,6 @@ export default class SceneBuilder{
     }
     render(){  // 渲染
         this.updatePhysics(clock.getDelta());
-        //this.renderer.render(SCENE, this.camera);
         this.composer.render();
         this.cssRenderer.render(SCENE, this.camera);
         this.gizmoPersp.render(this.renderer);
@@ -1006,9 +1009,9 @@ export default class SceneBuilder{
     } 
     setSkyboxByColor(DTScene) {  // 根据上中下三种颜色设置天空盒
         let skybox = DTScene.skybox;
-        const radius: number = 600;
-        const widthSegments: number = 32;
-        const heightSegments: number = 15;
+        const radius = 600;
+        const widthSegments = 32;
+        const heightSegments = 15;
         const skyGeo = new THREE.SphereGeometry(radius, widthSegments, heightSegments);
         const uniforms = {
             topColor: { value: skybox.skyColor },
