@@ -135,18 +135,18 @@
                 let show = !layers.includes(layer);  // 显示或隐藏
                 layers = show ? [...layers, layer] : layers.filter(item => item!=layer);  // 更改显示图层
                 global.updateLayers(layers);
-                if(layer == "controller") 
-                    global.emit("changeControllerVisibility", show);
-                if(layer == "gizmo") 
-                    global.emit("changeGizmoVisibility", show);
-                for(let DT of global.DTScene().getDTObjects()){
-                    if(layer in DT.layers){
-                        for(let mesh of DT.layers[layer]){
-                            mesh.visible = show;
+                if(layer == "controller") global.emit("changeControllerVisibility", show);
+                else if(layer == "gizmo") global.emit("changeGizmoVisibility", show);
+                else{
+                    for(let DT of global.DTScene().getDTObjects()){
+                        if(layer in DT.layers){
+                            for(let mesh of DT.layers[layer]){
+                                mesh.visible = show;
+                            }
                         }
-                    }
-                    else if(layer == DT.label){
-                        DT.mesh.visible = show;
+                        else if(layer == DT.label){
+                            DT.mesh.visible = show;
+                        }
                     }
                 }
             },

@@ -64,10 +64,7 @@ import { fixControlledValue } from "ant-design-vue/es/vc-input/utils/commonUtils
             global.emit("controlStart", choice);  // 选中物体开始控制
           }
         });
-        global.on("deselect", ()=>{  // 取消选择
-          this.deselect(); 
-          global.emit("controlEnd")  // 收起控制器
-        });
+        global.on("deselect", ()=>{this.deselect()});  // 取消选择
         global.on("deleteChoices", ()=>{this.deleteChoices()});
         global.on("foldAll", ()=>{this.foldAll()});
         global.on("updateSearch", ()=>{this.search(TREE.value)});
@@ -127,7 +124,7 @@ import { fixControlledValue } from "ant-design-vue/es/vc-input/utils/commonUtils
         deselect(){  // 点别处取消点选模型
           global.emit("deselectAsset");
           choices.value = [];
-          global.emit("controlEnd");  // 收起控制器
+          global.emit("controlEnd", 5);  // 收起控制器
           global.emit("hideProperty");  // 清空属性栏
         },
         doubleClick(){  // 双击将相机拉近至物体

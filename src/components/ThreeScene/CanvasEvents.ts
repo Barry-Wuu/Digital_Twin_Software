@@ -145,7 +145,7 @@ export default defineComponent({
         let box = new THREE.Box3().setFromObject(tempModel);
         if (!dragFromOutside) {  // 拖动时，物体位置 = 鼠标与平面z=H的交点坐标 + Δp
           let point;
-          if (dragModel.userData.isConveyor){  // 拖入传送带时
+          if (dragModel.label == "conveyor"){  // 拖入传送带时
             attachPoint1 = dragModel.getObjectByName('ap1');
             if (keys.space) {  // 检查空格键和左键是否同时被按下
               let minDistance = Infinity;  // 初始化最小距离为无穷大
@@ -187,7 +187,7 @@ export default defineComponent({
             point.z = this.intersectPlaneV(e, dragPoint).z;
           }
           else {  // 左键拖动物体在水平面内移动
-            if (dragModel.userData.isConveyor){  // 拖动传送带时
+            if (dragModel.label == "conveyor"){  // 拖动传送带时
               let minDistance = Infinity;  // 初始化最小距离为无穷大
               let closestAttachPoint2 = null;
               let worldPositionAP1 = new THREE.Vector3();
@@ -269,7 +269,10 @@ export default defineComponent({
         if (!this.scene.DTObjects.value.includes(dragModel.DT)) {
           this.scene.DTObjects.value.push(dragModel.DT);
         }
-        if (tempModel) tempModel.clear();
+        if (tempModel) {
+          tempModel.clear();
+          tempModel.removeFromParent();
+        }
         dragModel = tempModel = null;
       }
       global.emit("updateTree");
@@ -283,7 +286,6 @@ export default defineComponent({
       if (k.code == "Space") keys.space = false;
     },
     onMousedown(e) {
-      global.emit("deselectAsset");
       mouseType[e.button] = true;
       if (mouseType[0]) {
         if (mouseType[2]) { }  // 双击左右键则移动
@@ -291,11 +293,10 @@ export default defineComponent({
           if (e.target.localName == "div"){
             let result = this.intersectObject(e);
             let choice = result[0];
-            let parent = choice.parent;
-            if (choice.userData.controller) return;  // 点击控制器则忽略后文
+            if (choice.isTransformControls) return;  // 点击控制器则忽略后文
             dragPoint = result[1];
-            if (parent.userData.indicator) choice = parent;  // 点击指示箭头
-            if (parent.userData.rigidHelper) choice = parent;  // 点击碰撞体
+            if (!choice.parent.DT && choice.parent.DT)  // 点击指示箭头或吸附方块等
+              choice = choice.parent;
             if (choice.DT && !choice.userData.ground) {
               global.emit("clickModel", {id: choice.id, shift: e.shiftKey});
               delta = new THREE.Vector3();
@@ -304,18 +305,18 @@ export default defineComponent({
               dragModel = choice;
               dragModel.isDrag = true;
               tempModel = dragModel.clone();
-              tempModel.children = tempModel.children.filter(
+              /*tempModel.children = tempModel.children.filter(
                 mesh => !mesh.isTransformControls
-              )
+              );*/
               tempOpacity = dragModel.material.opacity;
-              //this.scene.outlinePass.selectedObjects = [tempModel];
+              //tempModel.parent = this.scene.SCENE;
+              //this.scene.controller.attach(tempModel);
               isDrag = true;
               if (dragModel.DT.rigid) {
                 this.scene.removeRigidBody(dragModel);
               }
-            } else {  // 取消选择
-              if(e.target.localName == "div") global.emit("deselect");  // 避免点击img时取消选择
-            }
+            } 
+            else if(e.target.localName == "div") global.emit("deselect");  // 避免点击img时取消选择
           }
           else if(e.target.localName == "img"){  // 拖动灯光
             let id = parseInt(e.target.id);  // 若id为数字字符串则转换为数字
