@@ -375,6 +375,7 @@ export default defineComponent({
     },
     remove() { this.scene.SCENE.remove(dragModel) },
     resizeCanvas() {  //让画布大小和父组件大小相适应
+      const k = 10;
       let width = window.innerWidth, height = window.innerHeight;
       if (!fullscreen) {  // 直接预览
         let tab = canvas;
@@ -382,11 +383,17 @@ export default defineComponent({
         width = canvas.clientWidth;
         height = tab.clientHeight - tab.children[0].clientHeight - 4;
       }  // 否则全屏预览
+      let ratio = width / height;
       this.scene.cssRenderer.setSize(width, height);
-      this.scene.renderer.setPixelRatio(width / height);
+      this.scene.renderer.setPixelRatio(ratio);
       this.scene.renderer.setSize(width, height);
-      this.scene.camera.aspect = width / height;
-      this.scene.camera.updateProjectionMatrix();
+      // 调整相机的分辨率
+      this.scene.cameraOrtho.left = -k * ratio;
+      this.scene.cameraOrtho.right = k * ratio;
+      this.scene.cameraOrtho.top = k;
+      this.scene.cameraOrtho.bottom = -k;
+      this.scene.cameraPersp.aspect = ratio;
+      this.scene.cameraPersp.updateProjectionMatrix(); 
       global.emit("updateEdgeGlow", {width: width, height: height});
     },
     setControl(key, action) {  // 设置快捷键（左键、中间、右键：平移、旋转、放缩）
