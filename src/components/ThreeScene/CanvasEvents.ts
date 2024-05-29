@@ -290,6 +290,7 @@ export default defineComponent({
       if (k.code == "Space") keys.space = false;
     },
     onMousedown(e) {
+      mouseType[e.button] = true;
       if (mouseType[0]) {
         if (mouseType[2]) { }  // 双击左右键则移动
         else if (global.mode() == "edit") {  // 左键点击
@@ -341,7 +342,6 @@ export default defineComponent({
       };
     },
     onMousemove(e) {
-      mouseType[e.button] = true;
       if (mouseType[0] && mouseType[2]) {  // 同时按鼠标左右键移动相机
         this.scene.orbitControl.mouseButtons = {
           LEFT: MOVE, MIDDLE: -1, RIGHT: MOVE
