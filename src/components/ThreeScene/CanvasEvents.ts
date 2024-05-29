@@ -370,6 +370,7 @@ export default defineComponent({
       global.emit("updateProp", {action:"mouseup"});
     },
     onPointerdown(e){
+      mouseType[e.button] = true;
       if (mouseType[1]) {  // 按鼠标中键移动相机
         this.scene.orbitControl.mouseButtons = {
           LEFT: -1, MIDDLE: MOVE, RIGHT: -1
