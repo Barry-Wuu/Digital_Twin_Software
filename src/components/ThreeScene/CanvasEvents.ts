@@ -28,6 +28,7 @@ var style;
 var tempImg;  // 临时隐藏拖动图标
 var tempModel;
 var tempOpacity;
+var transformControls;  // 是否使用控制器移动模型
 
 var MOVE = THREE.MOUSE.PAN;
 var ROTATE = THREE.MOUSE.ROTATE;
@@ -229,6 +230,8 @@ export default defineComponent({
           }
           point.add(delta);  // 更新模型的全局坐标
           tempModel.position.copy(dragModel.parent.worldToLocal(point));  // 将模型的全局坐标转换为局部坐标
+          // 拖动时强制更新属性栏的位移和旋转
+          global.emit("updateProp", {action: "dragover", data: dragModel});
         }
         else {  // 从外部拖入模型时将其包围盒中心移到鼠标
           let intersect = this.intersectObject(e);
@@ -241,7 +244,7 @@ export default defineComponent({
         }
         dragModel.position.copy(tempModel.position);
       }
-      else if(dragModel.isLight){  // 拖动光源
+      else if(dragModel?.isLight){  // 拖动光源
         e = {
           offsetX: e.offsetX + delta.x,
           offsetY: e.offsetY + delta.y,
@@ -256,9 +259,11 @@ export default defineComponent({
         } else {  // 左键拖动物体在水平面内移动
           dragModel.position.copy(this.intersectPlaneH(e, delta.pos));
         }
+        // 拖动时强制更新属性栏的位移和旋转
+        global.emit("updateProp", {action: "dragover", data: dragModel});
       }
     },
-    onDrop() {
+    onDrop(e) {
       if (dragModel) {
         dragFromOutside = dragModel.isDrag = false;
         if (tempOpacity) {
@@ -275,7 +280,6 @@ export default defineComponent({
         }
         dragModel = tempModel = null;
       }
-      global.emit("updateTree");
     },
     onKeydown(k) {
       if (k.code == "Delete") global.emit("deleteChoices");
@@ -286,14 +290,16 @@ export default defineComponent({
       if (k.code == "Space") keys.space = false;
     },
     onMousedown(e) {
-      mouseType[e.button] = true;
       if (mouseType[0]) {
         if (mouseType[2]) { }  // 双击左右键则移动
         else if (global.mode() == "edit") {  // 左键点击
           if (e.target.localName == "div"){
             let result = this.intersectObject(e);
             let choice = result[0];
-            if (choice.isTransformControls) return;  // 点击控制器则忽略后文
+            if (choice.isTransformControls){   // 点击控制器则忽略后文
+              transformControls = true;
+              return;
+            }
             dragPoint = result[1];
             if (!choice.parent.DT && choice.parent.DT)  // 点击指示箭头或吸附方块等
               choice = choice.parent;
@@ -305,12 +311,7 @@ export default defineComponent({
               dragModel = choice;
               dragModel.isDrag = true;
               tempModel = dragModel.clone();
-              /*tempModel.children = tempModel.children.filter(
-                mesh => !mesh.isTransformControls
-              );*/
               tempOpacity = dragModel.material.opacity;
-              //tempModel.parent = this.scene.SCENE;
-              //this.scene.controller.attach(tempModel);
               isDrag = true;
               if (dragModel.DT.rigid) {
                 this.scene.removeRigidBody(dragModel);
@@ -340,7 +341,8 @@ export default defineComponent({
       };
     },
     onMousemove(e) {
-      if (mouseType[0] && mouseType[2]) {
+      mouseType[e.button] = true;
+      if (mouseType[0] && mouseType[2]) {  // 同时按鼠标左右键移动相机
         this.scene.orbitControl.mouseButtons = {
           LEFT: MOVE, MIDDLE: -1, RIGHT: MOVE
         };
@@ -348,10 +350,9 @@ export default defineComponent({
         this.scene.orbitControl.mouseButtons = {
           LEFT: global.mode() == "edit" ? -1 : ROTATE, MIDDLE: isDrag ? -1 : ZOOM, RIGHT: -1
         };
-      } else if (mouseType[1]) {
-        this.scene.orbitControl.mouseButtons = {
-          LEFT: -1, MIDDLE: MOVE, RIGHT: -1
-        };
+        if(transformControls){
+          global.emit("updateProp", {action:"mousemove", data: this.scene.controller.object});
+        }
       } else if (mouseType[2]) {
         this.scene.orbitControl.mouseButtons = {
           LEFT: -1, MIDDLE: -1, RIGHT: ROTATE
@@ -361,14 +362,23 @@ export default defineComponent({
     },
     onMouseup(e) {
       mouseType[e.button] = false;
+      transformControls = false;
       if (isDrag) {
         this.onDrop();
         isDrag = false;
       }
+      global.emit("updateProp", {action:"mouseup"});
+    },
+    onPointerdown(e){
+      if (mouseType[1]) {  // 按鼠标中键移动相机
+        this.scene.orbitControl.mouseButtons = {
+          LEFT: -1, MIDDLE: MOVE, RIGHT: -1
+        };
+      }
     },
     onWheel(e) {  // 滚轮事件
       if (dragModel) {  // 拖动物体+滚轮=旋转物体
-        this.scene.orbitControl.enableZoom = false;
+        this.scene.orbitControl.mouseButtons.MIDDLE = -1;
         dragModel.rotateOnWorldAxis(UP, e.deltaY * Math.PI / 1200);
       } else {  // 滚轮放缩镜头
         this.scene.orbitControl.enableZoom = true;

@@ -60,7 +60,9 @@
       },
       computedX: {
         get(){
-          let result = eval("DT.value." + this.prop);
+          if(this.propX) return this.propX.toFixed(2);
+          let result = this.DT;
+          for(let node of this.prop.split('.')) result = result[node];
           if(result.isVector3 || result.isEuler){  // 编辑向量
             if(chosenProp.value == this.prop + '.x') return input_value.value;  // 编辑中
             else return this.output(result.x);
@@ -68,7 +70,7 @@
           if(result.isColor){  // 编辑颜色
             if(chosenProp.value == this.prop + '.r') return input_value.value;  // 编辑中
             return this.output(result.r, 255);
-          }
+          } console.log("changed")
           return;
         },
         set(value){
@@ -83,6 +85,7 @@
       },
       computedY: {
         get(){
+          if(this.propY) return this.propY.toFixed(2);
           let result = eval("DT.value." + this.prop);
           if(result.isVector3 || result.isEuler){  // 编辑向量
             if(chosenProp.value == this.prop + '.y') return input_value.value;  // 编辑中
@@ -106,6 +109,7 @@
       },
       computedZ: {
         get(){
+          if(this.propZ) return this.propZ.toFixed(2);
           let result = eval("DT.value." + this.prop);
           if(result.isVector3 || result.isEuler){  // 编辑向量
             if(chosenProp.value == this.prop + '.z') return input_value.value;  // 编辑中
@@ -139,8 +143,11 @@
           tube: "点此可使用吸管吸取颜色",
         },
         input_value, 
+        propX: null,
+        propY: null,
+        propZ: null,
         tempAngle,
-        tubeIcon
+        tubeIcon,
       };
     },
     methods:{
@@ -284,7 +291,20 @@
         else if(typeof data == "number") DT.value = global.DTScene().findDTObjectById(data);
         else DT.value = data;
       })
-    }
+      global.on("updateProp", (obj)=>{  // 拖动物体时在属性栏实时更新其位移和旋转属性
+        if(obj.action == "mouseup") this.propX = this.propY = this.propZ = null;
+        else if(this.prop == "mesh.position") {  // 更新位移
+          this.propX = obj.data.position.x;
+          this.propY = obj.data.position.y;
+          this.propZ = obj.data.position.z;
+        }
+        else if(this.prop == "mesh.rotation") {  // 更新位移
+          this.propX = obj.data.rotation.x;
+          this.propY = obj.data.rotation.y;
+          this.propZ = obj.data.rotation.z;
+        }
+      })
+    },
   }
 </script>
 

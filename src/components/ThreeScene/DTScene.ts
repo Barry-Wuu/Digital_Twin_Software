@@ -39,6 +39,7 @@ var loader = new STLLoader();
 var loading = false;
 const model_definition = modelData.model_definition;
 var origin = new THREE.Vector3(0, 0, 0);
+const ray = new THREE.Raycaster();  // 射线检测器
 var SCENE = new THREE.Scene();
 var speed = 1;
 var temp = false;
@@ -97,7 +98,6 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
     material: THREE.object  // 模型材质
     mesh: THREE.object  // 模型网格
     name: string  // 名称
-    protected: boolean
     rb: object  // 刚体
     rigid = false  // 是否为刚体
     rigidShape: string | string[]  // 刚体网格，设成字符串易于存取，若为convex则刚体为mesh的凸集
@@ -255,9 +255,9 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         this.createRigidHelper(geom);  // 真实碰撞网格，面太多时会卡死
         return new Ammo.btBvhTriangleMeshShape(ammoMesh);
     }
-    destroy(protect = true) {  // 清除自身及其网格和刚体
+    destroy() {  // 清除自身及其网格和刚体
         let mesh = this.mesh;
-        if(protect && this.protected) return;  // 不能删除场景和地面
+        if(this.label == "protected") return;  // 不能删除场景和地面
         // 如果子物体中有CSS2DObject，则先删除相应的DOM，以免其残留在屏幕上
         let css2d = mesh.children.filter(child => child.isCSS2DObject);
         if(css2d.length){
@@ -320,7 +320,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         if(prop){
             let node = this, split = prop.split('.');
             let last = split.splice(-1);
-            for(let p of split){node = node[p];}
+            for(let p of split) node = node[p];
             node[last] = newValue;
         }
         if(this.rigid){  // 刚体
@@ -449,7 +449,7 @@ export default class SceneBuilder{
             skyline: new THREE.Color("white"), 
             groundColor: new THREE.Color("darkkhaki"), 
         };
-        SCENE.DT.protected = true;
+        SCENE.DT.label = "protected";
         // 场景渲染器
         this.renderer = new THREE.WebGLRenderer({antialias: true});
         this.renderer.autoClear = false;
@@ -529,7 +529,7 @@ export default class SceneBuilder{
         );
         this.controller.children[0].children[0].children[0].onBeforeRender = ()=>{  // 在控制器显现之前调整其位置
             // 自动将控制器移动到物体包围盒中心
-            if(!attached.DT.protected) {
+            if(attached.DT.label != "protected") {
                 // 物体旋转时将控制器移到包围盒中心
             }
         };
@@ -549,7 +549,7 @@ export default class SceneBuilder{
             attached = SCENE.getObjectById(id);
             if(!global.layers().includes("controller")) return;
             SCENE.add(this.controller);
-            if(!attached.DT.protected) {
+            if(attached.DT.label != "protected") {
                 this.controller.mode = "translate";  // 开始控制时总是平移
                 this.controller.space = "local";  // 开始控制时控制器的坐标系为世界坐标系
                 this.controller.attach(attached);
@@ -592,7 +592,6 @@ export default class SceneBuilder{
             if(!attached) return;
             attached.DT.setProp();
             attached = null;
-            SCENE.children = SCENE.children.filter(mesh => !mesh.isTempGlow);
             SCENE.remove(this.controller);
             this.controller.detach();
             this.controller.setMode("translate");  // 取消选择时把控制器恢复为平移模式
@@ -614,8 +613,8 @@ export default class SceneBuilder{
         this.ground.castShadow = true;
         this.ground.receiveShadow = true;
         this.ground.userData.ground = true;
+        this.ground.DT.label = "protected";
         this.ground.DT.mass = 0 // 不可动
-        this.ground.DT.protected = true;
         this.ground.DT.rigid = true;
         this.ground.DT.rigidShape = "new Ammo.btBoxShape(new Ammo.btVector3(groundSize, groundSize, margin))";
         this.ground.DT.createRigidBody();
@@ -670,12 +669,6 @@ export default class SceneBuilder{
             this.composer.passes = [renderPass];
         })
         global.on("setEdgeGlow", (meshes: THREE.Object3D[]) => {  // 显示被选中物体边缘的发光
-            /*let clones = [];
-            for(let mesh of meshes){
-                let clone = mesh.clone();
-                clone.isTempGlow = true;
-                clones.push(clone);
-            }*/
             this.outlinePass.selectedObjects = meshes;
             if(meshes && meshes.length){
                 this.composer.passes = [
@@ -873,8 +866,26 @@ export default class SceneBuilder{
             SCENE.add( light.target );
             let target = light.userData.target = light.target.clone();
             light.attach( target );
+            /*
+            let cube = new THREE.Mesh();
+            cube.geometry = new THREE.BoxGeometry( 0.1, 0.1, 0.1 );
+            cube.material = new THREE.MeshBasicMaterial({color: "white"});
+            light.add(cube);
+            */
             iconMesh.onBeforeRender = () => {
                 target.getWorldPosition(light.target.position);
+                // 判断光源有无被遮挡，有则隐藏其图标
+                /*let pos = light.position.clone();
+                pos.project(this.camera);
+                ray.setFromCamera(pos, this.camera);
+                let results = ray.intersectObject(this.SCENE);
+                let result;
+                for(let item of results){
+                    if(item.object.isTransformControls) continue;
+                    result = item.object == cube;
+                    break;
+                }
+                console.log(result);*/
             }
         }
         if(type == "AmbientLight"){  // 环境光

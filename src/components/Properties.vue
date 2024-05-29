@@ -27,7 +27,7 @@
       global.on("showProperty", (id)=>{  // 显示单个物体的属性
         id = parseInt(id);  // 若id为数字字符串则转换为数字
         DT.value = global.DTScene().findDTObjectById(id);
-      })
+      });
     },
   }
 </script>
