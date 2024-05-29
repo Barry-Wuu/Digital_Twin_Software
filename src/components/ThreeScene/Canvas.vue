@@ -15,6 +15,7 @@
         @mousedown = "onMousedown"
         @mousemove = "onMousemove"
         @mouseup = "onMouseup"
+        @pointerdown = "onPointerdown"
         @wheel = "onWheel"
     />
 </template>

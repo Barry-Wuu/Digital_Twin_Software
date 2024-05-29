@@ -231,7 +231,7 @@
         if(name == originalName) return name;  // 未改名则返回原名
         if(!content.filter(asset => asset.name == name).length) return name;  // 未重名则返回新名
         let match = name.match(/\([0-9]*\)$/);
-        let matched = match ? parseInt(match[0].slice(1, -1)) : null;
+        let matched = match?.parseInt(match[0].slice(1, -1));
         if(matched){
           basename = basename.slice(0, -match[0].length);  // basename为去掉末尾序号的组件名
           index = matched;
@@ -239,8 +239,9 @@
         // 如果新名≠basename或basename存在，则加序号和括号
         if(newName != basename || content.filter(asset => asset.name == basename).length){
           newName = `${basename}(${index})`;
-          while(content.filter(asset => asset.name == newName && 
-          newName != originalName).length){
+          while(content.filter(
+            asset => asset.name == newName && newName != originalName).length
+          ){
             newName = `${basename}(${index})`;
             index++;
           }
