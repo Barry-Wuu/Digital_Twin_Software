@@ -921,7 +921,7 @@ export default class SceneBuilder{
         for(let key in obj) DT[key] = obj[key];
         if(typeof DT.geometry == "string") DT.geometry = eval(DT.geometry);
         mesh.material = new THREE.MeshPhongMaterial(DT.material);
-        if(item.group == "基本几何体"){mesh.rotateX(Math.PI/2);}
+        if(mesh.DT.label == "WIP") mesh.rotateX(Math.PI/2);
         DT.name = item.modelname;
         mesh.geometry = DT.geometry;
         DT.setTitle();
