@@ -61,8 +61,7 @@
       computedX: {
         get(){
           if(this.propX) return this.propX.toFixed(2);
-          let result = this.DT;
-          for(let node of this.prop.split('.')) result = result[node];
+          let result = eval("DT.value." + this.prop);
           if(result.isVector3 || result.isEuler){  // 编辑向量
             if(chosenProp.value == this.prop + '.x') return input_value.value;  // 编辑中
             else return this.output(result.x);
@@ -70,7 +69,7 @@
           if(result.isColor){  // 编辑颜色
             if(chosenProp.value == this.prop + '.r') return input_value.value;  // 编辑中
             return this.output(result.r, 255);
-          } console.log("changed")
+          }
           return;
         },
         set(value){
@@ -238,6 +237,7 @@
           if(h<0) h++;
           this.getProp().setHSL(h, this.getHSL('s'), this.getHSL('l'));
         }
+        this.$emit("change");
       },
       onClickSquare(e){  // 点击调色方块
         if(e.type == "click") {  // 防止拖动时把指示器拖到方块上
@@ -258,6 +258,7 @@
           let r0 = rgb0.r, g0 = rgb0.g, b0 = rgb0.b;
           this.getProp().setRGB((r0+(1-r0)*x)*y, (g0+(1-g0)*x)*y, (b0+(1-b0)*x)*y);
         }
+        this.$emit("change");
       },
       output(prop, N=1){  // 将输出参数格式化
         try{
@@ -298,7 +299,7 @@
           this.propY = obj.data.position.y;
           this.propZ = obj.data.position.z;
         }
-        else if(this.prop == "mesh.rotation") {  // 更新位移
+        else if(this.prop == "mesh.rotation") {  // 更新旋转
           this.propX = obj.data.rotation.x;
           this.propY = obj.data.rotation.y;
           this.propZ = obj.data.rotation.z;

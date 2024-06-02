@@ -44,7 +44,7 @@
   var Path = ref([assets.value.name]);
   const renamed = ref('');  // 重命名
   var renamingAsset = ref();  // 被重命名的组件
-  const Returner = (location, parent)=>{  // 返回标志
+  const ReturnIcon = (location, parent)=>{  // 返回标志
     return {location: location, name:"返回", parent: parent, type: "return"};
   };
   const searchedAssets = ref([]);
@@ -127,7 +127,7 @@
           );
         }
       },
-      dragStart(e, asset, index){  // 开始拖拽
+      dragStart(asset){  // 开始拖拽
         dragAsset.value = asset;
         global.emit("dragModelStart", {type: "asset", data: dragAsset.value});
       },
@@ -312,7 +312,7 @@
           if(child.children){  // 添加父对象，以便从文件夹中返回上一级
             this.setAssets(child);
             child.parent = asset;
-            child.children.unshift(Returner(child, asset));
+            child.children.unshift(ReturnIcon(child, asset));
           }
         }
       },
@@ -451,7 +451,7 @@
         @click="clickAsset(asset)" 
         @contextmenu="onRightClick(asset)"
         @dblclick="doubleClickAsset(asset);"
-        @dragstart="e=>{dragStart(e, asset, index)}"
+        @dragstart="dragStart(asset)"
         @drop="e=>dropOnCard(e, asset)"
         >
           <span class="content">

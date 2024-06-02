@@ -134,7 +134,7 @@ import { fixControlledValue } from "ant-design-vue/es/vc-input/utils/commonUtils
         dragTo(e){  // 结束拖拽
           let sourceDT = e.dragNode.dataRef, targetDT = e.node.dataRef;
           if(!targetDT.children.includes(sourceDT)){
-            targetDT.mesh.attach(sourceDT.mesh);  // attach方法既改变父子关系，又不改变物体的绝对坐标
+            targetDT.mesh.attach(sourceDT.mesh);  // attach方法改变父子关系，同时不改变物体的绝对坐标
             //sourceDT.mesh.scale.setScalar(1, 1, 1);
             global.DTScene().updateChildren();
             if(!expanded.value.includes(targetDT.key)) expanded.value.push(targetDT.key);
