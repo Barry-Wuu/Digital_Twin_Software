@@ -12,11 +12,17 @@ const attachObjects = JSON.parse(storedattachObjects);
 // console.log(attachObjects);
 var app;
 var canvas;
+var camera;
 var delta = new THREE.Vector3();
+var delta0 = new THREE.Vector3();
+const delta_angle = 15;  // 滚轮旋转物体的角度
+const cos_theta = Math.cos(delta_angle * Math.PI / 180);
+const sin_theta = Math.sin(delta_angle * Math.PI / 180);
 var dragFromOutside;  // 是否从外界拖入
 var dragData;
 var dragModel;
 var dragPoint;  // 拖动开始时的拖动点
+var dragPoint0;  // 新的拖动点
 var front = new THREE.Vector3();
 var fullscreen = false;
 var isDrag = false;  // 是否在用鼠标移动模型
@@ -118,7 +124,7 @@ export default defineComponent({
           break;
         case "model":
           let item = dragData.item;
-          dragModel = this.scene.createMesh(item, this.intersectObject(e)[1]);
+          dragModel = this.scene.createMeshFromModels(item, this.intersectObject(e)[1]);
           break;
         default: return;
       }
@@ -136,7 +142,7 @@ export default defineComponent({
         dragModel = null;
       }
       tempModel.remove();
-      e.dataTransfer.setDragImage(tempImg, 0, 0);
+      // e.dataTransfer.setDragImage(tempImg, 0, 0);  // 隐藏拖动图像
     },
     onDragover(e) {
       e.preventDefault();
@@ -145,7 +151,6 @@ export default defineComponent({
         tempModel.position.set(0, 0, 0);
         let box = new THREE.Box3().setFromObject(tempModel);
         if (!dragFromOutside) {  // 拖动时，物体位置 = 鼠标与平面z=H的交点坐标 + Δp
-          let point;
           if (dragModel.label == "conveyor"){  // 拖入传送带时
             attachPoint1 = dragModel.getObjectByName('ap1');
             if (keys.space) {  // 检查空格键和左键是否同时被按下
@@ -184,8 +189,8 @@ export default defineComponent({
             };
           }
           if (e.shiftKey) {  // 左键+shift拖动物体以改变其高度
-            point = dragPoint.clone();
-            point.z = this.intersectPlaneV(e, dragPoint).z;
+            dragPoint0 = dragPoint.clone();
+            dragPoint0.z = this.intersectPlaneV(e, dragPoint).z;
           }
           else {  // 左键拖动物体在水平面内移动
             if (dragModel.label == "conveyor"){  // 拖动传送带时
@@ -226,10 +231,11 @@ export default defineComponent({
                 hasColorChanged = false; // 更新颜色改变标记
               }
             }
-            point = this.intersectPlaneH(e, dragPoint);
+            dragPoint0 = this.intersectPlaneH(e, dragPoint);
           }
-          point.add(delta);  // 更新模型的全局坐标
-          tempModel.position.copy(dragModel.parent.worldToLocal(point));  // 将模型的全局坐标转换为局部坐标
+          let result = dragPoint0.clone();
+          result.add(delta);  // 更新模型的全局坐标
+          tempModel.position.copy(dragModel.parent.worldToLocal(result));  // 将模型的全局坐标转换为局部坐标
           // 拖动时强制更新属性栏的位移和旋转
           global.emit("updateProp", {action: "dragover", data: dragModel});
         }
@@ -290,6 +296,7 @@ export default defineComponent({
       if (k.code == "Space") keys.space = false;
     },
     onMousedown(e) {
+      mouseType[e.button] = true;
       if (mouseType[0]) {
         if (mouseType[2]) { }  // 双击左右键则移动
         else if (global.mode() == "edit") {  // 左键点击
@@ -341,7 +348,6 @@ export default defineComponent({
       };
     },
     onMousemove(e) {
-      mouseType[e.button] = true;
       if (mouseType[0] && mouseType[2]) {  // 同时按鼠标左右键移动相机
         this.scene.orbitControl.mouseButtons = {
           LEFT: MOVE, MIDDLE: -1, RIGHT: MOVE
@@ -370,6 +376,7 @@ export default defineComponent({
       global.emit("updateProp", {action:"mouseup"});
     },
     onPointerdown(e){
+      mouseType[e.button] = true;
       if (mouseType[1]) {  // 按鼠标中键移动相机
         this.scene.orbitControl.mouseButtons = {
           LEFT: -1, MIDDLE: MOVE, RIGHT: -1
@@ -377,9 +384,20 @@ export default defineComponent({
       }
     },
     onWheel(e) {  // 滚轮事件
+      this.scene.orbitControl.enableZoom = !dragModel;
       if (dragModel) {  // 拖动物体+滚轮=旋转物体
         this.scene.orbitControl.mouseButtons.MIDDLE = -1;
         dragModel.rotateOnWorldAxis(UP, e.deltaY * Math.PI / 1200);
+        let sign = e.deltaY > 0 ? 1 : -1;  // 由滚轮旋转方向获取角度变化量的符号
+        delta.set(  // 用滚轮旋转物体时保持物体沿过dragPoint且向上的轴移动
+          cos_theta * delta.x - sign * sin_theta * delta.y,
+          sign * sin_theta * delta.x + cos_theta * delta.y,
+          delta.z
+        );
+        let result = dragPoint0.clone();
+        result.add(delta);
+        result = dragModel.parent.worldToLocal(result);
+        dragModel.position.copy(result);
       } else {  // 滚轮放缩镜头
         this.scene.orbitControl.enableZoom = true;
       }

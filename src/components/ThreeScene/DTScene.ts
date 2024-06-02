@@ -92,6 +92,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         indicator: [],  // 传送带指示箭头
         lightArrow: [],  // 平行光指示箭头
         rigidHelper: [],  // 可视化碰撞体网格
+        rigidShapeWorld: [],  // 为物体创建全局坐标系下的映射体，以便与刚体绑定
         wireframe: [],  // 物体的包围盒
     }  // 物体及其子孙的图层
     mass = 0  // 质量
@@ -163,10 +164,19 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
     createRigidBody() {  // 添加刚体
         if(!this.rigid) return;
         let mass = this.mass;
-        let pos = this.mesh.position;
-        let quat = this.mesh.quaternion;
+        let P = this.mesh.position;
+        let Q = this.mesh.quaternion;
         let shape;  // 刚体形状
-        if(this.rigidShape === "convex"){  // 将自定义几何体的凸集作为刚体形状
+        if(this.rigidShape === "box"){  // 将包围盒作为刚体形状
+            this.createRigidHelper(this.layers.wireframe[0].geometry);
+            this.mesh.geometry.computeBoundingBox();
+            let boundingBox = this.mesh.geometry.boundingBox;
+            let x = boundingBox.max.x - boundingBox.min.x;
+            let y = boundingBox.max.y - boundingBox.min.y;
+            let z = boundingBox.max.z - boundingBox.min.z;
+            shape = new Ammo.btBoxShape(new Ammo.btVector3( x/2, y/2, z/2 )); 
+        }
+        else if(this.rigidShape === "convex"){  // 将自定义几何体的凸集作为刚体形状
             shape = this.createRigidShape(this.geometry); 
         }
         else if(typeof this.rigidShape == "string"){  // 根据THREE的简单几何体生成Ammo刚体
@@ -178,8 +188,8 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         }
         const transform = new Ammo.btTransform();
         transform.setIdentity();
-        transform.setOrigin( new Ammo.btVector3(pos.x, pos.y, pos.z) );
-        transform.setRotation( new Ammo.btQuaternion( quat.x, quat.y, quat.z, quat.w ) );
+        transform.setOrigin( new Ammo.btVector3(P.x, P.y, P.z) );
+        transform.setRotation( new Ammo.btQuaternion( Q.x, Q.y, Q.z, Q.w ) );
         const motionState = new Ammo.btDefaultMotionState( transform );
         const localInertia = new Ammo.btVector3( 0, 0, 0 );
         shape.calculateLocalInertia( mass, localInertia );
@@ -195,11 +205,11 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
     createRigidHelper(geom=null){  // 根据刚体形状添加可视化碰撞体网格
         try{if(this.layers.rigidHelper.length) return;}  // 防止选择物体时重复添加可视化碰撞体
         catch{}
-        let result, rule = /\(([^]*)\)/;
-        let material = new THREE.LineBasicMaterial({  // 红色透明材质
+        const material = new THREE.LineBasicMaterial({  // 红色网状材质
             color: "red", 
         });
         if(!geom){
+            let result, rule = /\(([^]*)\)/;
             if(typeof this.rigidShape != "string"){  // 自定义刚体形状
                 geom = this.rigidShape;
             }
@@ -373,6 +383,12 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         else if(name) title = this.name = name;
         this.title = `(${this.type}) ` + title;
     }
+    traverse(callback: Function){  // 递归执行回调函数
+        callback(this);
+        for(let child of this.children){
+            child.traverse(callback);
+        }
+    }
     updateChildren(loadingFile=false) {  // 更新DTObject的父子关系
         let newChildren = [];
         this.setTitle();
@@ -394,18 +410,19 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         this.children = newChildren;
     }
     updateWireframes(loadingFile = false){  // 添加线框
-        let wireframe;
-        if(loadingFile){
-            wireframe = this.mesh.children.filter(child=>child.DT.layers.wireframe.length)[0];  
-        } else {
-            wireframe = new THREE.BoxHelper(this.mesh, "cyan");  // 线框
-            this.mesh.add(wireframe);
-        }
-        if(wireframe){
-            wireframe.visible = false;
-            this.layers.wireframe = [wireframe];
-        }
-        // for(let child of this.children){child.updateWireframes(loadingFile);}
+        this.traverse(DT => {
+            let wireframe;
+            if(loadingFile){
+                wireframe = DT.mesh.children.filter(child=>child.DT.layers.wireframe.length)[0];  
+            } else {
+                wireframe = new THREE.BoxHelper(DT.mesh, "cyan");  // 线框
+                DT.mesh.add(wireframe);
+            }
+            if(wireframe){
+                wireframe.visible = false;
+                DT.layers.wireframe = [wireframe];
+            }
+        })
     }
 }  
 
@@ -656,9 +673,9 @@ export default class SceneBuilder{
         this.outlinePass = new OutlinePass(
             new THREE.Vector2(DOM.clientWidth, DOM.clientHeight), 
             SCENE, this.camera);
-        // 在边缘发光颜色中设负值可以将边缘颜色与浅色背景区分开，滤镜中将边缘和背景的颜色直接相加
+        // 在边缘发光颜色中设负值可以将边缘颜色与浅色背景区分开，滤镜中是将边缘和背景的颜色直接相加
         this.outlinePass.visibleEdgeColor.set(1, -0.9, -0.9);
-        this.outlinePass.hiddenEdgeColor.set(0.5, -0.9, -0.9);
+        this.outlinePass.hiddenEdgeColor.set(0.5, 0, 0);  // 隐藏边缘发出的光应更暗
         this.outlinePass.edgeGlow = 0.8;
         this.outlinePass.edgeStrength = 2.5;
         // 输出滤镜（使屏幕在任何模式下都变得模糊）
@@ -695,11 +712,7 @@ export default class SceneBuilder{
                 //else if(e.code == "KeyE") this.controller.setMode("scale");  // 屏蔽缩放
                 else if(e.code == "KeyE") {  // 按R切换全局坐标系和局部坐标系
                     if(this.controller.space == "world") this.controller.setSpace("local");
-                    else this.controller.setSpace("world");
-                }
-                else if(e.code == "KeyE") {  // 按R切换全局坐标系和局部坐标系
-                    if(this.controller.space == "world") this.controller.setSpace("local");
-                    else this.controller.setSpace("world");
+                    else this.controller.setSpace("world");this.updateRigidBodies();
                 }
                 else if(e.code == "Escape") this.controller.reset();  // 按ESC恢复
                 else if(e.ctrlKey) {  // 按Ctrl将移动间距离散化
@@ -909,7 +922,40 @@ export default class SceneBuilder{
         if(arrow) lightDT.layers.lightArrow = [arrow];
         lightDT.setTitle();
     }
-    createMesh(item, position: Object){  // 定义拖入的物体属性
+    createMeshFromAsset(DT, position){  // 定义从组件库中拖入的组件的物体属性
+        let mesh0 = DT.mesh.clone();
+        mesh0.traverse((mesh)=>{
+            if(mesh.isGroup || mesh.isMesh) {
+                mesh.castShadow = mesh.receiveShadow = true;
+                mesh.material = new THREE.MeshPhongMaterial({color: "lightgray"});
+                let DT0 = new DTObject(mesh, true);
+                if(mesh.parent) mesh.parent.DT.children.push(DT0);
+            }
+        });
+        let DT0 = mesh0.DT;
+        DT0.name = DT.name;
+        DT0.scale = DT.scale;
+        DT0.setTitle();
+        DT0.updateWireframes();
+        DT0.traverse(DT => {
+            // 递归地给所有从外部导入组件库并从组件库拖入场景的模型加上标签
+            DT.label = "importedModel";
+            // 递归地给导入模型加上与包围盒相同的刚体形状
+            if(DT.mesh.isMesh){
+                DT.mass = 0;
+                DT.rigid = true;
+                DT.rigidShape = "box";
+                DT.createRigidBody();
+            }
+        });
+        mesh0.castShadow = mesh0.receiveShadow = true;
+        mesh0.scale.setScalar(DT0.scale);
+        mesh0.rotateX(Math.PI/2);
+        mesh0.position.copy(position);
+        SCENE.add(mesh0);
+        return mesh0;
+    }   
+    createMeshFromModels(item, position: Object){  // 定义拖入的物体属性
         let mesh = new THREE.Mesh();
         let DT = new DTObject(mesh);
         if(item.modelpath){
@@ -921,7 +967,7 @@ export default class SceneBuilder{
         for(let key in obj) DT[key] = obj[key];
         if(typeof DT.geometry == "string") DT.geometry = eval(DT.geometry);
         mesh.material = new THREE.MeshPhongMaterial(DT.material);
-        if(item.group == "基本几何体"){mesh.rotateX(Math.PI/2);}
+        if(mesh.DT.label == "WIP") mesh.rotateX(Math.PI/2);
         DT.name = item.modelname;
         mesh.geometry = DT.geometry;
         DT.setTitle();
@@ -955,27 +1001,6 @@ export default class SceneBuilder{
         SCENE.add(mesh);
         return mesh;
     }  
-    createMeshFromAsset(DT, position){  // 定义从组件库中拖入的组件的物体属性
-        let mesh0 = DT.mesh.clone();
-        mesh0.traverse((mesh)=>{
-            if(mesh.isGroup || mesh.isMesh) {
-                mesh.castShadow = mesh.receiveShadow = true;
-                mesh.material = new THREE.MeshPhongMaterial({color: "lightgray"});
-                let DT0 = new DTObject(mesh, true);
-                if(mesh.parent) mesh.parent.DT.children.push(DT0);
-            }
-        });
-        let DT0 = mesh0.DT;
-        DT0.name = DT.name;
-        DT0.scale = DT.scale;
-        DT0.setTitle();
-        DT0.updateWireframes();
-        mesh0.scale.setScalar(DT0.scale);
-        mesh0.rotateX(Math.PI/2);
-        mesh0.position.copy(position);
-        SCENE.add(mesh0);
-        return mesh0;
-    }   
     createSkyBoxFromTexture() {
         // 图片路径有要求，需要放在public文件夹下
         const picPath = "../src/assets/skybox/"; // 默认为public内
@@ -1010,6 +1035,7 @@ export default class SceneBuilder{
         delete rb_mesh[rb.ptr];
         physicsWorld.removeRigidBody( rb );
         delete mesh.userData.rb;
+        mesh.DT.layers.rigidShapeWorld = [];
     }
     render(){  // 渲染
         this.updatePhysics(clock.getDelta());
@@ -1164,6 +1190,27 @@ export default class SceneBuilder{
             timeUpdateFPS = time;
         }
     }
+    updateRigidBodies(){  // 改变物体的父子关系后，将刚体位置更新为物体的全局坐标
+        for(let ptr in rb_mesh){
+            console.log(rb_mesh[ptr])
+            let mesh = rb_mesh[ptr].mesh;
+            let DT = mesh.DT;
+            let rigidShapeWorld = mesh.layers.rigidShapeWorld;
+            if(!DT.rigid || DT.mass != 0) return;
+            if(rigidShapeWorld.length) rigidShapeWorld[0].removeFromParent();
+            let clone = new THREE.Mesh();
+            clone.position.copy(mesh.position);
+            clone.quaternion.copy(mesh.quaternion);
+            SCENE.add(clone);
+            mesh.getWorldPosition(clone.position);
+            mesh.getWorldQuaternion(clone.quaternion);
+            DT.layers.rigidShapeWorld = [clone];
+            let mass = this.mass;
+            let P = clone.position;
+            let Q = clone.quaternion;
+            rb_mesh[rb.ptr] = {mesh:this.mesh, rb:rb};
+        }
+    }
     updatePhysics( deltaTime ) {  // 步进 
         let now = performance.now();     
         let pause = emulateMode == "pause", stop = emulateMode == "stop";  // 是否暂停或停止
@@ -1181,7 +1228,7 @@ export default class SceneBuilder{
             if(!DT.rigid){
                 if(!stop && DT.name == "发生器"){  // 未暂停时制造货物
                     if(now - DT.timer >= DT.timeInterval){  // 秒变毫秒
-                        let mesh0 = this.createMesh({group:"货物", modelname:"货物"}, mesh.position);                 
+                        let mesh0 = this.createMeshFromModels({modelname:"货物"}, mesh.position);                 
                         mesh0.rotation.copy(mesh.rotation);
                         DTObjects.value.push(mesh0.DT);
                         SCENE.DT.children.push(mesh0.DT);
