@@ -15,7 +15,7 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { FXAAShader } from "three/examples/jsm/shaders/FXAAShader.js"
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
-import { OutlinePass } from "./OutlinePass.js"
+import { OutlinePassFixed } from "./OutlinePassFixed.ts"
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js"
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js"
@@ -74,6 +74,23 @@ global.on("changeEmulateMode", (mode: string)=>{emulateMode = mode});
 global.on("changeSpeed", (k: string)=>{speed = parseInt(k.slice(0, k.length-1))});
 global.on("clearLoads", ()=>{SCENE.DT.clearLoads()});
 
+function updateRigidbodyTransform(mesh, rigid=false){  // 根据物体姿态强制设置其刚体姿态
+    if(!mesh.DT?.rb && !rigid) return;
+    let rb = mesh.DT ? mesh.DT.rb : mesh.parent.DT.rb;
+    let transform = new Ammo.btTransform();
+    const motionState = rb.getMotionState();
+    motionState.getWorldTransform( transform );
+    let P = new THREE.Vector3(), Q = new THREE.Quaternion();  // P为位移，Q为四元数旋转
+    mesh.getWorldPosition(P);
+    mesh.getWorldQuaternion(Q);
+    P = new Ammo.btVector3(P.x, P.y, P.z);
+    Q = new Ammo.btQuaternion(Q.x, Q.y, Q.z, Q.w);
+    transform.setOrigin(P);
+    transform.setRotation(Q);
+    motionState.setWorldTransform( transform );
+    rb.setMotionState(motionState);
+}
+
 export class DTObject {  // 用DTObject类包裹场景中的对象
     children = []  // 子物体（自动计算）
     code: string  // 自定义脚本
@@ -100,8 +117,8 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
     mesh: THREE.object  // 模型网格
     name: string  // 名称
     rb: object  // 刚体
-    rigid = false  // 是否为刚体
     rigidShape: string | string[]  // 刚体网格，设成字符串易于存取，若为convex则刚体为mesh的凸集
+    rigidFollow = false  // 若为是则让刚体强制跟随网格，否则默认让网格跟随刚体
     row = 0  // 子树在层级树模块中占几行
     scale = 1  // 尺寸
     skybox: object  // 天空盒
@@ -161,20 +178,21 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
             else this[prop] = obj[prop];
         }
     }
-    createRigidBody() {  // 添加刚体
-        if(!this.rigid) return;
+    createRigidBody(target=this.mesh) {  // 添加刚体
+        if(!this.rigidShape) return;
         let mass = this.mass;
         let P = this.mesh.position;
         let Q = this.mesh.quaternion;
         let shape;  // 刚体形状
         if(this.rigidShape === "box"){  // 将包围盒作为刚体形状
-            this.createRigidHelper(this.layers.wireframe[0].geometry);
-            this.mesh.geometry.computeBoundingBox();
-            let boundingBox = this.mesh.geometry.boundingBox;
-            let x = boundingBox.max.x - boundingBox.min.x;
-            let y = boundingBox.max.y - boundingBox.min.y;
-            let z = boundingBox.max.z - boundingBox.min.z;
-            shape = new Ammo.btBoxShape(new Ammo.btVector3( x/2, y/2, z/2 )); 
+            let result = this.createRigidHelper();
+            let box = result;
+            if(this.label == "importedModel") {
+                let root;
+                this.mesh.traverseAncestors(mesh => {root = mesh});
+                box.multiplyScalar(root.DT.scale);
+            };
+            shape = new Ammo.btBoxShape(new Ammo.btVector3( box.x/2, box.y/2, box.z/2 ));      
         }
         else if(this.rigidShape === "convex"){  // 将自定义几何体的凸集作为刚体形状
             shape = this.createRigidShape(this.geometry); 
@@ -196,22 +214,34 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         const rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, shape, localInertia );
         const rb = new Ammo.btRigidBody( rbInfo );
         this.rb = rb;
-        this.mesh.userData.physicsBody = rb;
+        if(target == "rigidHelper") target = this.layers.rigidHelper[0];
+        target.userData.physicsBody = rb;
         if (mass > 0) {rb.setActivationState( 4 );}  // 质量为0代表为固定的刚体
         physicsWorld.addRigidBody( rb );
         rb_mesh[rb.ptr] = {mesh:this.mesh, rb:rb};
         rb.setFriction( this.friction0 );  // 静摩擦力
     }
-    createRigidHelper(geom=null){  // 根据刚体形状添加可视化碰撞体网格
+    createRigidHelper(geom=null, scale=1){  // 根据刚体形状添加可视化碰撞体网格
         try{if(this.layers.rigidHelper.length) return;}  // 防止选择物体时重复添加可视化碰撞体
         catch{}
         const material = new THREE.LineBasicMaterial({  // 红色网状材质
             color: "red", 
         });
+        let boundingBox, result, rule;
         if(!geom){
-            let result, rule = /\(([^]*)\)/;
+            rule = /\(([^]*)\)/;
             if(typeof this.rigidShape != "string"){  // 自定义刚体形状
                 geom = this.rigidShape;
+            }
+            else if(this.rigidShape == "box"){  // 方型刚体
+                this.mesh.geometry.computeBoundingBox();
+                boundingBox = this.mesh.geometry.boundingBox;
+                result = new THREE.Vector3(
+                    (boundingBox.max.x - boundingBox.min.x) * scale,
+                    (boundingBox.max.y - boundingBox.min.y) * scale,
+                    (boundingBox.max.z - boundingBox.min.z) * scale,
+                )
+                geom = new THREE.BoxGeometry(result.x, result.y, result.z);
             }
             else if(this.rigidShape.includes("btBoxShape")){  // 简单几何体刚体
                 result = eval(this.rigidShape.match(rule)[1]);
@@ -234,6 +264,15 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         geom = new THREE.WireframeGeometry(geom);
         const rigidHelper = new THREE.LineSegments(geom, material);  // 可视化碰撞体网格
         rigidHelper.visible = global.layers().includes("rigidHelper");
+        if(this.rigidShape == "box") {
+            let center = new THREE.Vector3();
+            boundingBox.getCenter( center );
+            center.multiplyScalar(scale)
+            this.mesh.add( rigidHelper );
+            rigidHelper.position.copy( center );
+            this.layers.rigidHelper = [rigidHelper];
+            return result;
+        }
         this.mesh.add(rigidHelper);
         this.layers.rigidHelper = [rigidHelper];
     }
@@ -277,7 +316,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
             }
         }
         global.emit("controlEnd");  // 如果控制器绑定了该物体，则先解绑
-        if(this.rigid){
+        if(this.rb){
             let rb = mesh.userData.physicsBody;
             try {delete rb_mesh[rb.ptr]} catch{};
             physicsWorld.removeRigidBody(rb);
@@ -333,22 +372,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
             for(let p of split) node = node[p];
             node[last] = newValue;
         }
-        if(this.rigid){  // 刚体
-            let rb = this.mesh.userData.physicsBody;
-            let transform = new Ammo.btTransform();
-            const motionState = rb.getMotionState();
-            motionState.getWorldTransform( transform );
-            let p = this.mesh.position;
-            let q = new THREE.Quaternion();  // q代表四元数
-            const r = this.mesh.rotation;  // r代表欧
-            p = new Ammo.btVector3(p.x, p.y, p.z);
-            q.setFromEuler(r);
-            q = new Ammo.btQuaternion(q.x, q.y, q.z, q.w);
-            transform.setOrigin(p);
-            transform.setRotation(q);
-            motionState.setWorldTransform( transform );
-            rb.setMotionState(motionState);
-        }
+        updateRigidbodyTransform(this.mesh);  // 强制更新刚体姿态
     }
     setRow(expanded){  // 设置物体在树中的行数
         let children = this.children, lastRow = 0;
@@ -440,7 +464,7 @@ export default class SceneBuilder{
     gizmoPersp: THREE.ViewHelper
     ground
     orbitControl: OrbitControls
-    outlinePass: OutlinePass
+    outlinePass: OutlinePassFixed
     pointerControl: PointerLockControls
     renderer: THREE.WebGLRenderer
     SCENE = SCENE
@@ -632,7 +656,6 @@ export default class SceneBuilder{
         this.ground.userData.ground = true;
         this.ground.DT.label = "protected";
         this.ground.DT.mass = 0 // 不可动
-        this.ground.DT.rigid = true;
         this.ground.DT.rigidShape = "new Ammo.btBoxShape(new Ammo.btVector3(groundSize, groundSize, margin))";
         this.ground.DT.createRigidBody();
         DTGround.setTitle("地面");
@@ -670,7 +693,7 @@ export default class SceneBuilder{
         renderPass = new RenderPass(SCENE, this.camera);
         this.composer.addPass(renderPass);
         // 边缘滤镜
-        this.outlinePass = new OutlinePass(
+        this.outlinePass = new OutlinePassFixed(
             new THREE.Vector2(DOM.clientWidth, DOM.clientHeight), 
             SCENE, this.camera);
         // 在边缘发光颜色中设负值可以将边缘颜色与浅色背景区分开，滤镜中是将边缘和背景的颜色直接相加
@@ -940,12 +963,13 @@ export default class SceneBuilder{
         DT0.traverse(DT => {
             // 递归地给所有从外部导入组件库并从组件库拖入场景的模型加上标签
             DT.label = "importedModel";
-            // 递归地给导入模型加上与包围盒相同的刚体形状
-            if(DT.mesh.isMesh){
+            if(DT.mesh.isMesh){  // 递归地给导入模型加上与包围盒相同的刚体形状
+                let rb_mesh = new THREE.Mesh();
+                DT.mesh.add(rb_mesh);
                 DT.mass = 0;
-                DT.rigid = true;
+                DT.rigidFollow = true;
                 DT.rigidShape = "box";
-                DT.createRigidBody();
+                DT.createRigidBody("rigidHelper", DT0.scale);
             }
         });
         mesh0.castShadow = mesh0.receiveShadow = true;
@@ -1031,10 +1055,10 @@ export default class SceneBuilder{
         }
     }
     removeRigidBody( mesh ){  // 移除刚体
-        let rb = mesh.userData.physicsBody;
+        let rb = mesh.DT.rb;
+        delete rb_mesh[rb.ptr].mesh.userData.rb;
         delete rb_mesh[rb.ptr];
-        physicsWorld.removeRigidBody( rb );
-        delete mesh.userData.rb;
+        physicsWorld.removeRigidBody(rb);
         mesh.DT.layers.rigidShapeWorld = [];
     }
     render(){  // 渲染
@@ -1192,11 +1216,10 @@ export default class SceneBuilder{
     }
     updateRigidBodies(){  // 改变物体的父子关系后，将刚体位置更新为物体的全局坐标
         for(let ptr in rb_mesh){
-            console.log(rb_mesh[ptr])
             let mesh = rb_mesh[ptr].mesh;
             let DT = mesh.DT;
             let rigidShapeWorld = mesh.layers.rigidShapeWorld;
-            if(!DT.rigid || DT.mass != 0) return;
+            if(!DT.rb || DT.mass != 0) return;
             if(rigidShapeWorld.length) rigidShapeWorld[0].removeFromParent();
             let clone = new THREE.Mesh();
             clone.position.copy(mesh.position);
@@ -1205,10 +1228,10 @@ export default class SceneBuilder{
             mesh.getWorldPosition(clone.position);
             mesh.getWorldQuaternion(clone.quaternion);
             DT.layers.rigidShapeWorld = [clone];
-            let mass = this.mass;
+            let mass = DT.mass;
             let P = clone.position;
             let Q = clone.quaternion;
-            rb_mesh[rb.ptr] = {mesh:this.mesh, rb:rb};
+            rb_mesh[DT.rb.ptr] = {mesh:DT.mesh, rb:DT.rb};
         }
     }
     updatePhysics( deltaTime ) {  // 步进 
@@ -1225,7 +1248,7 @@ export default class SceneBuilder{
             const mesh = DT.mesh, rb = DT.rb;
             try{ if(DT.code != '') eval(DT.code) }  // 若物体有自定义脚本则执行 
             catch(e) {console.log(e)}
-            if(!DT.rigid){
+            if(!DT.rb){
                 if(!stop && DT.name == "发生器"){  // 未暂停时制造货物
                     if(now - DT.timer >= DT.timeInterval){  // 秒变毫秒
                         let mesh0 = this.createMeshFromModels({modelname:"货物"}, mesh.position);                 
@@ -1238,7 +1261,7 @@ export default class SceneBuilder{
                 }
                 continue;
             };
-            if(!DT.mesh.userData.physicsBody) continue;
+            if(!DT.rb) continue;
             if(!mesh.isDrag){  // 刚体未被拖动时才计算
                 if (mesh.position.manhattanDistanceTo(origin) > 10000 || 
                     Number.isNaN(mesh.position.x) ||
@@ -1247,13 +1270,21 @@ export default class SceneBuilder{
                     mesh.DT.destroy();  // 物体太远或位置变为NaN时则清除
                 }
                 const motionState = rb.getMotionState();
-                if ( motionState ) {
-                    let transform = new Ammo.btTransform();
-                    motionState.getWorldTransform( transform );
-                    const p = transform.getOrigin();
-                    const q = transform.getRotation();
-                    mesh.position.set( p.x(), p.y(), p.z() );  // 将网格位移设为刚体位移
-                    mesh.quaternion.set( q.x(), q.y(), q.z(), q.w() );  // 将网格旋转设为刚体旋转
+                if (motionState) {
+                    if(DT.rigidFollow){  // 强制让刚体姿态等于网格姿态
+                        if(DT.rigidShape = "box") 
+                            updateRigidbodyTransform(DT.layers.rigidHelper[0], true);
+                        else
+                            updateRigidbodyTransform(mesh);
+                    }
+                    else{  // 运行时将网格姿态更新为刚体姿态
+                        let transform = new Ammo.btTransform();
+                        motionState.getWorldTransform( transform );
+                        const P = transform.getOrigin();
+                        const Q = transform.getRotation();
+                        mesh.position.set( P.x(), P.y(), P.z() );  // 将网格位移设为刚体位移
+                        mesh.quaternion.set( Q.x(), Q.y(), Q.z(), Q.w() );  // 将网格旋转设为刚体旋转
+                    }
                 }
             }
         }

@@ -60,7 +60,6 @@
       },
       computedX: {
         get(){
-          if(this.propX) return this.propX.toFixed(2);
           let result = eval("DT.value." + this.prop);
           if(result.isVector3 || result.isEuler){  // 编辑向量
             if(chosenProp.value == this.prop + '.x') return input_value.value;  // 编辑中
@@ -84,7 +83,6 @@
       },
       computedY: {
         get(){
-          if(this.propY) return this.propY.toFixed(2);
           let result = eval("DT.value." + this.prop);
           if(result.isVector3 || result.isEuler){  // 编辑向量
             if(chosenProp.value == this.prop + '.y') return input_value.value;  // 编辑中
@@ -108,7 +106,6 @@
       },
       computedZ: {
         get(){
-          if(this.propZ) return this.propZ.toFixed(2);
           let result = eval("DT.value." + this.prop);
           if(result.isVector3 || result.isEuler){  // 编辑向量
             if(chosenProp.value == this.prop + '.z') return input_value.value;  // 编辑中

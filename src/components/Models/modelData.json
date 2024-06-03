@@ -12,7 +12,7 @@
             {"title": "发生器", "model": "", "icon": "发生器.jpg"},
             {"title": "回收器", "model": "", "icon": "回收器.jpg"}
         ]},
-        {"title": "基本几何体（在制品）", "children": [
+        {"title": "在制品（基本几何体）", "children": [
             {"title": "正方体", "model": "", "icon": "cube.jpg"},
             {"title": "球", "model": "", "icon": "sphere.jpg"},
             {"title": "圆柱", "model": "", "icon": "cylinder.jpg"},

@@ -84,7 +84,7 @@
       <a-collapse-panel v-else disabled header="几何属性（无）"/>
 
       <!--物理属性-->
-      <a-collapse-panel v-if="DT.rigid" header="物理属性" key="物理属性">
+      <a-collapse-panel v-if="DT.rb" header="物理属性" key="物理属性">
         <Prop prop="rigid" title="刚体"/>
         <Prop prop="rb.constructor.name" title="刚体类型"/>
         <Prop prop="mass" title="质量" type="inputNumber"

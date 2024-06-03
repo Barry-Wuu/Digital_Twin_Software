@@ -108,7 +108,7 @@ export default defineComponent({
       let data = e.dataTransfer;
       // 隐藏拖动图像
       function findImg(DOM) {
-        for (let child of DOM.children) {
+        for (let child of DOM?.children) {
           if (child.localName == "img") { tempImg = child; return; }
           findImg(child);
         }
@@ -276,8 +276,9 @@ export default defineComponent({
           dragModel.material.opacity = tempOpacity;
           tempOpacity = null;
         }
-        if (dragModel.DT.rigid) { dragModel.DT.createRigidBody() }
-        if (!this.scene.DTObjects.value.includes(dragModel.DT)) {
+        if (dragModel.DT.rb) dragModel.DT.rigidFollow = false;  // 让网格跟随刚体
+        else if (dragModel.DT.rigidShape) {
+          dragModel.DT.createRigidBody();
           this.scene.DTObjects.value.push(dragModel.DT);
         }
         if (tempModel) {
@@ -320,9 +321,7 @@ export default defineComponent({
               tempModel = dragModel.clone();
               tempOpacity = dragModel.material.opacity;
               isDrag = true;
-              if (dragModel.DT.rigid) {
-                this.scene.removeRigidBody(dragModel);
-              }
+              if (dragModel.DT.rb) dragModel.DT.rigidFollow = true;  // 让刚体跟随网格
             } 
             else if(e.target.localName == "div") global.emit("deselect");  // 避免点击img时取消选择
           }
