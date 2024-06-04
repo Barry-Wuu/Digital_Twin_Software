@@ -42,7 +42,7 @@
           else if(this.type == "inputColor"){  // 显示颜色
             return '#' + result.getHexString();
           }
-          return this.output(result);  // 显示属性
+          return this.format(result);  // 显示属性
         },
         set(value, item='') {
           if(chosenProp.value == this.prop) input_value.value = value;  // 编辑中
@@ -60,14 +60,15 @@
       },
       computedX: {
         get(){
+          if(this.propX) return this.format(this.propX);  // 拖动物体时强制更新属性值
           let result = eval("DT.value." + this.prop);
           if(result.isVector3 || result.isEuler){  // 编辑向量
             if(chosenProp.value == this.prop + '.x') return input_value.value;  // 编辑中
-            else return this.output(result.x);
+            else return this.format(result.x);
           }
           if(result.isColor){  // 编辑颜色
             if(chosenProp.value == this.prop + '.r') return input_value.value;  // 编辑中
-            return this.output(result.r, 255);
+            return this.format(result.r, 255);
           }
           return;
         },
@@ -83,14 +84,15 @@
       },
       computedY: {
         get(){
+          if(this.propY) return this.format(this.propY);  // 拖动物体时强制更新属性值
           let result = eval("DT.value." + this.prop);
           if(result.isVector3 || result.isEuler){  // 编辑向量
             if(chosenProp.value == this.prop + '.y') return input_value.value;  // 编辑中
-            else return this.output(result.y); 
+            else return this.format(result.y); 
           }
           if(result.isColor){  // 编辑颜色
             if(chosenProp.value == this.prop + '.g') return input_value.value;  // 编辑中
-            return this.output(result.g, 255);
+            return this.format(result.g, 255);
           }
           return;
         },
@@ -106,14 +108,15 @@
       },
       computedZ: {
         get(){
+          if(this.propZ) return this.format(this.propZ);  // 拖动物体时强制更新属性值
           let result = eval("DT.value." + this.prop);
           if(result.isVector3 || result.isEuler){  // 编辑向量
             if(chosenProp.value == this.prop + '.z') return input_value.value;  // 编辑中
-            else return this.output(result.z);   
+            else return this.format(result.z);   
           }
           if(result.isColor){  // 编辑颜色
             if(chosenProp.value == this.prop + '.b') return input_value.value;  // 编辑中
-            return this.output(result.b, 255);
+            return this.format(result.b, 255);
           }
           return;
         },
@@ -161,7 +164,7 @@
         if(type == "number"){
           result = JSON.parse(input_value.value);
           if(wheel) result -= e.deltaY / 100 * delta;
-          if(loop) result = this.loop(result, 360);
+          if(loop) result = this.loop(result);
           if(typeof min == "number" && result < min) result = min;
           if(typeof max == "number" && result > max) result = max;
           if(typeof fixed == "number") result = result.toFixed(fixed);
@@ -174,6 +177,22 @@
         this.$emit("change");
         chosenProp.value = null;  // 结束编辑
       },   
+      format(prop, N=1){  // 将输出参数格式化
+        try{
+          prop = JSON.parse(prop);
+          if(N!=1) return Math.floor(prop*N);  // 将属性值放大N或unit倍    
+          if(this.options.unit) prop /= this.options.unit; 
+          if(this.options.loop){  // 归一化循环的变量，比如将角度归一化到0~360
+            prop = this.loop(prop);
+          }
+          if(typeof this.options.fixed == "number"){  // 保留fixed位小数
+            prop = prop.toFixed(this.options.fixed);
+          }
+          else prop = prop.toFixed(2);  // 默认保留两位小数
+          return prop;
+        }
+        catch {return prop;}  // 字符串型变量
+      },
       getColor(){  // 异步吸取颜色
         const promise = this.tube.open();
         promise.then(
@@ -217,8 +236,11 @@
         }
         return true;
       },
-      loop(x, max){  // 限定x在0~max之间循环，比如角度
-        return x % max + (x < 0 ? max : 0);
+      loop(x){  // 限定x在0~max之间循环，比如角度
+        let max = this.options.max;
+        let result = x % max + (x < 0 ? max : 0);
+        if(Math.abs(result-max) < 1e-6) result = 0;
+        return result;
       },
       onClickRing(e){  // 点击调色圆环
         tempAngle.value = -1; 
@@ -257,19 +279,6 @@
         }
         this.$emit("change");
       },
-      output(prop, N=1){  // 将输出参数格式化
-        try{
-          prop = JSON.parse(prop);
-          if(N!=1) return Math.floor(prop*N);  // 将属性值放大N或unit倍    
-          if(this.options.unit) prop /= this.options.unit; 
-          if(typeof this.options.fixed == "number"){  // 保留fixed位小数
-            prop = prop.toFixed(this.options.fixed);
-          }
-          else prop = prop.toFixed(2);  // 默认保留两位小数
-          return prop;
-        }
-        catch {return prop;}  // 字符串型变量
-      },
       propStyle(){  // 属性样式
         return { "width": this.width + "px" };
       },
@@ -289,17 +298,17 @@
         else if(typeof data == "number") DT.value = global.DTScene().findDTObjectById(data);
         else DT.value = data;
       })
-      global.on("updateProp", (obj)=>{  // 拖动物体时在属性栏实时更新其位移和旋转属性
-        if(obj.action == "mouseup") this.propX = this.propY = this.propZ = null;
+      global.on("updateProp", (data)=>{  // 拖动物体时在属性栏实时更新其位移和旋转属性
+        if(data.action == "mouseup") this.propX = this.propY = this.propZ = null;
         else if(this.prop == "mesh.position") {  // 更新位移
-          this.propX = obj.data.position.x;
-          this.propY = obj.data.position.y;
-          this.propZ = obj.data.position.z;
+          this.propX = data.mesh.position.x;
+          this.propY = data.mesh.position.y;
+          this.propZ = data.mesh.position.z;
         }
         else if(this.prop == "mesh.rotation") {  // 更新旋转
-          this.propX = obj.data.rotation.x;
-          this.propY = obj.data.rotation.y;
-          this.propZ = obj.data.rotation.z;
+          this.propX = data.mesh.rotation.x;
+          this.propY = data.mesh.rotation.y;
+          this.propZ = data.mesh.rotation.z;
         }
       })
     },
@@ -482,7 +491,7 @@
     </div>
 
     <!--只显示属性-->
-    <div v-else v-for="prop of [output(computedProp)]" class="inline">
+    <div v-else v-for="prop of [format(computedProp)]" class="inline">
       <div v-if="typeof prop == 'boolean'" class="inline"> {{ prop ? "是" : "否"}} </div>
       <div v-else class="inline"> {{ prop }} </div>
     </div>

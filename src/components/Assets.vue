@@ -16,7 +16,6 @@
   const path = require("path");
   import * as THREE from 'three'
 
-  const activeOptions = ref([]);
   const assets = ref(
     { name: "组件库", type: "root", children:[
       { name: "文件夹", type: "folder", children: [
@@ -192,7 +191,11 @@
         e.target.style.opacity = 0;
       },
       loadAsset(e){
-        let path0 = e.target.files[0].path;  // 从input选择路径导入
+        let path0 = e.target.files[0]?.path;  // 从input选择路径导入
+        if(!path0 || !e.target.files[0]){  // 若取消选择导入组件，则清除新增组件图标
+          this.deleteAsset(dragAsset.value);
+          return;
+        }
         path0 = path0.slice(path0.indexOf("src"));
         let newAsset = dragAsset.value;
         newAsset.loading = 0;
