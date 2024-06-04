@@ -18,6 +18,10 @@ var delta0 = new THREE.Vector3();
 const delta_angle = 15;  // 滚轮旋转物体的角度
 const cos_theta = Math.cos(delta_angle * Math.PI / 180);
 const sin_theta = Math.sin(delta_angle * Math.PI / 180);
+const rotation_matrix_p = new THREE.Matrix4();
+const rotation_matrix_n = new THREE.Matrix4();
+rotation_matrix_p.makeRotationZ(delta_angle * Math.PI / 180);  // 逆时针旋转
+rotation_matrix_n.makeRotationZ(-delta_angle * Math.PI / 180);  // 顺时针旋转
 var dragFromOutside;  // 是否从外界拖入
 var dragData;
 var dragModel;
@@ -237,7 +241,7 @@ export default defineComponent({
           result.add(delta);  // 更新模型的全局坐标
           tempModel.position.copy(dragModel.parent.worldToLocal(result));  // 将模型的全局坐标转换为局部坐标
           // 拖动时强制更新属性栏的位移和旋转
-          global.emit("updateProp", {action: "dragover", data: dragModel});
+          global.emit("updateProp", {action: "dragover", mesh: dragModel});
         }
         else {  // 从外部拖入模型时将其包围盒中心移到鼠标
           let intersect = this.intersectObject(e);
@@ -266,7 +270,7 @@ export default defineComponent({
           dragModel.position.copy(this.intersectPlaneH(e, delta.pos));
         }
         // 拖动时强制更新属性栏的位移和旋转
-        global.emit("updateProp", {action: "dragover", data: dragModel});
+        global.emit("updateProp", {action: "dragover", mesh: dragModel});
       }
     },
     onDrop(e) {
@@ -356,7 +360,7 @@ export default defineComponent({
           LEFT: global.mode() == "edit" ? -1 : ROTATE, MIDDLE: isDrag ? -1 : ZOOM, RIGHT: -1
         };
         if(transformControls){
-          global.emit("updateProp", {action:"mousemove", data: this.scene.controller.object});
+          global.emit("updateProp", {action:"mousemove", mesh: this.scene.controller.object});
         }
       } else if (mouseType[2]) {
         this.scene.orbitControl.mouseButtons = {
@@ -384,10 +388,15 @@ export default defineComponent({
     },
     onWheel(e) {  // 滚轮事件
       this.scene.orbitControl.enableZoom = !dragModel;
-      if (dragModel) {  // 拖动物体+滚轮=旋转物体
-        this.scene.orbitControl.mouseButtons.MIDDLE = -1;
-        dragModel.rotateOnWorldAxis(UP, e.deltaY * Math.PI / 1200);
+      if (dragModel) {  // 拖动物体+滚轮=旋转物体，向前滚动为顺时针旋转，向后滚动为逆时针旋转
         let sign = e.deltaY > 0 ? 1 : -1;  // 由滚轮旋转方向获取角度变化量的符号
+        this.scene.orbitControl.mouseButtons.MIDDLE = -1;
+        // 设置被旋转物体的旋转角
+        let parent = dragModel.parent;  // 将被旋转物体暂时与父物体断开关系
+        this.scene.SCENE.attach(dragModel);
+        dragModel.rotateOnWorldAxis(UP, sign * delta_angle * Math.PI / 180);  // 绕z轴正方向旋转
+        parent.attach(dragModel);  // 将被旋转物体加回原来的父物体
+        // 设置被旋转物体的位移
         delta.set(  // 用滚轮旋转物体时保持物体沿过dragPoint且向上的轴移动
           cos_theta * delta.x - sign * sin_theta * delta.y,
           sign * sin_theta * delta.x + cos_theta * delta.y,
@@ -397,6 +406,7 @@ export default defineComponent({
         result.add(delta);
         result = dragModel.parent.worldToLocal(result);
         dragModel.position.copy(result);
+        global.emit("updateProp", {action: "wheel", mesh: dragModel});
       } else {  // 滚轮放缩镜头
         this.scene.orbitControl.enableZoom = true;
       }

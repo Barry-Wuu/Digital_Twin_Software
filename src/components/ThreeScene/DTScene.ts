@@ -216,7 +216,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         this.rb = rb;
         if(target == "rigidHelper") target = this.layers.rigidHelper[0];
         target.userData.physicsBody = rb;
-        if (mass > 0) {rb.setActivationState( 4 );}  // 质量为0代表为固定的刚体
+        if (mass>0) {rb.setActivationState(4);}  // 质量为0代表为固定的刚体
         physicsWorld.addRigidBody( rb );
         rb_mesh[rb.ptr] = {mesh:this.mesh, rb:rb};
         rb.setFriction( this.friction0 );  // 静摩擦力
@@ -1133,7 +1133,7 @@ export default class SceneBuilder{
             let mesh0 = rb_mesh[ptr0].mesh, mesh1 = rb_mesh[ptr1].mesh;
             let DT0 = mesh0.DT, DT1 = mesh1.DT;
             
-            if(DT1.label == "WIP"){// 让在制品排在前面
+            if(DT1.label == "WIP"){// 让在制品排在前面，即等于mesh0
                 let t=rb0; rb0=rb1; rb1=t; 
                 t=mesh0; mesh0=mesh1; mesh1=t; 
                 t=DT0; DT0=DT1; DT1=t;
@@ -1143,10 +1143,14 @@ export default class SceneBuilder{
                 let k = Math.min(DT0.friction, DT1.friction);  // 滑动摩擦系数k
                 let kw = k;  // 转动摩擦系数kw
                 let m = DT0.mass;  // 质量m
+                let P = new THREE.Vector3(), Q = new THREE.Quaternion(), R = new THREE.Euler();
+                mesh1.getWorldPosition(P);
+                mesh1.getWorldQuaternion(Q);
+                R.setFromQuaternion(Q);
                 let v;  // 货物速度v
                 let v0 = DT1.v0;  // 传送带中轴线速度v0
-                let theta = mesh1.rotation.z;  //传送带旋转角θ 
-                let R = 5;  // 传送带中轴线半径R
+                let theta = R.z;  //传送带旋转角θ 
+                R = 5;  // 传送带中轴线半径R
                 if(DT1.name == "直道"){  // 摩擦力 F = kmg(v0-v)/||v0-v||，v和v0为向量
                     // 将v0从标量转换为货物处的速度矢量v0_real
                     let v0_real = new Ammo.btVector3(v0*Math.cos(theta), v0*Math.sin(theta), 0);
@@ -1159,7 +1163,7 @@ export default class SceneBuilder{
                 else if(DT1.name && DT1.name.includes("弯道")){
                     let dir = DT1.name == "逆时针弯道" ? -1 : 1;  // 传送带移动方向（顺/逆时针）
                     let r = new THREE.Vector3();
-                    r.add(mesh0.position).sub(mesh1.position);
+                    r.add(mesh0.position).sub(P);
                     r.setZ(0);
                     let ra = r.length();  // 径向矢量r=v0-v，模ra=||v0-v||
                     if(ra>=3.2 && ra<=6.4){  // 当货物到弯道的半径为3.2≤ra≤6.4时向其质心施力
@@ -1261,17 +1265,18 @@ export default class SceneBuilder{
                 }
                 continue;
             };
-            if(!DT.rb) continue;
             if(!mesh.isDrag){  // 刚体未被拖动时才计算
-                if (mesh.position.manhattanDistanceTo(origin) > 10000 || 
+                if (  // 物体太远或位置变为NaN时则清除
+                    mesh.position.manhattanDistanceTo(origin) > 10000 || 
                     Number.isNaN(mesh.position.x) ||
                     Number.isNaN(mesh.position.y) ||
-                    Number.isNaN(mesh.position.z)){
-                    mesh.DT.destroy();  // 物体太远或位置变为NaN时则清除
+                    Number.isNaN(mesh.position.z)
+                ){
+                    mesh.DT.destroy();
                 }
                 const motionState = rb.getMotionState();
                 if (motionState) {
-                    if(DT.rigidFollow){  // 强制让刚体姿态等于网格姿态
+                    if(DT.mass == 0 || DT.rigidFollow){  // 强制让刚体姿态等于网格姿态
                         if(DT.rigidShape = "box") 
                             updateRigidbodyTransform(DT.layers.rigidHelper[0], true);
                         else
