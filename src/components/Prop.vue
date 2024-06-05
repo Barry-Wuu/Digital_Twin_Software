@@ -2,13 +2,26 @@
   import * as THREE from "three"
   import global from "../Global"
   import { ref } from 'vue'
-  import colorRing from "../assets/icons/colorRing.jpg";
-  import tubeIcon from "../assets/icons/吸管.jpg";
+  import colorRing from "../assets/icons/colorRing.jpg"
+  import tubeIcon from "../assets/icons/吸管.jpg"
+import { progressProps } from "ant-design-vue/es/progress/props"
 
   const chosenProp = ref('');
   var colorEdit = '';
-  const DT = ref("未选择对象");
+  const DT: any = ref("未选择对象");
   const input_value = ref(null);
+  const options: any = {  // options为变量格式要求，此处为其默认值，其各参数为：
+    e: null,  // 操作事件
+    item: '',  // 被选择的属性名，在点击输入框时由内部设置
+    min: null,  // 最小值
+    max: null,  // 最大值
+    delta: 1,  // 用滚轮滚动时的变化量
+    fixed: 2,  // 保留小数位数
+    loop: false,  // 是否循环（如角度）
+    type: "number",  // 属性类型
+    suffix: '',  // 后缀
+    unit: null,  // 比例尺（如弧度转角度时为π/180，系数转百分比时为0.01）
+  };
   const tempAngle = ref(-1);
 
   export default {
@@ -16,18 +29,7 @@
     props: {  // 单独传入的参数
       bold: {default: true},
       content: {},
-      options: {default: {  // 变量的格式规定
-        e: null,
-        item: '',
-        min: null, 
-        max: null, 
-        delta: 1,
-        fixed: 2, 
-        loop: false, 
-        type: "number",
-        suffix: '',
-        unit: null,
-      }},
+      options: {default: options},
       prop: {},
       title: {},
       type: {},
@@ -171,10 +173,14 @@
           if(unit) result *= unit;
           input_value.value = result;
         }
+        if(this.prop == "scale") {  // 改变导入模型的比例
+            DT.value.mesh.scale.setScalar(result);
+        }
         let prop = "DT.value." + this.prop + (item ? '.' + item : '');  // 结束编辑时更改属性值
         if(eval(prop).isColor) eval(prop).setStyle(result);
         else {eval(`${prop} = ${result}`);}
         this.$emit("change");
+        global.emit("controlStart", DT.value.id);
         chosenProp.value = null;  // 结束编辑
       },   
       format(prop, N=1){  // 将输出参数格式化
@@ -297,7 +303,7 @@
         if('未已'.includes(data[0])) DT.value = data;
         else if(typeof data == "number") DT.value = global.DTScene().findDTObjectById(data);
         else DT.value = data;
-      })
+      });
       global.on("updateProp", (data)=>{  // 拖动物体时在属性栏实时更新其位移和旋转属性
         if(data.action == "mouseup") this.propX = this.propY = this.propZ = null;
         else if(this.prop == "mesh.position") {  // 更新位移
@@ -310,7 +316,7 @@
           this.propY = data.mesh.rotation.y;
           this.propZ = data.mesh.rotation.z;
         }
-      })
+      });
     },
   }
 </script>
@@ -362,7 +368,8 @@
     <strong> {{title}}：</strong>
 
     <!--编辑布尔变量属性-->
-    <a-checkbox v-if="type=='checkbox'" v-model:checked="computedProp">
+    <a-checkbox v-if="type=='checkbox'" v-model:checked="computedProp"
+    :disabled="DT.label=='protected'">
       {{ computedProp ? "是" : "否" }}
     </a-checkbox>
 
@@ -393,7 +400,7 @@
       <span v-if="getProp().isVector3 || getProp().isEuler">
         <strong>x:</strong>
         <a-input class="propInput" :style="propStyle()" :title="help.input" 
-        v-model:value="computedX"
+        v-model:value="computedX" :disabled="DT.label=='protected'"
         @blur="e=>changeValue(getOptions(e, 'x'))" 
         @click="e=>startEdit(e, 'x')"
         @keydown="e=>changeValue(getOptions(e, 'x'))"
@@ -401,7 +408,7 @@
         <div v-if="options.suffix" class="inline">{{ options.suffix }}</div>&nbsp;
         <strong>y:</strong>
         <a-input class="propInput" :style="propStyle()" :title="help.input" 
-        v-model:value="computedY"
+        v-model:value="computedY" :disabled="DT.label=='protected'"
         @blur="e=>changeValue(getOptions(e, 'y'))" 
         @click="e=>startEdit(e, 'y')" 
         @keydown="e=>changeValue(getOptions(e, 'y'))"
@@ -409,7 +416,7 @@
         <div v-if="options.suffix" class="inline">{{ options.suffix }}</div>&nbsp; 
         <strong>z:</strong>
         <a-input class="propInput" :style="propStyle()" :title="help.input" 
-        v-model:value="computedZ"
+        v-model:value="computedZ" :disabled="DT.label=='protected'"
         @blur="e=>changeValue(getOptions(e, 'z'))" 
         @click="e=>startEdit(e, 'z')" 
         @keydown="e=>changeValue(getOptions(e, 'z'))"

@@ -474,7 +474,7 @@
         </a-card>
       </div>
       <!--搜索时-->
-      <div v-else v-for="asset of searchedAssets" style="display:flex;">
+      <div v-else-if="searchedAssets.length" v-for="asset of searchedAssets" style="display:flex;">
         <!--无效拖拽排序条-->
         <div class="split"/>
         <!--卡片-->
@@ -501,6 +501,7 @@
           </span>    
         </a-card>
       </div>
+      <a-alert v-else message="无匹配结果" style="width:100%" type="error" />
       <!--末尾拖拽排序条-->
       <div v-if="!searchValue" class="split" @dragenter.prevent @dragover.prevent @dragenter="show"
       @drop="e=>dropOnSplit(e, currentFolder.children.length)" @dragleave="hide"/>

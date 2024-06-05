@@ -3,7 +3,7 @@
   import Prop from "./Prop.vue"
   import { ref } from 'vue'
 
-  const DT = ref("未选择物体");
+  const DT:any = ref("未选择物体");
   const tube = new EyeDropper();  // 颜色吸管
 
   export default{
@@ -39,11 +39,14 @@
 </style>
 
 <template>
-  <h2 v-if="typeof DT == 'string'">{{ DT }}</h2>
+  <!--属性栏默认文字-->
+  <a-alert v-if="typeof DT == 'string'" :message="DT" style="width:100%" type="info"/>
+  <!--属性栏内容-->
   <div v-else style="text-align:left;">   
     <a-collapse :default-active-key="[
       '基本属性', '几何属性', '物理属性', '材质属性', '代码属性', '自定义属性', '自定义脚本'
       ]">
+
       <!--基本属性-->
       <a-collapse-panel header="基本属性" key="基本属性">
         <Prop prop="type" title="物体类型"/>
@@ -54,7 +57,9 @@
         <Prop prop="mesh.position" title="位移" type="inputVector"/>
         <Prop prop="mesh.rotation" title="旋转" type="inputVector" 
         :options="{delta:10, loop:true, min:0, max:360, suffix:'°', unit:angle}"/>
-        <Prop prop="scale" title="比例"/>
+        <Prop v-if="DT.label=='importedModel'" prop="scale" title="比例" type="inputNumber"
+        :options="{delta:1, min:0.01, max:100}"/>
+        <Prop v-else prop="scale" title="比例"/>
         <Prop prop="mesh.color" title="光源颜色" type="inputVector"/>
         <Prop prop="mesh.color" title="颜色代码" type="inputColor" :width="120"/>
         <Prop prop="mesh.intensity" title="光照强度" type="inputNumber"
