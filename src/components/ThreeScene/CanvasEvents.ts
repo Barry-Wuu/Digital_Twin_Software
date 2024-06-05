@@ -112,6 +112,7 @@ export default defineComponent({
       let data = e.dataTransfer;
       // 隐藏拖动图像
       function findImg(DOM) {
+        if(!DOM) return;
         for (let child of DOM?.children) {
           if (child.localName == "img") { tempImg = child; return; }
           findImg(child);
@@ -406,6 +407,7 @@ export default defineComponent({
         result.add(delta);
         result = dragModel.parent.worldToLocal(result);
         dragModel.position.copy(result);
+        global.emit("controlStart", dragModel.id);
         global.emit("updateProp", {action: "wheel", mesh: dragModel});
       } else {  // 滚轮放缩镜头
         this.scene.orbitControl.enableZoom = true;

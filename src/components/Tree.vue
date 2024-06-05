@@ -48,8 +48,8 @@ import { fixControlledValue } from "ant-design-vue/es/vc-input/utils/commonUtils
         MinusSquareOutlined
       },
       data(){
-        global.on("changeWireframe", (x)=>{wireframe = x;}) 
-        global.on("clickModel", (data: {id, shift})=>{  // 点击屏幕中的物体
+        global.on("changeWireframe", x => {wireframe = x;}) 
+        global.on("clickModel", (data: {id, shift}) => {  // 点击屏幕中的物体
           let choice = data.id;
           if(data.shift){  // 按住shift为多选模式
             if(choices.value.includes(choice))  // 多选取消
@@ -298,8 +298,9 @@ import { fixControlledValue } from "ant-design-vue/es/vc-input/utils/commonUtils
         </template>
       </a-tree>  
       <!--搜索树-->
-      <a-tree v-else :tree-data="TREEs" @click.stop multiple :selectedKeys="choices"
-      @dblclick="doubleClick" @select="onClick">
+      <a-tree v-else-if="TREEs.length"
+      multiple :selectedKeys="choices" :tree-data="TREEs" 
+      @click.stop @dblclick="doubleClick" @select="onClick">
         <template #title="DT">
           <span style="margin-left: -18px">
             <BorderlessTableOutlined v-if="DT.type=='GridHelper'"/>
@@ -312,7 +313,8 @@ import { fixControlledValue } from "ant-design-vue/es/vc-input/utils/commonUtils
             <span>{{ DT.title.substring(DT.title.indexOf(searchValue) + searchValue.length) }}</span>
           </span>
         </template> 
-      </a-tree> 
+      </a-tree>
+      <a-alert v-else message="无匹配结果" style="width:100%" type="error" />
     </div>
     <!--右键菜单-->
     <template #overlay v-if="!searchValue">

@@ -127,7 +127,8 @@
       </a-collapse>
       <!--搜索列表-->
       <div v-else>
-        <a-card v-for="item of searchResult" class="model-card" draggable="true" hoverable 
+        <a-card v-if="searchResult.length" v-for="item of searchResult" 
+        class="model-card" draggable="true" hoverable 
         @dragstart="e=>transfer(e, item)">
           <div class="model-imgBorder">
             <img :src="getIMG(item)" class="model-img" draggable="false"/>
@@ -138,6 +139,7 @@
             <span>{{ str[2] }} </span>
           </div>
         </a-card>
+        <a-alert v-else message="无匹配结果" style="width:100%" type="error" />
       </div>
     </div>
     <!--右键菜单-->

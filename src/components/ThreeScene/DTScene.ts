@@ -236,11 +236,8 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
             else if(this.rigidShape == "box"){  // 方型刚体
                 this.mesh.geometry.computeBoundingBox();
                 boundingBox = this.mesh.geometry.boundingBox;
-                result = new THREE.Vector3(
-                    (boundingBox.max.x - boundingBox.min.x) * scale,
-                    (boundingBox.max.y - boundingBox.min.y) * scale,
-                    (boundingBox.max.z - boundingBox.min.z) * scale,
-                )
+                result = boundingBox.max.clone().sub(boundingBox.min);
+                result.multiplyScalar(scale);
                 geom = new THREE.BoxGeometry(result.x, result.y, result.z);
             }
             else if(this.rigidShape.includes("btBoxShape")){  // 简单几何体刚体
@@ -433,13 +430,13 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         }
         this.children = newChildren;
     }
-    updateWireframes(loadingFile = false){  // 添加线框
+    updateWireframes(loadingFile = false){  // 更新线框
         this.traverse(DT => {
             let wireframe;
-            if(loadingFile){
+            if(loadingFile){  // 读取场景时重新绑定原有的线框
                 wireframe = DT.mesh.children.filter(child=>child.DT.layers.wireframe.length)[0];  
-            } else {
-                wireframe = new THREE.BoxHelper(DT.mesh, "cyan");  // 线框
+            } else {  // 创建物体时新建线框
+                wireframe = new THREE.BoxHelper(DT.mesh, "cyan");
                 DT.mesh.add(wireframe);
             }
             if(wireframe){
@@ -570,7 +567,7 @@ export default class SceneBuilder{
         );
         this.controller.children[0].children[0].children[0].onBeforeRender = ()=>{  // 在控制器显现之前调整其位置
             // 自动将控制器移动到物体包围盒中心
-            if(attached.DT.label != "protected") {
+            if(attached?.DT.label != "protected") {
                 // 物体旋转时将控制器移到包围盒中心
             }
         };
@@ -585,47 +582,23 @@ export default class SceneBuilder{
                 this.controller.detach();
             }
         });
-        global.on("controlStart", (id)=>{  // 选中物体开始控制
+        global.on("controlStart", id => {  // 选中物体开始控制
             id = parseInt(id);  // 若id为数字字符串则转换为数字
             attached = SCENE.getObjectById(id);
             if(!global.layers().includes("controller")) return;
             SCENE.add(this.controller);
-            if(attached.DT.label != "protected") {
+            if(attached?.DT.label != "protected") {
                 this.controller.mode = "translate";  // 开始控制时总是平移
                 this.controller.space = "local";  // 开始控制时控制器的坐标系为世界坐标系
                 this.controller.attach(attached);
+                // 将控制器移动到被控制物体的包围盒中心
+                let POS = new THREE.Vector3();
+                attached.DT.mesh.getWorldPosition(POS);
+                let wireframe = attached.DT.layers.wireframe[0];
                 let center = new THREE.Vector3();
-                if(attached.isGroup) {  // 拖动Group
-                    let mesh = attached.DT.layers.wireframe[0];
-                    let arr = mesh.geometry.attributes.position.array;
-                    let xmax, ymax, zmax, xmin, ymin, zmin;
-                    for(let i=0, ai=arr[0]; i<arr.length; i++, ai=arr[i]){
-                        if (i % 3 == 0){
-                            if(ai > xmax || !xmax) xmax = ai;
-                            if(ai < xmin || !xmin) xmin = ai;
-                        }
-                        if (i % 3 == 1){
-                            if(ai > ymax || !ymax) ymax = ai;
-                            if(ai < ymin || !ymin) ymin = ai;
-                        }
-                        if (i % 3 == 2){
-                            if(ai > zmax || !zmax) zmax = ai;
-                            if(ai < zmin || !zmin) zmin = ai;
-                        }
-                    }
-                    // center.set((xmin+xmax)/2, (ymin+ymax)/2, (zmin+zmax)/2);
-                    // center.applyMatrix4(attached.matrix.invert());
-                }
-                else if(attached.geometry) {  // 拖动有geometry的物体
-                    attached.geometry.boundingBox.getCenter(center);
-                }
-                else {  // 拖动无geometry的物体，如灯光
-                    ;
-                }
-                let worldScale = center.clone;  // 总比例
-                attached.getWorldScale(worldScale);
-                center.multiplyScalar(worldScale.x);
-                this.controller.position.copy(center);
+                wireframe.geometry.boundingBox.getCenter(center);
+                center = attached.DT.mesh.localToWorld(center);
+                this.controller.position.copy(center.sub(POS));
             }
             else global.emit("controlEnd");  // 点击地面等则移除控制器
         });
