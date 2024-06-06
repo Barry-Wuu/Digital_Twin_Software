@@ -28,23 +28,23 @@ var attached;  // 控制器附着的物体
 var BottomFPS, BottomTimer;
 let customModels = {};
 let attachObjects = new THREE.Group();
-var DTObjects = ref([]);
+const DTObjects = ref([]);
 var emulateMode = "stop";  // 仿真模式
 var frameCounter = 0;  // 帧计数器，计满60帧近似看做1秒
 var frames = 0;  // 帧率计算
 let front = new THREE.Vector3(); 
 var groundColor = "azure";
 var groundSize = 250;  // 地面范围：-groundSize ≤ x ≤ groundSize，-groundSize ≤ y ≤ groundSize
+var Ground = new THREE.Plane(UP);  // 平面z=0
 var loader = new STLLoader();
 var loading = false;
 const model_definition = modelData.model_definition;
 var origin = new THREE.Vector3(0, 0, 0);
-const ray = new THREE.Raycaster();  // 射线检测器
-var SCENE = new THREE.Scene();
+const SCENE = new THREE.Scene();
 var speed = 1;
 var temp = false;
 var UP = new THREE.Vector3(0, 0, 1);  // z轴朝上
-var Ground = new THREE.Plane(UP);  // 平面z=0
+const zeroVector_Ammo = new Ammo.btVector3();
 
 // 物理量
 var animate;
@@ -127,7 +127,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
     title: string  // 标题 = 物体类型 + 名称 + 序号（自动计算）
     type: string  // 物体的网格类型
     v0: number  // 传送带中轴线速度
-    constructor(mesh=null, newScene=false, asset=null) {  
+    constructor(mesh=null, addToScene=false, asset=null) {  
         if(mesh){
             this.id = this.key = mesh.id;
             this.mesh = mesh;
@@ -140,7 +140,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
                 this.material = mesh.material;
             }
         }
-        if(newScene) DTObjects.value.push(this);
+        if(addToScene) DTObjects.value.push(this);
         return this;
     }  
     clearLoads() {  // 重置仿真动画时遍历清除所有在制品
@@ -150,7 +150,7 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
         }
     }
     clone() {  // 保存时返回去除一些属性的DTObject，以节省DTObject文件大小
-        let newDTObject = new DTObject(null);
+        let newDTObject: any = new DTObject(null);
         for(let prop in this){
             if(this[prop] == undefined) continue;
             else if(prop == "children"){
@@ -389,8 +389,9 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
     }
     setTitle(name=null) {  // 物体在树中的标题 = 类型 + 名称 
         let title = '';
-        if(this.type == "DirectionalLight") title = "平行光";
-        else if(this.type == "AmbientLight") title = "环境光";
+        if(this.type == "AmbientLight") title = "环境光";
+        else if(this.type == "DirectionalLight") title = "平行光";
+        else if(this.type == "Group") title = "群组";
         else if(this.mesh.userData.ground) title = "地面";
         else if(this.name) {  // 若标题太长则截取20个字符
             if(this.name.length <= 20) title = this.name;
@@ -429,6 +430,21 @@ export class DTObject {  // 用DTObject类包裹场景中的对象
             childDT.updateChildren(loadingFile);
         }
         this.children = newChildren;
+    }
+    updateGroupWireframes(){  // 更新Group的线框
+        this.traverse(DT => {
+            if(DT.type != "Group") return;
+            let visible, wireframe = DT.layers.wireframe[0];
+            if(wireframe) {  // 清理原有的线框
+                visible = wireframe.visible;
+                wireframe.removeFromParent();
+                wireframe.dispose();
+            }
+            wireframe = new THREE.BoxHelper(DT.mesh, "cyan");  // 更新线框
+            DT.mesh.attach(wireframe);
+            wireframe.visible = visible;
+            DT.layers.wireframe = [wireframe];
+        })
     }
     updateWireframes(loadingFile = false){  // 更新线框
         this.traverse(DT => {
@@ -558,7 +574,6 @@ export default class SceneBuilder{
         this.cameraOrtho.up.copy(UP);  // 在相机里让z轴向上
         // 平行光
         this.createLight("DirectionalLight", -16, -16, 24);
-        global.on("createLight", (type)=>{this.createLight(type)});
         // 物体控制器 
         this.controller = new TransformControls(this.camera, cssRendererDOM);
         this.controller.size = 0.8;
@@ -592,13 +607,16 @@ export default class SceneBuilder{
                 this.controller.space = "local";  // 开始控制时控制器的坐标系为世界坐标系
                 this.controller.attach(attached);
                 // 将控制器移动到被控制物体的包围盒中心
-                let POS = new THREE.Vector3();
-                attached.DT.mesh.getWorldPosition(POS);
-                let wireframe = attached.DT.layers.wireframe[0];
-                let center = new THREE.Vector3();
-                wireframe.geometry.boundingBox.getCenter(center);
-                center = attached.DT.mesh.localToWorld(center);
-                this.controller.position.copy(center.sub(POS));
+                if(!attached.isLight){
+                    let POS = new THREE.Vector3();
+                    attached.getWorldPosition(POS);
+                    let wireframe = attached.DT.layers.wireframe[0];
+                    let center = new THREE.Vector3();
+                    wireframe.geometry.computeBoundingBox();
+                    wireframe.geometry.boundingBox.getCenter(center);
+                    center = attached.localToWorld(center);
+                    this.controller.position.copy(center.sub(POS));
+                }
             }
             else global.emit("controlEnd");  // 点击地面等则移除控制器
         });
@@ -700,6 +718,25 @@ export default class SceneBuilder{
             this.outlinePass.resolution.set(options.width, options.height);
             antialiasingPass.uniforms["resolution"].value.set(1/width, 1/height);
         })
+        // 创建物体
+        global.on("createMesh", type => {
+            let mesh, DT;
+            if(type.includes("Light")) mesh = this.createLight(type);  // 创建灯光
+            else{
+                if(type == "Group") {  // 创建群组
+                    mesh = new THREE.Group();
+                }
+                SCENE.add(mesh);
+                DT = new DTObject(mesh, true);
+                DT.setTitle();
+                DT.updateWireframes();
+            }
+            global.emit("clickModel", {id:mesh.id, shift:false});  // 创建物体后模拟点击该物体
+        });
+        // 更新群组包围盒
+        global.on("updateGroupWireframes", ()=>{
+            // SCENE.DT.updateGroupWireframes();
+        })
         // 快捷键设置
         this.canvas.addEventListener("keydown", e => {
             if(global.mode() == "edit"){  // 在编辑模式下
@@ -776,7 +813,8 @@ export default class SceneBuilder{
                     this.controller.getWorldPosition(centerDelta);
                     center.add(centerDelta);
                     // 求相机到物体的距离d与d*相机朝向
-                    let r = targetObject.DT.geometry.boundingSphere.radius;  // 包围球半径
+                    let r = targetObject.DT.geometry?.boundingSphere.radius;  // 包围球半径
+                    if(!r || targetObject.DT.label == "protected") r = 0;
                     d = r * targetObject.DT.scale * 2.5;  // 距离 = 包围球半径 * 物体缩放 * 2.5
                     d = Math.max(d, 5);  // 让相机不能离物体太近
                     this.camera.getWorldDirection(front);
@@ -917,6 +955,7 @@ export default class SceneBuilder{
         lightDT.icon = lightDOM; 
         if(arrow) lightDT.layers.lightArrow = [arrow];
         lightDT.setTitle();
+        return light;
     }
     createMeshFromAsset(DT, position){  // 定义从组件库中拖入的组件的物体属性
         let mesh0 = DT.mesh.clone();
@@ -1250,6 +1289,8 @@ export default class SceneBuilder{
                 const motionState = rb.getMotionState();
                 if (motionState) {
                     if(DT.mass == 0 || DT.rigidFollow){  // 强制让刚体姿态等于网格姿态
+                        rb.setLinearVelocity(zeroVector_Ammo);  // 将物体的速度清零
+                        rb.setAngularVelocity(zeroVector_Ammo);  // 将物体的角速度清零  
                         if(DT.rigidShape = "box") 
                             updateRigidbodyTransform(DT.layers.rigidHelper[0], true);
                         else

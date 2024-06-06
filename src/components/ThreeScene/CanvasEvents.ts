@@ -2,10 +2,6 @@ import { defineComponent, ref, watch } from "vue"
 import * as THREE from "three"
 import DTScene from "./DTScene"
 import global from "../../Global"
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { LuminosityShader } from 'three/examples/jsm/shaders/LuminosityShader.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 
 const storedattachObjects = localStorage.getItem('attachObjects');
 const attachObjects = JSON.parse(storedattachObjects);
@@ -281,7 +277,7 @@ export default defineComponent({
           dragModel.material.opacity = tempOpacity;
           tempOpacity = null;
         }
-        if (dragModel.DT.rb) dragModel.DT.rigidFollow = false;  // 让网格跟随刚体
+        if (dragModel.DT.rb) {}  // 让网格跟随刚体
         else if (dragModel.DT.rigidShape) {
           dragModel.DT.createRigidBody();
           this.scene.DTObjects.value.push(dragModel.DT);
@@ -326,7 +322,6 @@ export default defineComponent({
               tempModel = dragModel.clone();
               tempOpacity = dragModel.material.opacity;
               isDrag = true;
-              if (dragModel.DT.rb) dragModel.DT.rigidFollow = true;  // 让刚体跟随网格
             } 
             else if(e.target.localName == "div") global.emit("deselect");  // 避免点击img时取消选择
           }
@@ -377,6 +372,7 @@ export default defineComponent({
         this.onDrop();
         isDrag = false;
       }
+      global.emit("updateGroupWireframes");
       global.emit("updateProp", {action:"mouseup"});
     },
     onPointerdown(e){
@@ -408,6 +404,7 @@ export default defineComponent({
         result = dragModel.parent.worldToLocal(result);
         dragModel.position.copy(result);
         global.emit("controlStart", dragModel.id);
+        global.emit("updateGroupWireframes");
         global.emit("updateProp", {action: "wheel", mesh: dragModel});
       } else {  // 滚轮放缩镜头
         this.scene.orbitControl.enableZoom = true;
