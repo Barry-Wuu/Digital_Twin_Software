@@ -4,7 +4,7 @@
   import { ref } from 'vue'
   import colorRing from "../assets/icons/colorRing.jpg"
   import tubeIcon from "../assets/icons/吸管.jpg"
-import { progressProps } from "ant-design-vue/es/progress/props"
+  import { CaretDownOutlined, CheckOutlined } from '@ant-design/icons-vue';
 
   const chosenProp = ref('');
   var colorEdit = '';
@@ -35,7 +35,8 @@ import { progressProps } from "ant-design-vue/es/progress/props"
       type: {},
       width: {default: 80},
     },
-    computed:{  // 计算属性
+    components: {CaretDownOutlined, CheckOutlined},
+    computed: {  // 计算属性
       computedProp: {
         get() {
           if(chosenProp.value == this.prop) return input_value.value;  // 编辑中
@@ -181,6 +182,7 @@ import { progressProps } from "ant-design-vue/es/progress/props"
         else {eval(`${prop} = ${result}`);}
         this.$emit("change");
         global.emit("controlStart", DT.value.id);
+        global.emit("updateGroupWireframes");
         chosenProp.value = null;  // 结束编辑
       },   
       format(prop, N=1){  // 将输出参数格式化
@@ -488,6 +490,34 @@ import { progressProps } from "ant-design-vue/es/progress/props"
         <img :src="tubeIcon" class="tube" @click="getColor" :draggable="false"
         :title="help.tube"/>
       </span>
+    </span> 
+
+    <!--运动姿态-->
+    <span v-else-if="type=='follow'">
+      <a-dropdown-button :trigger="['click']">
+        <a class="ant-dropdown-link" @click.prevent>
+          {{ DT.rigidFollow ? "跟随物体" : "跟随刚体" }}
+        </a>
+        <template #icon><CaretDownOutlined/></template>
+        <template #overlay>
+          <a-menu>
+            <a-menu-item>
+              <a :style="{'color': DT.rigidFollow ? '#bbbbbb' : 'black'}" 
+              @click="DT.rigidFollow = true">
+                跟随物体
+                <CheckOutlined v-if="DT.rigidFollow"/>
+              </a>
+            </a-menu-item>
+            <a-menu-item>
+              <a :style="{'color': DT.rigidFollow ? 'black' : '#bbbbbb'}"
+              @click="DT.rigidFollow = false">
+                跟随刚体
+                <CheckOutlined v-if="!DT.rigidFollow"/>
+              </a>
+            </a-menu-item>
+          </a-menu>
+        </template>
+      </a-dropdown-button>
     </span> 
 
     <!--只显示向量-->

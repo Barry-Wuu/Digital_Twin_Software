@@ -12,7 +12,6 @@
         PlusSquareOutlined,
         MinusSquareOutlined
     } from '@ant-design/icons-vue';
-import { fixControlledValue } from "ant-design-vue/es/vc-input/utils/commonUtils";
     import { computed, defineComponent, ref, watch } from 'vue';
 
     var choices = ref([]);  // 已选项，内为各个被选中模型的ID
@@ -55,13 +54,16 @@ import { fixControlledValue } from "ant-design-vue/es/vc-input/utils/commonUtils
             if(choices.value.includes(choice))  // 多选取消
               choices.value = choices.value.filter(k => k != choice);
             else choices.value.push(choice);  // 多选选择
-            if(choices.value.length == 1)  // 只有一个物体被选时控制该物体
+            if(choices.value.length == 1){  // 只有一个物体被选时控制该物体
               global.emit("controlStart", choices.value[0]);
+              global.emit("updateGroupWireframes");
+            }
             else global.emit("controlEnd");  // 选中多个物体时收起控制器
           }
           else{  // 单选
             choices.value = [choice];
             global.emit("controlStart", choice);  // 选中物体开始控制
+            global.emit("updateGroupWireframes");
           }
         });
         global.on("deselect", ()=>{this.deselect()});  // 取消选择
@@ -82,12 +84,12 @@ import { fixControlledValue } from "ant-design-vue/es/vc-input/utils/commonUtils
           let option = e.key;
           var DT;
           if(option == "取消选择") choices.value = []; 
-          if(option == "添加平行光"){
-            global.emit("createLight", "DirectionalLight");
-          }
-          if(option == "添加环境光"){
-            global.emit("createLight", "AmbientLight");
-          }
+          if(option == "创建群组")
+            global.emit("createMesh", "Group");
+          if(option == "创建平行光")
+            global.emit("createMesh", "DirectionalLight");
+          if(option == "创建环境光")
+            global.emit("createMesh", "AmbientLight");
           if(option == "克隆"){
             if(!choices.value.includes(DT.id)) choices.value = [DT.id]
             let temp = []
@@ -162,6 +164,7 @@ import { fixControlledValue } from "ant-design-vue/es/vc-input/utils/commonUtils
           else {  // 单选
             choices.value = [selection];
             global.emit("controlStart", selection);  // 选中物体开始控制
+            global.emit("updateGroupWireframes");
             lastChoice = selection;
           }
         },
@@ -271,7 +274,6 @@ import { fixControlledValue } from "ant-design-vue/es/vc-input/utils/commonUtils
       :selectedKeys="choices" 
       :tree-data="TREE" 
       style="margin-left: 6px"
-      @contextmenu="e=>console.log(e)"
       @dblclick="doubleClick" @expand="update" @select="onClick"
       @dragstart="dragFrom" @drop="dragTo">
         <!--各个结点-->
@@ -320,9 +322,10 @@ import { fixControlledValue } from "ant-design-vue/es/vc-input/utils/commonUtils
     <template #overlay v-if="!searchValue">
       <a-menu @click="action">
         <a-menu-item :disabled="!choices.length" key="取消选择">取消选择</a-menu-item>
-        <a-sub-menu title="添加">
-          <a-menu-item key="添加平行光">平行光</a-menu-item>
-          <a-menu-item key="添加环境光">环境光</a-menu-item>
+        <a-sub-menu title="创建">
+          <a-menu-item key="创建群组">群组</a-menu-item>
+          <a-menu-item key="创建平行光">平行光</a-menu-item>
+          <a-menu-item key="创建环境光">环境光</a-menu-item>
         </a-sub-menu>
         <a-menu-item key="全部展开">全部展开</a-menu-item>
         <a-menu-item key="全部折叠">全部折叠</a-menu-item>
