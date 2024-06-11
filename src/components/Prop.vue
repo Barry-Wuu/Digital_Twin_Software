@@ -303,7 +303,7 @@
       global.on("changeProperty", (data)=>{chosenProp.value = data});
       global.on("showProperty", (data)=>{
         if('未已'.includes(data[0])) DT.value = data;
-        else if(typeof data == "number") DT.value = global.DTScene().findDTObjectById(data);
+        else if(typeof data == "number") DT.value = global.SCENE().DT.findDTObjectById(data);
         else DT.value = data;
       });
       global.on("updateProp", (data)=>{  // 拖动物体时在属性栏实时更新其位移和旋转属性
