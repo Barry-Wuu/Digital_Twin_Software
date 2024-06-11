@@ -79,7 +79,7 @@
     },
     mounted(){
       for(let node of helpTree){node.title = node.key}
-      global.on("popup", (obj)=>{  // 显示弹窗，弹窗类型由obj.type决定
+      global.on("popup", (obj:any)=>{  // 显示弹窗，弹窗类型由obj.type决定
         DT.value = obj.DT;
         yesNoContent.value = obj.type == "yes_no" ? obj : null;  // 显示“是否确认重命名组件”窗口
         if(popupContent.value == obj.type) this.closePopup();
@@ -301,7 +301,7 @@
       v-model="newCode"
       v-on="this.$nextTick(()=>{setCustomCodeFont(customCodeFont)})"
       @keydown="(e)=>{ 
-        let textarea = e.target;
+        let textarea: any = e.target;
         let insert = '';
         const start = textarea.selectionStart;  
         const end = textarea.selectionEnd;  

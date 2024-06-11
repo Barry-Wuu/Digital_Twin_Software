@@ -30,6 +30,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     material: THREE.object  // 模型材质
     mesh: THREE.object  // 模型网格
     name: string  // 名称
+    physicalID = '0'  // 物理实体ID，可编辑
     rb: Ammo  // 刚体
     rigidShape: string | string[]  // 刚体网格，设成字符串易于存取，若为convex则刚体为mesh的凸集
     rigidFollow = false  // 若为是则让刚体强制跟随网格，否则默认让网格跟随刚体

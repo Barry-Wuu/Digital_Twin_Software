@@ -30,6 +30,7 @@
         VideoCameraOutlined,
     } from "@ant-design/icons-vue";
 
+    import HttpServer from "./HttpServer/HttpServer"
     var BottomMessage;
     var BottomSpeed;
     const cameraMode = ref("透视");
@@ -40,6 +41,7 @@
     var fileOutput;  // 文件保存器
     const GLTFexporter = new GLTFExporter();
     const GLTFloader = new GLTFLoader();
+    var httpServerProcess = null; // 用于保存http-server进程的引用 
     const Layers = ref([
         "special", 
         "WIP", 
@@ -214,6 +216,14 @@
                 }) 
             },
             message(data){ BottomMessage.textContent = data; },
+            reload(){  // 重新加载
+                global.emit("popup", {  // 弹窗询问是否重命名
+                    type: "yes_no",
+                    content: "确定要重载界面吗？",
+                    yes: ()=>{this.ipcRenderer('reload')},  // 确认重命名
+                    no: ()=>{},  // 取消重命名
+                });
+            },
             saveScene(target=null, DTObjects="src/temp/DTObjects.txt", Scene="src/temp/Scene.txt"){
                 let DTScene = global.SCENE.DT;
                 // 暂时移除姿态控制器
@@ -305,7 +315,7 @@
                 );
                 viewName.value = '';
                 this.viewSave();
-            }
+            },
         },
         setup() {
             const selectedKey = ref([]);
@@ -322,6 +332,8 @@
             fileOutput = document.getElementById("fileOutput");
             fileOutput.download = this.savepath;
             global.layers = Layers.value;
+            httpServerProcess = new HttpServer(13579);  // 启动http服务
+
             try {  // 有历史打开记录和自定义视角则加载
                 let file;
                 file = fs.readFileSync("src/recentOpened.txt", "utf-8"); 
@@ -330,21 +342,23 @@
                 customViews.value = JSON.parse(file);
             } 
             catch {}
+
             global.on("saveInitScene", ()=>{this.saveScene("src/temp/New.DTScene")});
-        },
-        destroyed(){  // 退出时清理临时文件（src/temp文件夹）
-            function deleteFolder(path) {
-                if (fs.existsSync(path)) {
-                    fs.readdirSync(path).forEach(function(file) {
-                        const curPath = path + '/' + file;
-                        if (fs.lstatSync(curPath).isDirectory()) deleteFolder(curPath); // 递归删除文件夹
-                        else fs.unlinkSync(curPath); // 删除文件
-                    });
-                    fs.rmdirSync(path); // 删除空文件夹
+            window.addEventListener("beforeunload", () => {  // 退出时清理临时文件（src/temp文件夹）
+                function deleteFolder(path) {
+                    if (fs.existsSync(path)) {
+                        fs.readdirSync(path).forEach(function(file) {
+                            const curPath = path + '/' + file;
+                            if (fs.lstatSync(curPath).isDirectory()) deleteFolder(curPath); // 递归删除文件夹
+                            else fs.unlinkSync(curPath); // 删除文件
+                        });
+                        fs.rmdirSync(path); // 删除空文件夹
+                    }
                 }
-            }
-            deleteFolder("src/temp");
-        }
+                deleteFolder("src/temp");
+                httpServerProcess.kill();
+            });
+        },
     });
 </script>
 
@@ -515,12 +529,13 @@
         <div style="align-items:center; display:inline; height:100%" class="bottom marginLR5">
             <span style="align-items:center; display:flex; 
             height: calc(100% - 35px); justify-content:space-evenly;" class="bottom">
-                <!--重载界面-->
-                <div class="logo marginLR10 top16" @click="()=>{ipcRenderer('reload')}"
+                <!--重新加载-->
+                <div class="logo marginLR10 top16" @click="reload"
                 @mousedown.prevent @mouseenter = "lightON" @mouseleave = "lightOFF">
                     <ReloadOutlined class="logoBig"/>
-                    <br>重载界面
+                    <br>重新加载
                 </div>
+
                 <!--帮助-->
                 <div class="logo marginLR10 top16" @click="global.emit('popup', {type:'help'})"
                 @mousedown.prevent @mouseenter = "lightON" @mouseleave = "lightOFF">

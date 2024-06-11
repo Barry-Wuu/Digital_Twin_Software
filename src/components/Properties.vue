@@ -24,7 +24,7 @@
     mounted(){
       global.on("hideProperty", ()=>DT.value = "未选择物体");  // 清空属性
       global.on("showMultipleProperty", (x)=>DT.value = `已选择${x}个物体`);  // 选择多个物体
-      global.on("showProperty", (id)=>{  // 显示单个物体的属性
+      global.on("showProperty", (id: any)=>{  // 显示单个物体的属性
         id = parseInt(id);  // 若id为数字字符串则转换为数字
         DT.value = global.SCENE.DT.findDTObjectById(id);
       });
@@ -50,7 +50,8 @@
       <!--基本属性-->
       <a-collapse-panel header="基本属性" key="基本属性">
         <Prop prop="type" title="物体类型"/>
-        <Prop prop="id" title="物体ID" :options="{fixed:0}"/>
+        <Prop prop="id" title="物体网格ID" :options="{fixed:0}"/>
+        <Prop prop="physicalID" title="物理实体ID" type="inputString" width="120"/>
         <Prop prop="name" title="物体名称"/>
         <Prop prop="label" title="物体标签"/>
         <Prop prop="mesh.visible" title="是否可见" type="checkbox"/>
@@ -61,16 +62,16 @@
         :options="{delta:1, min:0.01, max:100}"/>
         <Prop v-else prop="scale" title="比例"/>
         <Prop prop="mesh.color" title="光源颜色" type="inputVector"/>
-        <Prop prop="mesh.color" title="颜色代码" type="inputColor" :width="120"/>
+        <Prop prop="mesh.color" title="颜色代码" type="inputColor" width="120"/>
         <Prop prop="mesh.intensity" title="光照强度" type="inputNumber"
         :options="{delta:0.1, min:0}"/>
         <Prop prop="timeInterval" title="发生时间间隔" type="inputNumber"
         :options="{delta:0.01, min:1, max:10, suffix:'s', unit:1000}"/>
-        <Prop prop="skybox.skyColor" title="天空颜色" type="inputColor" :width="120"
+        <Prop prop="skybox.skyColor" title="天空颜色" type="inputColor" width="120"
         @change="global.emit('updateSkybox')"/>
-        <Prop prop="skybox.skyline" title="天际线颜色" type="inputColor" :width="120"
+        <Prop prop="skybox.skyline" title="天际线颜色" type="inputColor" width="120"
         @change="global.emit('updateSkybox')"/>
-        <Prop prop="skybox.groundColor" title="底面颜色" type="inputColor" :width="120"
+        <Prop prop="skybox.groundColor" title="底面颜色" type="inputColor" width="120"
         @change="global.emit('updateSkybox')"/>
       </a-collapse-panel>
 
@@ -109,7 +110,7 @@
         <Prop prop="mesh.material.type" title="材质类型"/>
         <Prop prop="mesh.material.color" title="材质颜色" type="inputVector"
         @change="changeFogColor"/>
-        <Prop prop="mesh.material.color" title="颜色代码" type="inputColor" :width="120"
+        <Prop prop="mesh.material.color" title="颜色代码" type="inputColor" width="120"
         @change="changeFogColor"/>
         <Prop prop="mesh.material.opacity" title="透明度" type="inputNumber"
         :options="{fixed:0, min:0, max:100, suffix:'%', unit:0.01}"/>

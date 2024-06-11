@@ -126,7 +126,7 @@
         deselect(){  // 点别处取消点选模型
           global.emit("deselectAsset");
           choices.value = [];
-          global.emit("controlEnd", 5);  // 收起控制器
+          global.emit("controlEnd");  // 收起控制器
           global.emit("hideProperty");  // 清空属性栏
         },
         doubleClick(){  // 双击将相机拉近至物体
