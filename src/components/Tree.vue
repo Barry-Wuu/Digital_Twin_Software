@@ -71,9 +71,9 @@
         global.on("foldAll", ()=>{this.foldAll()});
         global.on("updateSearch", ()=>{this.search(TREE.value)});
         global.on("updateTree", ()=>{
-          try {global.SCENE().DT.setRow(expanded.value);} 
+          try {global.SCENE.DT.setRow(expanded.value);} 
           catch(e) {console.log(e)}
-          let DTScene = global.SCENE().DT;
+          let DTScene = global.SCENE.DT;
           DTObjects = DTScene.getDTObjects();         
           TREE.value = [DTScene];
         });
@@ -117,7 +117,7 @@
         },
         deleteChoices(){
           for(let id of choices.value){
-            let DTObject = global.SCENE().DT.findDTObjectById(id);
+            let DTObject = global.SCENE.DT.findDTObjectById(id);
             if(DTObject) DTObject.destroy();
           }
           global.emit("hideProperty");  // 清空属性栏
@@ -138,7 +138,7 @@
           if(!targetDT.children.includes(sourceDT)){
             targetDT.mesh.attach(sourceDT.mesh);  // attach方法改变父子关系，同时不改变物体的绝对坐标
             //sourceDT.mesh.scale.setScalar(1, 1, 1);
-            global.SCENE().DT.updateChildren();
+            global.SCENE.DT.updateChildren();
             if(!expanded.value.includes(targetDT.key)) expanded.value.push(targetDT.key);
             this.updateLine();
           }
@@ -184,20 +184,20 @@
           emitProperty();
           if(wireframe == "包围盒"){  // 更新物体包围盒线框
             global.emit("hideEdgeGlow");  // 熄灭被选中物体的边缘
-            for(let DT of global.SCENE().DT.getDTObjects()){
+            for(let DT of global.SCENE.DT.getDTObjects()){
               let chosen = choices.value.includes(DT.id);
               if(DT.layers.wireframe.length) 
                 DT.layers.wireframe[0].visible = chosen;
               else if(DT.mesh.isLight){  // 更新光源图标的边框与箭头的可见度
                 let arrow = DT.mesh.children.filter(mesh => mesh.type == "ArrowHelper")[0];
-                if(arrow) arrow.visible = chosen && global.layers().includes("lightArrow");
+                if(arrow) arrow.visible = chosen && global.layers.includes("lightArrow");
                 let icon = DT.mesh.children.filter(mesh => mesh.isCSS2DObject)[0].element;
                 if(icon) icon.style.border = chosen ? "1px solid cyan" : "";
               }
             };
           }
           if(wireframe == "边缘发光"){  // 点亮被选中物体的边缘
-            global.emit("setEdgeGlow", global.SCENE().DT.getDTObjects()
+            global.emit("setEdgeGlow", global.SCENE.DT.getDTObjects()
               .filter(DT => choices.value.includes(DT.id))
               .map(DT => DT.mesh)
             );

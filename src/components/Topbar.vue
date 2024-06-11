@@ -134,11 +134,11 @@
                 let layers = Layers.value;  // 显示的图层，其用中文名表示
                 let show = !layers.includes(layer);  // 显示或隐藏
                 layers = show ? [...layers, layer] : layers.filter(item => item!=layer);  // 更改显示图层
-                global.updateLayers(layers);
+                global.layers = layers;
                 if(layer == "controller") global.emit("changeControllerVisibility", show);
                 else if(layer == "gizmo") global.emit("changeGizmoVisibility", show);
                 else{
-                    for(let DT of global.SCENE().DT.getDTObjects()){
+                    for(let DT of global.SCENE.DT.getDTObjects()){
                         if(layer in DT.layers){
                             for(let mesh of DT.layers[layer]){
                                 mesh.visible = show;
@@ -200,7 +200,7 @@
                     });  
                     Promise.all(promises).then(()=>{  // 文件全部解压完后读取解压文件  
                         GLTFloader.load("src/temp/Scene.txt", (file)=>{
-                            let DTScene = global.SCENE().DT;
+                            let DTScene = global.SCENE.DT;
                             let obj = fs.readFileSync("src/temp/DTObjects.txt", "utf-8");
                             DTScene.copyFrom(JSON.parse(obj), true);
                             let scene = file.scene;
@@ -215,7 +215,7 @@
             },
             message(data){ BottomMessage.textContent = data; },
             saveScene(target=null, DTObjects="src/temp/DTObjects.txt", Scene="src/temp/Scene.txt"){
-                let DTScene = global.SCENE().DT;
+                let DTScene = global.SCENE.DT;
                 // 暂时移除姿态控制器
                 let children = DTScene.mesh.children;
                 let controller = children.filter(mesh => mesh.isTransformControls)[0];
@@ -267,14 +267,14 @@
                 fs.writeFileSync("src/recentOpened.txt", JSON.stringify(recent));
             },
             setMode(newMode){  // 切换编辑/浏览模式
-                global.setMode(newMode);
+                global.mode = newMode;
                 mode.value = newMode;
             },
             viewAdd(){  // 新建视角
                 customViews.value.push({
                     name: viewName.value,
-                    position: global.camera().position.clone(),
-                    target: global.camera().userData.orbitControl.target.clone()
+                    position: global.camera.position.clone(),
+                    target: global.camera.userData.orbitControl.target.clone()
                 });
                 customViews.value.sort(  // 将视角按名称拼音排序
                     (a,b) => a.name.localeCompare(b.name, 'zh-cn', {sensitivity:'accent'})
@@ -296,8 +296,8 @@
                 if(e.key == "新增视角" || e.key == "移除视角") return;
                 viewName.value = e.key;
                 let view = customViews.value.filter(item => item.name==e.key)[0];
-                global.camera().position.copy(view.position);
-                global.camera().userData.orbitControl.target.copy(view.target);
+                global.camera.position.copy(view.position);
+                global.camera.userData.orbitControl.target.copy(view.target);
             },
             viewDelete(){  // 移除视角
                 customViews.value = customViews.value.filter(
@@ -321,7 +321,7 @@
             fileInput = document.getElementById("fileInput");
             fileOutput = document.getElementById("fileOutput");
             fileOutput.download = this.savepath;
-            global.updateLayers(Layers.value);
+            global.layers = Layers.value;
             try {  // 有历史打开记录和自定义视角则加载
                 let file;
                 file = fs.readFileSync("src/recentOpened.txt", "utf-8"); 

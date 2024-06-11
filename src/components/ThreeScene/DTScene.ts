@@ -62,14 +62,14 @@ const broadphase = new Ammo.btDbvtBroadphase();
 const collisionConfiguration = new Ammo.btDefaultCollisionConfiguration(); 
 const dispatcher = new Ammo.btCollisionDispatcher( collisionConfiguration );
 const solver = new Ammo.btSequentialImpulseConstraintSolver();
-global.setPhysicsWorld(new Ammo.btDiscreteDynamicsWorld(
+global.physicsWorld = new Ammo.btDiscreteDynamicsWorld(
     dispatcher, broadphase, solver, collisionConfiguration
-));
-global.physicsWorld().setGravity( G );
+);
+global.physicsWorld.setGravity( G );
 
 global.on("changeEmulateMode", (mode: string)=>{emulateMode = mode});
 global.on("changeSpeed", (k: string)=>{speed = parseInt(k.slice(0, k.length-1))});
-global.on("clearLoads", ()=>{global.SCENE().DT.clearLoads()});
+global.on("clearLoads", ()=>{global.SCENE.DT.clearLoads()});
 global.on("loading", ()=>{loading = true});
 
 export default class SceneBuilder{
@@ -97,17 +97,17 @@ export default class SceneBuilder{
         this.canvas = canvas;
 
         // 场景
-        new DTObject(global.SCENE(), true);
-        global.SCENE().DT.skybox = {
+        new DTObject(global.SCENE, true);
+        global.SCENE.DT.skybox = {
             skyColor: new THREE.Color("skyblue"), 
             skyline: new THREE.Color("white"), 
             groundColor: new THREE.Color("darkkhaki"), 
         };
-        global.SCENE().DT.label = "protected";
+        global.SCENE.DT.label = "protected";
         // 物体数量变化时
-        watch(computed(()=>global.DTObjects().value.length), ()=>{  // 只检测DTObjects的长度变化
+        watch(computed(()=>global.DTObjects.value.length), ()=>{  // 只检测DTObjects的长度变化
             if(loading) return;
-            global.SCENE().DT.updateChildren();
+            global.SCENE.DT.updateChildren();
             global.emit("updateTree");
             if(!temp) global.emit("saveInitScene");
             temp = true;
@@ -137,7 +137,7 @@ export default class SceneBuilder{
         this.cameraPersp.lookAt(0, 0, 0);
         this.cameraPersp.up.copy(UP);  // 在相机里让z轴向上
         this.camera = this.cameraPersp;
-        global.setCamera(this.camera);
+        global.camera = this.camera;
         global.on("cameraMoveTo", (id)=>{  // 双击将相机拉近至物体
             moveToId = id;
         });   
@@ -145,7 +145,7 @@ export default class SceneBuilder{
             let camera = this.camera;  // 前一个相机
             let position = camera.position;
             let target = this.orbitControl.target;
-            let visible = global.layers().includes("gizmo");
+            let visible = global.layers.includes("gizmo");
             this.camera = {"透视": this.cameraPersp, "正交": this.cameraOrtho} [data];
             this.camera.position.copy(position);
             this.gizmoPersp.visible = visible && data == "透视";
@@ -205,19 +205,19 @@ export default class SceneBuilder{
         global.on("changeControllerVisibility", (x)=>{  // 改变控制器的可见性
             this.controller.visible = x;
             if(x && attached){  // 显示控制器时将其添加回场景
-                global.SCENE().add(this.controller);
+                global.SCENE.add(this.controller);
                 this.controller.attach(attached); 
             }
             if(!x && attached){  // 隐藏控制器时将其移除出场景，以免其仍能被选中
-                global.SCENE().remove(this.controller);
+                global.SCENE.remove(this.controller);
                 this.controller.detach();
             }
         });
         global.on("controlStart", id => {  // 选中物体开始控制
             id = parseInt(id);  // 若id为数字字符串则转换为数字
-            attached = global.SCENE().getObjectById(id);
-            if(!global.layers().includes("controller")) return;
-            global.SCENE().add(this.controller);
+            attached = global.SCENE.getObjectById(id);
+            if(!global.layers.includes("controller")) return;
+            global.SCENE.add(this.controller);
             if(attached?.DT.label != "protected") {
                 this.controller.mode = "translate";  // 开始控制时总是平移
                 this.controller.space = "local";  // 开始控制时控制器的坐标系为世界坐标系
@@ -240,7 +240,7 @@ export default class SceneBuilder{
             if(!attached) return;
             attached.DT.setProp();
             attached = null;
-            global.SCENE().remove(this.controller);
+            global.SCENE.remove(this.controller);
             this.controller.detach();
             this.controller.setMode("translate");  // 取消选择时把控制器恢复为平移模式
         });
@@ -270,12 +270,12 @@ export default class SceneBuilder{
         )`;
         this.ground.DT.createRigidBody();
         DTGround.setTitle("地面");
-        global.SCENE().add(this.ground);
+        global.SCENE.add(this.ground);
 
         // 网格
         const gridHelper = new THREE.GridHelper(500, 100, groundColor, "#AAAAAA");
         gridHelper.rotateX(Math.PI/2);
-        global.SCENE().add( gridHelper );
+        global.SCENE.add( gridHelper );
         gridHelper.position.z = 0.01;
 
         // 正主坐标轴（不包括z轴）
@@ -284,13 +284,13 @@ export default class SceneBuilder{
             new THREE.Vector3( 0, 0, 0.02 )
         ]);
         const lineXMaterial = new THREE.LineBasicMaterial({color: "red"});
-        global.SCENE().add( new THREE.Line( lineXGeometry, lineXMaterial ) );
+        global.SCENE.add( new THREE.Line( lineXGeometry, lineXMaterial ) );
         let lineYGeometry = new THREE.BufferGeometry().setFromPoints([
             new THREE.Vector3( 0, groundSize, 0.02 ),
             new THREE.Vector3( 0, 0, 0.02 )
         ]);
         let lineYMaterial = new THREE.LineBasicMaterial({color: "#0B0"});
-        global.SCENE().add( new THREE.Line( lineYGeometry, lineYMaterial ) );
+        global.SCENE.add( new THREE.Line( lineYGeometry, lineYMaterial ) );
 
         // 负主坐标轴
         const lineGeometry = new THREE.BufferGeometry().setFromPoints([
@@ -300,17 +300,17 @@ export default class SceneBuilder{
         ]);
         const lineMaterial = new THREE.LineBasicMaterial({color: "black"});
         const line = new THREE.Line(lineGeometry, lineMaterial);
-        global.SCENE().add( line );
+        global.SCENE.add( line );
 
         // 物体边缘发光渲染器
         this.composer = new EffectComposer(this.renderer);
         // 渲染器滤镜
-        renderPass = new RenderPass(global.SCENE(), this.camera);
+        renderPass = new RenderPass(global.SCENE, this.camera);
         this.composer.addPass(renderPass);
         // 边缘滤镜
         this.outlinePass = new OutlinePassFixed(
             new THREE.Vector2(DOM.clientWidth, DOM.clientHeight), 
-            global.SCENE(), this.camera);
+            global.SCENE, this.camera);
         // 在边缘发光颜色中设负值可以将边缘颜色与浅色背景区分开，滤镜中是将边缘和背景的颜色直接相加
         this.outlinePass.visibleEdgeColor.set(1, -0.9, -0.9);
         this.outlinePass.hiddenEdgeColor.set(0.5, 0, 0);  // 隐藏边缘发出的光应更暗
@@ -351,7 +351,7 @@ export default class SceneBuilder{
                 if(type == "Group") {  // 创建群组
                     mesh = new THREE.Group();
                 }
-                global.SCENE().add(mesh);
+                global.SCENE.add(mesh);
                 DT = new DTObject(mesh, true);
                 DT.setTitle();
                 DT.updateWireframes();
@@ -361,12 +361,12 @@ export default class SceneBuilder{
 
         // 更新群组包围盒
         global.on("updateGroupWireframes", ()=>{
-            // global.SCENE().DT.updateGroupWireframes();
+            // global.SCENE.DT.updateGroupWireframes();
         })
 
         // 快捷键设置
         this.canvas.addEventListener("keydown", e => {
-            if(global.mode() == "edit"){  // 在编辑模式下
+            if(global.mode == "edit"){  // 在编辑模式下
                 if(e.code == "KeyQ") this.controller.setMode("translate");  // 按Q平移
                 else if(e.code == "KeyW") this.controller.setMode("rotate");  // 按W旋转
                 //else if(e.code == "KeyE") this.controller.setMode("scale");  // 屏蔽缩放
@@ -382,7 +382,7 @@ export default class SceneBuilder{
                     this.controller.setScaleSnap( 0.25 );
                 }
             }
-            if(global.mode() == "view"){  // 在浏览模式下
+            if(global.mode == "view"){  // 在浏览模式下
                 const step = 5;  // 相机前进步长
                 this.cameraMovable.copy(this.camera);
                 this.cameraMovable.userData = {};
@@ -415,12 +415,12 @@ export default class SceneBuilder{
     }
     init(){  // 场景更新时的操作
         // 天空
-        global.SCENE().DT.setSkyboxByColor();
-        global.on("updateSkybox", ()=>{global.SCENE().DT.setSkyboxByColor()});
+        global.SCENE.DT.setSkyboxByColor();
+        global.on("updateSkybox", ()=>{global.SCENE.DT.setSkyboxByColor()});
         // 远处雾化
-        global.SCENE().fog = new THREE.Fog(this.ground.material.color, 5, 200);
+        global.SCENE.fog = new THREE.Fog(this.ground.material.color, 5, 200);
         global.on("changeFogColor", (isGround)=>{  // 更改地面颜色时同时更改雾的颜色
-            if(isGround) global.SCENE().fog.color.copy(this.ground.material.color);
+            if(isGround) global.SCENE.fog.color.copy(this.ground.material.color);
         });
         emulateMode = "stop";
         loading = false;
@@ -430,7 +430,7 @@ export default class SceneBuilder{
                 catch{ return }
                 if(moveToId > 0){  // 开始移动相机到双击的物体
                     global.emit("controlStart", moveToId);  // 防止相机移动时控制器消失
-                    targetObject = global.SCENE().getObjectById(moveToId);     
+                    targetObject = global.SCENE.getObjectById(moveToId);     
                     p_start = this.camera.position.clone();  // 起点
                     let center = targetObject.position.clone();  // 中心点
                     var d = 10;  // 默认距离
@@ -537,7 +537,7 @@ export default class SceneBuilder{
             light.attach( arrow );
             // 设置平行光朝向，并使平行光旋转时，光照方向也一并旋转
             light.target = new THREE.Object3D();
-            global.SCENE().add( light.target );
+            global.SCENE.add( light.target );
             let target = light.userData.target = light.target.clone();
             light.attach( target );
             /*
@@ -552,7 +552,7 @@ export default class SceneBuilder{
                 /*let pos = light.position.clone();
                 pos.project(this.camera);
                 ray.setFromCamera(pos, this.camera);
-                let results = ray.intersectObject(this.global.SCENE());
+                let results = ray.intersectObject(this.global.SCENE);
                 let result;
                 for(let item of results){
                     if(item.object.isTransformControls) continue;
@@ -571,7 +571,7 @@ export default class SceneBuilder{
         lightDOM.id = light.id;
         lightDOM.style.width = "30px";
         // 光源物体
-        global.SCENE().add(light);
+        global.SCENE.add(light);
         light.position.set(x, y, z);
         light.rotation.x = Math.PI / 2;
         iconMesh.center.set( 0.5, 0.5 );  // 图标居中
@@ -615,7 +615,7 @@ export default class SceneBuilder{
         mesh0.scale.setScalar(DT0.scale);
         mesh0.rotateX(Math.PI/2);
         mesh0.position.copy(position);
-        global.SCENE().add(mesh0);
+        global.SCENE.add(mesh0);
         return mesh0;
     }   
     createMeshFromModels(item, position: Object){  // 定义拖入的物体属性
@@ -647,7 +647,7 @@ export default class SceneBuilder{
         for(let item of DT.layers.indicator){  // 指示箭头
             item.scale.setScalar(1 / DT.scale);
             item.userData.indicator = true; 
-            item.visible = global.layers().includes("indicator");
+            item.visible = global.layers.includes("indicator");
             mesh.add(item);
         }
         for (let item of DT.layers.attachPoint1) {  // 传送带入口连接点
@@ -661,7 +661,7 @@ export default class SceneBuilder{
         mesh.castShadow = mesh.receiveShadow = true;
         mesh.position.copy(position);
         if(DT.scale != 1){ mesh.scale.setScalar(DT.scale); }
-        global.SCENE().add(mesh);
+        global.SCENE.add(mesh);
         return mesh;
     }  
     createSkyBoxFromTexture() {
@@ -670,7 +670,7 @@ export default class SceneBuilder{
         const skybox = new THREE.CubeTextureLoader().setPath(picPath)
         .load(["px.jpg", "nx.jpg", "py.jpg", "ny.jpg", "pz.jpg", "nz.jpg"]);
         skybox.format = THREE.RGBAFormat;
-        global.SCENE().background = skybox;
+        global.SCENE.background = skybox;
     }
     preloadModels(){  // 事先载入所有的已有模型
         const modelPath = "src/assets/models/";
@@ -695,26 +695,26 @@ export default class SceneBuilder{
     }
     removeRigidBody( mesh ){  // 移除刚体
         let rb = mesh.DT.rb;
-        delete global.rb_mesh()[rb.ptr].mesh.userData.rb;
-        delete global.rb_mesh()[rb.ptr];
-        global.physicsWorld().removeRigidBody(rb);
+        delete global.rb_mesh[rb.ptr].mesh.userData.rb;
+        delete global.rb_mesh[rb.ptr];
+        global.physicsWorld.removeRigidBody(rb);
         mesh.DT.layers.rigidShapeWorld = [];
     }
     render(){  // 渲染
         this.updatePhysics(clock.getDelta());
         this.composer.render();
-        this.cssRenderer.render(global.SCENE(), this.camera);
+        this.cssRenderer.render(global.SCENE, this.camera);
         this.gizmoPersp.render(this.renderer);
         this.gizmoOrtho.render(this.renderer);
     } 
     transport(){  // 检测物理世界中的物体是否与传送带碰撞，若有则施力
-        const dispatcher = global.physicsWorld().getDispatcher();  
+        const dispatcher = global.physicsWorld.getDispatcher();  
         for(var i=0; i<dispatcher.getNumManifolds(); i++){ 
             let collision = dispatcher.getManifoldByIndexInternal(i);
             // 通过查表，用碰撞体的ptr寻找对应的刚体和网格
             let ptr0 = collision.getBody0().ptr, ptr1 = collision.getBody1().ptr;
-            let rb0 = global.rb_mesh()[ptr0].rb, rb1 = global.rb_mesh()[ptr1].rb;
-            let mesh0 = global.rb_mesh()[ptr0].mesh, mesh1 = global.rb_mesh()[ptr1].mesh;
+            let rb0 = global.rb_mesh[ptr0].rb, rb1 = global.rb_mesh[ptr1].rb;
+            let mesh0 = global.rb_mesh[ptr0].mesh, mesh1 = global.rb_mesh[ptr1].mesh;
             let DT0 = mesh0.DT, DT1 = mesh1.DT;
             
             if(DT1.label == "WIP"){// 让在制品排在前面，即等于mesh0
@@ -803,8 +803,8 @@ export default class SceneBuilder{
         }
     }
     updateRigidBodies(){  // 改变物体的父子关系后，将刚体位置更新为物体的全局坐标
-        for(let ptr in global.rb_mesh()){
-            let mesh = global.rb_mesh()[ptr].mesh;
+        for(let ptr in global.rb_mesh){
+            let mesh = global.rb_mesh[ptr].mesh;
             let DT = mesh.DT;
             let rigidShapeWorld = mesh.layers.rigidShapeWorld;
             if(!DT.rb || DT.mass != 0) return;
@@ -812,11 +812,11 @@ export default class SceneBuilder{
             let clone = new THREE.Mesh();
             clone.position.copy(mesh.position);
             clone.quaternion.copy(mesh.quaternion);
-            global.SCENE().add(clone);
+            global.SCENE.add(clone);
             mesh.getWorldPosition(clone.position);
             mesh.getWorldQuaternion(clone.quaternion);
             DT.layers.rigidShapeWorld = [clone];
-            global.rb_mesh()[DT.rb.ptr] = {mesh:DT.mesh, rb:DT.rb};
+            global.rb_mesh[DT.rb.ptr] = {mesh:DT.mesh, rb:DT.rb};
         }
     }
     updatePhysics( deltaTime ) {  // 步进 
@@ -825,11 +825,11 @@ export default class SceneBuilder{
         this.updateFPSandTime(now, pause, stop);
         if(stop){T0 = performance.now();}  // 暂停后停止计时
         if(pause || stop)return;  // 未暂停时更新刚体
-        if(emulateMode == "step") global.physicsWorld().stepSimulation( deltaTime );
+        if(emulateMode == "step") global.physicsWorld.stepSimulation( deltaTime );
         else{
-            for(let i=0; i<speed; i++) global.physicsWorld().stepSimulation( deltaTime );
+            for(let i=0; i<speed; i++) global.physicsWorld.stepSimulation( deltaTime );
         }
-        for(let DT of global.DTObjects().value){  // 让网格位置等于刚体位置
+        for(let DT of global.DTObjects.value){  // 让网格位置等于刚体位置
             const mesh = DT.mesh, rb = DT.rb;
             try{ if(DT.code != '') eval(DT.code) }  // 若物体有自定义脚本则执行 
             catch(e) {console.log(e)}
@@ -838,8 +838,8 @@ export default class SceneBuilder{
                     if(now - DT.timer >= DT.timeInterval){  // 秒变毫秒
                         let mesh0 = this.createMeshFromModels({modelname:"货物"}, mesh.position);                 
                         mesh0.rotation.copy(mesh.rotation);
-                        global.DTObjects().value.push(mesh0.DT);
-                        global.SCENE().DT.children.push(mesh0.DT);
+                        global.DTObjects.value.push(mesh0.DT);
+                        global.SCENE.DT.children.push(mesh0.DT);
                         global.emit("print", `【${DT.name}${DT.id}】创建了【${mesh0.DT.name}${mesh0.id}】`);
                         DT.timer = now;
                     }
