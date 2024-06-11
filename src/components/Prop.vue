@@ -6,7 +6,7 @@
   import tubeIcon from "../assets/icons/吸管.jpg"
   import { CaretDownOutlined, CheckOutlined } from '@ant-design/icons-vue';
 
-  const chosenProp = ref('');
+  const chosenProp: any = ref('');
   var colorEdit = '';
   const DT: any = ref("未选择对象");
   const input_value = ref(null);
@@ -33,7 +33,7 @@
       prop: {},
       title: {},
       type: {},
-      width: {default: 80},
+      width: {default: "80"},
     },
     components: {CaretDownOutlined, CheckOutlined},
     computed: {  // 计算属性
@@ -41,7 +41,8 @@
         get() {
           if(chosenProp.value == this.prop) return input_value.value;  // 编辑中
           let result = eval("DT.value." + this.prop);
-          if(this.prop == "name" && !result) return "未命名";
+          if(this.type == "inputString") return result;  // 显示字符串
+          else if(this.prop == "name" && !result) return "未命名";
           else if(this.type == "inputColor"){  // 显示颜色
             return '#' + result.getHexString();
           }
@@ -51,7 +52,11 @@
           if(chosenProp.value == this.prop) input_value.value = value;  // 编辑中
           else{
             let result = "DT.value." + this.prop;
-            if(DT.value.mesh.isLight) {  // 显示或隐藏光源图标
+            if(this.type == "inputString") {  // 更改字符串
+              eval(`${result} = "${value}"`);
+              return;
+            }
+            else if(DT.value.mesh.isLight) {  // 显示或隐藏光源图标
               let e = DT.value.mesh.children.filter(mesh => mesh.isCSS2DObject)[0].element;
               e.style.height = value ? "30px" : "0px";
             }
@@ -164,7 +169,7 @@
         let wheel = e.type == "wheel";
         if(!(blur || enter || wheel)) return;
         let result = input_value.value;
-        if(type == "number"){
+        if(type == "number" && this.type != "inputString"){
           result = JSON.parse(input_value.value);
           if(wheel) result -= e.deltaY / 100 * delta;
           if(loop) result = this.loop(result);
@@ -179,11 +184,15 @@
         }
         let prop = "DT.value." + this.prop + (item ? '.' + item : '');  // 结束编辑时更改属性值
         if(eval(prop).isColor) eval(prop).setStyle(result);
-        else {eval(`${prop} = ${result}`);}
+        else if(this.type == "inputString") {
+            eval(`${prop} = "${result}"`);
+            global.updatePhysicalIDMap();  // 更新物理实体ID到物体的映射关系
+        }
+        else eval(`${prop} = ${result}`);
         this.$emit("change");
-        global.emit("controlStart", DT.value.id);
         global.emit("updateGroupWireframes");
         chosenProp.value = null;  // 结束编辑
+        e.target.blur();  // 修改属性之后让元素自动失焦；
       },   
       format(prop, N=1){  // 将输出参数格式化
         try{
@@ -300,13 +309,13 @@
       },
     },
     mounted(){
-      global.on("changeProperty", (data)=>{chosenProp.value = data});
-      global.on("showProperty", (data)=>{
+      global.on("changeProperty", data => {chosenProp.value = data});
+      global.on("showProperty", data => {
         if('未已'.includes(data[0])) DT.value = data;
         else if(typeof data == "number") DT.value = global.SCENE.DT.findDTObjectById(data);
         else DT.value = data;
       });
-      global.on("updateProp", (data)=>{  // 拖动物体时在属性栏实时更新其位移和旋转属性
+      global.on("updateProp", (data: any) => {  // 拖动物体时在属性栏实时更新其位移和旋转属性
         if(data.action == "mouseup") this.propX = this.propY = this.propZ = null;
         else if(this.prop == "mesh.position") {  // 更新位移
           this.propX = data.mesh.position.x;
@@ -328,8 +337,8 @@
     box-shadow: inset 0 0 0 2px black, /* 朝内的黑色边框，粗细为3px */
                 inset 0 0 0 4px white;
     border-radius: 10px;
-    position:absolute;
-    width:20px;
+    position: absolute;
+    width: 20px;
     height: 20px; 
   }
   #color-square{  /* 调色方块 */
@@ -375,6 +384,17 @@
       {{ computedProp ? "是" : "否" }}
     </a-checkbox>
 
+    <!--编辑颜色属性-->
+    <span v-else-if="type=='inputColor'">
+      <a-input class="propInput" :style="propStyle()" :title="help.input" 
+      v-model:value="computedProp"
+      @blur="e=>changeValue({e:e, type:'string'})" 
+      @click="startEdit" 
+      @dblclick="selectAll" 
+      @keydown="e=>changeValue({e:e, type:'string'})"/>
+    </span> 
+
+
     <!--编辑数值属性-->
     <span v-else-if="type=='inputNumber'">
       <a-input class="propInput" :style="propStyle()" :title="help.input" 
@@ -386,14 +406,14 @@
       <div v-if="options.suffix" class="inline">{{ options.suffix }}</div>
     </span> 
 
-    <!--编辑颜色属性-->
-    <span v-else-if="type=='inputColor'">
+    <!--编辑字符串属性-->
+    <span v-else-if="type=='inputString'">
       <a-input class="propInput" :style="propStyle()" :title="help.input" 
       v-model:value="computedProp"
-      @blur="e=>changeValue({e:e, type:'string'})" 
+      @blur="e=>changeValue(getOptions(e))" 
       @click="startEdit" 
-      @dblclick="selectAll" 
-      @keydown="e=>changeValue({e:e, type:'string'})"/>
+      @keydown="e=>changeValue(getOptions(e))"
+      @wheel="e=>changeValue(getOptions(e))" @wheel.prevent/>
     </span> 
 
     <!--编辑三维向量属性，chosenProp=prop代表正在编辑-->

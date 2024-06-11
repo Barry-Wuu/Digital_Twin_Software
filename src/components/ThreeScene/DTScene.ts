@@ -236,7 +236,7 @@ export default class SceneBuilder{
             }
             else global.emit("controlEnd");  // 点击地面等则移除控制器
         });
-        global.on("controlEnd", (data)=>{  // 取消选择时移除控制器
+        global.on("controlEnd", ()=>{  // 取消选择时移除控制器
             if(!attached) return;
             attached.DT.setProp();
             attached = null;
