@@ -138,7 +138,7 @@
                 if(layer == "controller") global.emit("changeControllerVisibility", show);
                 else if(layer == "gizmo") global.emit("changeGizmoVisibility", show);
                 else{
-                    for(let DT of global.DTScene().getDTObjects()){
+                    for(let DT of global.SCENE().DT.getDTObjects()){
                         if(layer in DT.layers){
                             for(let mesh of DT.layers[layer]){
                                 mesh.visible = show;
@@ -200,7 +200,7 @@
                     });  
                     Promise.all(promises).then(()=>{  // 文件全部解压完后读取解压文件  
                         GLTFloader.load("src/temp/Scene.txt", (file)=>{
-                            let DTScene = global.DTScene();
+                            let DTScene = global.SCENE().DT;
                             let obj = fs.readFileSync("src/temp/DTObjects.txt", "utf-8");
                             DTScene.copyFrom(JSON.parse(obj), true);
                             let scene = file.scene;
@@ -215,7 +215,7 @@
             },
             message(data){ BottomMessage.textContent = data; },
             saveScene(target=null, DTObjects="src/temp/DTObjects.txt", Scene="src/temp/Scene.txt"){
-                let DTScene = global.DTScene();
+                let DTScene = global.SCENE().DT;
                 // 暂时移除姿态控制器
                 let children = DTScene.mesh.children;
                 let controller = children.filter(mesh => mesh.isTransformControls)[0];

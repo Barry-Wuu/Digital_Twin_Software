@@ -11,7 +11,7 @@
     RollbackOutlined
   } from "@ant-design/icons-vue"
   import global from "../Global"
-  import { DTObject } from "./ThreeScene/DTScene"
+  import DTObject from "./ThreeScene/DTObject"
   import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js"
   const path = require("path");
   import * as THREE from 'three'

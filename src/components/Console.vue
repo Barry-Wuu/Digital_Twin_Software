@@ -7,7 +7,7 @@
 
     // 下列未使用函数为控制台专用指令
     function DT(){
-      let DT = global.DTScene();
+      let DT = global.SCENE().DT;
       console.log(DT)
       return DT;
     };

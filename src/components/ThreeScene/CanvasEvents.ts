@@ -80,7 +80,7 @@ export default defineComponent({
     },
     intersectObject(e) {  // 求鼠标发出的射线与物体的交点
       this.castRay(e);  // 射线检测
-      for (let intersect of ray.intersectObject(this.scene.SCENE)) {
+      for (let intersect of ray.intersectObject(global.SCENE())) {
         let mesh = intersect.object;
         if (mesh.isTransformControlsPlane) continue;  // 忽略控制器
         if (mesh.isMesh && mesh != dragModel && mesh != tempModel) {
@@ -121,7 +121,7 @@ export default defineComponent({
       switch(dragData.type){
         case "asset":
           let DT = dragData.data.DT;
-          dragModel = this.scene.createMeshFromAsset(DT, this.intersectObject(e)[1]);
+          dragModel = this.scene.createMeshFromAssets(DT, this.intersectObject(e)[1]);
           break;
         case "model":
           let item = dragData.item;
@@ -159,7 +159,7 @@ export default defineComponent({
               let closestAttachPoint2 = null;
               let worldPositionAP1 = new THREE.Vector3();
               attachPoint1.getWorldPosition(worldPositionAP1);  // 获取ap1在世界坐标系中的位置
-              this.scene.SCENE.traverse((child) => {  // 遍历场景中的所有对象，寻找名为'ap2'的物体
+              global.SCENE().traverse((child) => {  // 遍历场景中的所有对象，寻找名为'ap2'的物体
                 if (child.name === 'ap2') {
                   let worldPositionAP2 = new THREE.Vector3();
                   child.getWorldPosition(worldPositionAP2);  // 获取ap2在世界坐标系中的位置
@@ -201,7 +201,7 @@ export default defineComponent({
               let initialColor1 = attachPoint1.material.color.clone();  // 存储原始颜色
               let hasColorChanged = false;  // 标记颜色是否已经被改变
               attachPoint1.getWorldPosition(worldPositionAP1);  // 获取ap1在世界坐标系中的位置
-              this.scene.SCENE.traverse((child) => {  // 遍历场景中的所有对象，寻找名为'ap2'的物体
+              global.SCENE().traverse((child) => {  // 遍历场景中的所有对象，寻找名为'ap2'的物体
                 if (child.name === 'ap2') {
                   let worldPositionAP2 = new THREE.Vector3();
                   child.getWorldPosition(worldPositionAP2);  // 获取ap2在世界坐标系中的位置
@@ -277,11 +277,17 @@ export default defineComponent({
           dragModel.material.opacity = tempOpacity;
           tempOpacity = null;
         }
-        if (dragModel.DT.rb) {}  // 让网格跟随刚体
+
+        let rb = dragModel.DT.rb;
+        if (rb) {}  // 让网格跟随刚体
         else if (dragModel.DT.rigidShape) {
           dragModel.DT.createRigidBody();
-          this.scene.DTObjects.value.push(dragModel.DT);
+          global.DTObjects().value.push(dragModel.DT);
         }
+
+        // 强制更新刚体姿态
+        dragModel.DT.updateRigidbodyTransform();
+
         if (tempModel) {
           tempModel.clear();
           tempModel.removeFromParent();
@@ -328,7 +334,7 @@ export default defineComponent({
           else if(e.target.localName == "img"){  // 拖动灯光
             let id = parseInt(e.target.id);  // 若id为数字字符串则转换为数字
             global.emit("clickModel", {id: id, shift: e.shiftKey}); 
-            let choice = this.scene.SCENE.getObjectById(id);
+            let choice = global.SCENE().getObjectById(id);
             let rect = e.target.getBoundingClientRect();
             let P = new THREE.Vector2(
               rect.left + e.target.clientWidth / 2,
@@ -390,7 +396,7 @@ export default defineComponent({
         this.scene.orbitControl.mouseButtons.MIDDLE = -1;
         // 设置被旋转物体的旋转角
         let parent = dragModel.parent;  // 将被旋转物体暂时与父物体断开关系
-        this.scene.SCENE.attach(dragModel);
+        global.SCENE().attach(dragModel);
         dragModel.rotateOnWorldAxis(UP, sign * delta_angle * Math.PI / 180);  // 绕z轴正方向旋转
         parent.attach(dragModel);  // 将被旋转物体加回原来的父物体
         // 设置被旋转物体的位移
@@ -410,7 +416,7 @@ export default defineComponent({
         this.scene.orbitControl.enableZoom = true;
       }
     },
-    remove() { this.scene.SCENE.remove(dragModel) },
+    remove() { global.SCENE().remove(dragModel) },
     resizeCanvas() {  //让画布大小和父组件大小相适应
       const k = 10;
       let width = window.innerWidth, height = window.innerHeight;
