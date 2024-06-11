@@ -54,7 +54,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
                 this.material = mesh.material;
             }
         }
-        if(addToScene) global.DTObjects().value.push(this);
+        if(addToScene) global.DTObjects.value.push(this);
         return this;
     }  
     clearLoads() {  // 重置仿真动画时遍历清除所有在制品
@@ -78,8 +78,8 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         return newDTObject;
     }
     copyFrom(obj, clearDTObjects = false){  // 将读取的普通对象变回DT对象
-        if(clearDTObjects) global.DTObjects().value = [];  // 清理旧的场景
-        global.DTObjects().value.push(this);
+        if(clearDTObjects) global.DTObjects.value = [];  // 清理旧的场景
+        global.DTObjects.value.push(this);
         for(let prop in obj){
             if(prop == "children"){
                 this.children = [];
@@ -131,8 +131,8 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         if(target == "rigidHelper") target = this.layers.rigidHelper[0];
         target.userData.physicsBody = rb;
         if (mass>0) {rb.setActivationState(4);}  // 质量为0代表为固定的刚体
-        global.physicsWorld().addRigidBody( rb );
-        global.rb_mesh()[rb.ptr] = {mesh:this.mesh, rb:rb};
+        global.physicsWorld.addRigidBody( rb );
+        global.rb_mesh[rb.ptr] = {mesh:this.mesh, rb:rb};
         rb.setFriction( this.friction0 );  // 静摩擦力
     }
     createRigidHelper(geom=null, scale=1){  // 根据刚体形状添加可视化碰撞体网格
@@ -174,7 +174,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         }
         geom = new THREE.WireframeGeometry(geom);
         const rigidHelper = new THREE.LineSegments(geom, material);  // 可视化碰撞体网格
-        rigidHelper.visible = global.layers().includes("rigidHelper");
+        rigidHelper.visible = global.layers.includes("rigidHelper");
         if(this.rigidShape == "box") {
             let center = new THREE.Vector3();
             boundingBox.getCenter( center );
@@ -231,13 +231,13 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             this.mesh.removeFromParent();
         } 
         catch {}
-        let index = global.DTObjects().value.indexOf(this);
-        if(index != -1) global.DTObjects().value.splice(index, 1);  // 原地修改DTObject.value，以防监听不到其变化
+        let index = global.DTObjects.value.indexOf(this);
+        if(index != -1) global.DTObjects.value.splice(index, 1);  // 原地修改DTObject.value，以防监听不到其变化
     }
     findDTObjectById(id, loadingFile=false) {  // 根据id寻找物体 
         id = parseInt(id);  // 若id为数字字符串则转换为数字
         if(!loadingFile){
-            let mesh = global.SCENE().getObjectById(id);
+            let mesh = global.SCENE.getObjectById(id);
             return mesh ? mesh.DT : null;
         }
         if(this.id==id) return this;
@@ -248,23 +248,23 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         }
         return null;
     }
-    getDTObjects() {return global.DTObjects().value;}
+    getDTObjects() {return global.DTObjects.value;}
     newScene(){  // 新的场景
         global.emit("loading");
-        for(let ptr in global.rb_mesh()) 
-            global.physicsWorld().removeRigidBody(global.rb_mesh()[ptr].rb);
+        for(let ptr in global.rb_mesh) 
+            global.physicsWorld.removeRigidBody(global.rb_mesh[ptr].rb);
         global.clear_rb_mesh();
-        // 相机绑定的global.SCENE()是Three.Scene，导入的场景this.mesh是Three.Group
-        // 将Group克隆到global.SCENE()中
+        // 相机绑定的global.SCENE是Three.Scene，导入的场景this.mesh是Three.Group
+        // 将Group克隆到global.SCENE中
         let group = this.mesh;
-        let controller = global.SCENE().children.filter(child => child.isTransformControls)[0];
+        let controller = global.SCENE.children.filter(child => child.isTransformControls)[0];
         for(let prop in group){
-            try{ global.SCENE()[prop] = group[prop] }
+            try{ global.SCENE[prop] = group[prop] }
             catch(e){
-                if(e instanceof TypeError) global.SCENE()[prop].copy(group[prop]);
+                if(e instanceof TypeError) global.SCENE[prop].copy(group[prop]);
             }
         }
-        global.SCENE().add(controller);
+        global.SCENE.add(controller);
         this.updateChildren(true);
         this.updateWireframes(true);
         global.emit("init");
@@ -278,8 +278,8 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     removeRigidBody(){  // 移除刚体
         if(this.rb){
             let rb = this.mesh.userData.physicsBody;
-            try {delete global.rb_mesh()[rb.ptr]} catch{};
-            global.physicsWorld().removeRigidBody(rb);
+            try {delete global.rb_mesh[rb.ptr]} catch{};
+            global.physicsWorld.removeRigidBody(rb);
         }
     }
     sensorStop() {
@@ -395,7 +395,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         this.setTitle();
         for(let childMesh of this.mesh.children){  // 刷新时
             if(!childMesh.userData.id) continue;
-            let childDT = global.SCENE().DT.findDTObjectById(childMesh.userData.id, loadingFile);
+            let childDT = global.SCENE.DT.findDTObjectById(childMesh.userData.id, loadingFile);
             if(!childDT) continue;
             childDT.geometry = childMesh.geometry;
             childDT.material = childMesh.material;
