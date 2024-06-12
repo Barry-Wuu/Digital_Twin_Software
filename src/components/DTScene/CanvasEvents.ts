@@ -79,6 +79,55 @@ export default defineComponent({
     return { description: null, rendered: false, }
   },
   methods: {
+    alignToConveyor(dragPoint, conveyor) {
+      tempTransform.alignToConveyor = true;
+      let P = new THREE.Vector3();
+      let Q = new THREE.Quaternion();
+      conveyor.getWorldPosition(P);
+      conveyor.getWorldQuaternion(Q);
+      if(conveyor.DT.name == ("直道")){
+        let result = RIGHT.clone();
+        conveyorRay.set(P, result.applyQuaternion(Q));  // 求鼠标到传送带中轴线最近的一点
+        tempModel.rotation.set(0, 0, 0);
+        if(dragModel.DT.name == "护栏"){
+          tempModel.rotateOnWorldAxis(  // 设置物体旋转
+            UP, Math.atan(result.y / result.x) + Math.PI / 2
+          );
+          conveyorRay.closestPointToPoint(dragPoint, closestPoint);  // 求出垂足
+          tempModel.position.copy(dragPoint).sub(closestPoint);
+          tempModel.position.z = 0;
+          tempModel.position.normalize();
+          tempModel.position.multiplyScalar(1.4);
+          tempModel.position.add(closestPoint);  // 物体位移 = 垂足 + 1.4||鼠标-垂足||
+        } else {
+          conveyorRay.closestPointToPoint(dragPoint, tempModel.position);  // 物体位移=垂足
+          tempModel.rotateOnWorldAxis(UP, Math.atan(result.y / result.x));  // 设置物体旋转
+        }
+      }
+      else if(conveyor.DT.name.includes("弯道")){
+        let outer;  // 物体在弯道内侧还是外侧
+        let result = dragPoint.clone();  // 求鼠标到弯道圆心的位移之差
+        result.sub(P);
+        result.z = 0;
+        outer = result.length() > 5;
+        result.normalize();
+        tempModel.rotation.set(0, 0, 0);
+        if(dragModel.DT.name == "护栏"){  // 设置物体旋转
+          tempModel.rotateOnWorldAxis(UP, Math.atan(result.y / result.x));
+          result.multiplyScalar(outer ? 6.4 : 3.6);
+        } else {
+          tempModel.rotateOnWorldAxis(
+            UP, Math.atan(result.y / result.x) + Math.PI / 2
+          );
+          result.multiplyScalar(5);
+        }
+        result.add(P);
+        tempModel.position.copy(result);  // 设置物体位姿
+      }
+      dragModel.rotation.copy(tempModel.rotation);
+      tempModel.position.z = 0.6 + (box.max.z - box.min.z)/2;  // 传送带高为0.6
+      return tempModel.position.clone();
+    },
     castRay(e) {  // 射线检测
       const mouse = new THREE.Vector2(
         e.offsetX * 2 / e.target.clientWidth - 1, 
@@ -262,49 +311,7 @@ export default defineComponent({
               }
             }
             if(conveyor){  // 找到传送带
-              tempTransform.alignToConveyor = true;
-              let P = new THREE.Vector3();
-              let Q = new THREE.Quaternion();
-              conveyor.getWorldPosition(P);
-              conveyor.getWorldQuaternion(Q);
-              if(conveyor.DT.name == ("直道")){
-                let result = RIGHT.clone();
-                conveyorRay.set(P, result.applyQuaternion(Q));  // 求鼠标到传送带中轴线最近的一点
-                if(dragModel.DT.name == "护栏"){
-                  tempModel.quaternion.copy(Q.multiply(Q90));  // 设置物体旋转
-                  conveyorRay.closestPointToPoint(dragPoint0, closestPoint);  // 求出垂足
-                  tempModel.position.copy(dragPoint0).sub(closestPoint);
-                  tempModel.position.normalize();
-                  tempModel.position.multiplyScalar(1.4);
-                  tempModel.position.add(closestPoint);  // 物体位移 = 垂足 + 1.4||鼠标-垂足||
-                } else {
-                  conveyorRay.closestPointToPoint(dragPoint0, tempModel.position);  // 物体位移=垂足
-                  tempModel.quaternion.copy(Q);  // 设置物体旋转
-                }
-              }
-              else if(conveyor.DT.name.includes("弯道")){
-                let outer;  // 物体在弯道内侧还是外侧
-                let result = dragPoint0.clone();  // 求鼠标到弯道圆心的位移之差
-                result.sub(P);
-                result.z = 0;
-                outer = result.length() > 5;
-                result.normalize();
-                tempModel.rotation.set(0, 0, 0);
-                if(dragModel.DT.name == "护栏"){
-                  tempModel.rotateOnWorldAxis(UP, Math.atan(result.y / result.x));
-                  result.multiplyScalar(outer ? 6.4 : 3.6);
-                } else {
-                  tempModel.rotateOnWorldAxis(
-                    UP, Math.atan(result.y / result.x) + Math.PI / 2
-                  );
-                  result.multiplyScalar(5);
-                }
-                result.add(P);
-                tempModel.position.copy(result);  // 设置物体位姿
-                dragModel.rotation.copy(tempModel.rotation);
-              }
-              tempModel.position.z = 0.6 + (box.max.z - box.min.z)/2;  // 传送带高为0.6
-              result = tempModel.position.clone();
+              result = this.alignToConveyor(dragPoint0, conveyor);
             } else {
               result = dragPoint0.clone();
               result.add(delta);  // 更新模型的全局坐标
@@ -336,47 +343,7 @@ export default defineComponent({
           box.setFromObject(tempModel);
           // 若被拖动物体本身不是传送带，且碰到传送带，则将物体移动到传送带中轴线上
           if(dragModel.DT.label != "conveyor" && intersect[0].DT.label == "conveyor"){
-            tempTransform.alignToConveyor = true;
-            let P = new THREE.Vector3();
-            let Q = new THREE.Quaternion();
-            intersect[0].getWorldPosition(P);
-            intersect[0].getWorldQuaternion(Q);
-            if(intersect[0].DT.name == ("直道")){
-              let result = RIGHT.clone();
-              conveyorRay.set(P, result.applyQuaternion(Q));  // 求鼠标到传送带中轴线最近的一点
-              if(dragModel.DT.name == "护栏"){
-                tempModel.quaternion.copy(Q.multiply(Q90));  // 设置物体旋转
-                conveyorRay.closestPointToPoint(intersect[1], closestPoint);  // 求出垂足
-                tempModel.position.copy(intersect[1]).sub(closestPoint);
-                tempModel.position.normalize();
-                tempModel.position.multiplyScalar(1.4);
-                tempModel.position.add(closestPoint);  // 物体位移 = 垂足 + 1.4||鼠标-垂足||
-              } else {
-                conveyorRay.closestPointToPoint(intersect[1], tempModel.position);  // 物体位移=垂足
-                tempModel.quaternion.copy(Q);  // 设置物体旋转
-              }
-            }
-            else if(intersect[0].DT.name.includes("弯道")){
-              let outer;  // 物体在弯道内侧还是外侧
-              let result = intersect[1].clone();  // 求鼠标到弯道圆心的位移之差
-              result.sub(P);
-              result.z = 0;
-              outer = result.length() > 5;
-              result.normalize();
-              if(dragModel.DT.name == "护栏"){
-                tempModel.rotateOnWorldAxis(UP, Math.atan(result.y / result.x));
-                result.multiplyScalar(outer ? 6.4 : 3.6);
-              } else {
-                tempModel.rotateOnWorldAxis(
-                  UP, Math.atan(result.y / result.x) + Math.PI / 2
-                );
-                result.multiplyScalar(5);
-              }
-              result.add(P);
-              tempModel.position.copy(result);  // 设置物体位移
-            }
-            tempModel.position.z = 0.6 + (box.max.z - box.min.z)/2;  // 传送带高为0.6
-            dragModel.rotation.copy(tempModel.rotation); 
+            this.alignToConveyor(intersect[1], intersect[0]);
           } else {
             let box0 = new THREE.Box3().setFromObject(intersect[0]);
             tempModel.position.z += box0.max.z - box.min.z;
