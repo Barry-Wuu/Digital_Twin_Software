@@ -190,7 +190,7 @@
         }
         else eval(`${prop} = ${result}`);
         this.$emit("change");
-        global.emit("updateGroupWireframes");
+        global.SCENE.DT.updateGroupWireframes();
         chosenProp.value = null;  // 结束编辑
         e.target.blur();  // 修改属性之后让元素自动失焦；
       },   

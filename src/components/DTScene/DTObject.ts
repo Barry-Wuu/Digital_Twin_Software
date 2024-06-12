@@ -411,19 +411,24 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         }
         this.children = newChildren;
     }
-    updateGroupWireframes(){  // 更新Group的线框
+    updateGroupWireframes(){  // 更新群组的线框
         this.traverse(DT => {
             if(DT.type != "Group") return;
-            let visible, wireframe = DT.layers.wireframe[0];
-            if(wireframe) {  // 清理原有的线框
-                visible = wireframe.visible;
-                wireframe.removeFromParent();
-                wireframe.dispose();
-            }
-            wireframe = new THREE.BoxHelper(DT.mesh, "cyan");  // 更新线框
-            DT.mesh.attach(wireframe);
-            wireframe.visible = visible;
-            DT.layers.wireframe = [wireframe];
+            const [wireframe, box, boxMesh] = DT.layers.wireframe;
+            if(!wireframe.parent) DT.mesh.add(wireframe);
+            box.makeEmpty();  // 更新线框 
+            for(let child of DT.children) box.expandByObject(
+                child.mesh
+            );  
+            box.getCenter(boxMesh.position); 
+            let localCenter = DT.mesh.worldToLocal(boxMesh.position)
+            boxMesh.position.copy(localCenter);
+            boxMesh.scale.set(
+                box.max.x - box.min.x, 
+                box.max.y - box.min.y, 
+                box.max.z - box.min.z
+            );
+            wireframe.update();
         })
     }
     updateRigidbodyTransform(mesh=this.mesh, force=false){  // 强制更新刚体位姿
@@ -457,7 +462,16 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             if(loadingFile){  // 读取场景时重新绑定原有的线框
                 wireframe = DT.mesh.children.filter(child=>child.DT.layers.wireframe.length)[0];  
             } else {  // 创建物体时新建线框
-                wireframe = new THREE.BoxHelper(DT.mesh, "cyan");
+                if(DT.mesh.isGroup) {  // 创建群组
+                    DT.layers.wireframe[1] = new THREE.Box3();  // 为群组创建包围盒 
+                    DT.layers.wireframe[2] = new THREE.Mesh(  // 控制该包围盒线框的物体
+                        new THREE.BoxGeometry(),
+                    );
+                    DT.layers.wireframe[0] = new THREE.BoxHelper(  // 创建线框
+                        DT.layers.wireframe[2], "cyan"
+                    );
+                }
+                else wireframe = new THREE.BoxHelper(DT.mesh, "cyan");
                 DT.mesh.add(wireframe);
             }
             if(wireframe){

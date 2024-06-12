@@ -138,10 +138,10 @@ export default class SceneBuilder{
         this.cameraPersp.up.copy(UP);  // 在相机里让z轴向上
         this.camera = this.cameraPersp;
         global.camera = this.camera;
-        global.on("cameraMoveTo", (id)=>{  // 双击将相机拉近至物体
+        global.on("cameraMoveTo", (id: number) => {  // 双击将相机拉近至物体
             moveToId = id;
         });   
-        global.on("changeCamera", data => {  // 切换相机类型（透视/正交）
+        global.on("changeCamera", (data: any) => {  // 切换相机类型（透视/正交）
             let camera = this.camera;  // 前一个相机
             let position = camera.position;
             let target = this.orbitControl.target;
@@ -155,7 +155,7 @@ export default class SceneBuilder{
             renderPass.camera = this.camera;
             this.outlinePass.renderCamera = this.camera;
         })
-        global.on("changeView", (key)=>{
+        global.on("changeView", key => {
             let camera = this.camera;
             if(key == "默认视图") camera.position.set(0, -25, 15);           
             if(key == "俯视图") camera.position.set(0, 0, 20);
@@ -213,7 +213,7 @@ export default class SceneBuilder{
                 this.controller.detach();
             }
         });
-        global.on("controlStart", id => {  // 选中物体开始控制
+        global.on("controlStart", (id: any) => {  // 选中物体开始控制
             id = parseInt(id);  // 若id为数字字符串则转换为数字
             attached = global.SCENE.getObjectById(id);
             if(!global.layers.includes("controller")) return;
@@ -335,7 +335,7 @@ export default class SceneBuilder{
             }
             global.emit("updateEdgeGlow", {width: DOM.clientWidth, height: DOM.clientHeight});
         })
-        global.on("updateEdgeGlow", options => {  // 更新滤镜的分辨率
+        global.on("updateEdgeGlow", (options: any) => {  // 更新滤镜的分辨率
             let width = options.width, height = options.height;
             this.composer.setPixelRatio(width / height);
             this.composer.setSize(width, height);
@@ -344,7 +344,7 @@ export default class SceneBuilder{
         })
 
         // 创建物体
-        global.on("createMesh", type => {
+        global.on("createMesh", (type: any) => {
             let mesh, DT;
             if(type.includes("Light")) mesh = this.createLight(type);  // 创建灯光
             else{
@@ -358,11 +358,6 @@ export default class SceneBuilder{
             }
             global.emit("clickModel", {id:mesh.id, shift:false});  // 创建物体后模拟点击该物体
         });
-
-        // 更新群组包围盒
-        global.on("updateGroupWireframes", ()=>{
-            // global.SCENE.DT.updateGroupWireframes();
-        })
 
         // 快捷键设置
         this.canvas.addEventListener("keydown", e => {
@@ -430,24 +425,35 @@ export default class SceneBuilder{
                 catch{ return }
                 if(moveToId > 0){  // 开始移动相机到双击的物体
                     global.emit("controlStart", moveToId);  // 防止相机移动时控制器消失
-                    targetObject = global.SCENE.getObjectById(moveToId);     
+                    targetObject = global.SCENE.getObjectById(moveToId);  
                     p_start = this.camera.position.clone();  // 起点
                     let center = targetObject.position.clone();  // 中心点
                     var d = 10;  // 默认距离
-                    // 求物体包围盒中心
-                    targetObject.getWorldPosition(center);
-                    let centerDelta = center.clone();
-                    this.controller.getWorldPosition(centerDelta);
-                    center.add(centerDelta);
+                    var r;  // 包围球半径
+
+                    if(targetObject.isGroup){  // 拉近至群组时将目标设为其包围盒中心
+                        let wireframe = targetObject.DT.layers.wireframe[0];
+                        let boundingSphere = wireframe.geometry.boundingSphere;
+                        center = boundingSphere.center;
+                        r = boundingSphere.radius;
+                    }
+                    else{
+                        // 求物体包围盒中心
+                        targetObject.getWorldPosition(center);
+                        let centerDelta = center.clone();
+                        this.controller.getWorldPosition(centerDelta);
+                        center.add(centerDelta);
+                        r = targetObject.DT.geometry?.boundingSphere.radius;
+                    }
+                    
                     // 求相机到物体的距离d与d*相机朝向
-                    let r = targetObject.DT.geometry?.boundingSphere.radius;  // 包围球半径
                     if(!r || targetObject.DT.label == "protected") r = 0;
                     d = r * targetObject.DT.scale * 2.5;  // 距离 = 包围球半径 * 物体缩放 * 2.5
                     d = Math.max(d, 5);  // 让相机不能离物体太近
                     this.camera.getWorldDirection(front);
                     let delta = front.clone();
                     delta.multiplyScalar(d);
-                    // 终点 = 物体包围盒中心 - d*相机朝向
+                    // 终点 = 物体包围球中心 - d*相机朝向
                     p_end = center.sub(delta);
                     moveToId = -1;
                 }

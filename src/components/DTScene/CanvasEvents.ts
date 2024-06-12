@@ -29,6 +29,7 @@ var isDrag = false;  // 是否在用鼠标移动模型
 var keys = { shift: false, space: false };  // 按下的按键
 var mouseType = [false, false, false];  // 左、中、右键是否按下
 const ray = new THREE.Raycaster();  // 从鼠标发出的射线检测器
+var parent;
 var resizeObserver;
 var style;
 var tempTransform = {  // 在物体吸附到传送带之前临时存储位姿，解除吸附后恢复
@@ -139,9 +140,10 @@ export default defineComponent({
       this.castRay(e);  // 射线检测
       for (let intersect of ray.intersectObject(global.SCENE)) {
         let mesh = intersect.object;
-        if(!mesh.DT) continue;  // 若射线检测到的物体无DT则继续往后检测
         if(mesh.isTransformControlsPlane) continue;  // 忽略控制器
-        if(mesh.isMesh && mesh != dragModel && mesh != tempModel) {
+        if(mesh.DT && mesh != dragModel && mesh != tempModel  // 若射线检测到的物体无DT则继续往后检测
+          || mesh.isTransformControls  // 允许点击控制器
+        ) {
           return [mesh, intersect.point];
         }
       }
@@ -486,7 +488,7 @@ export default defineComponent({
         this.onDrop();
         isDrag = false;
       }
-      global.emit("updateGroupWireframes");
+      global.SCENE.DT.updateGroupWireframes();
       global.emit("updateProp", {action:"mouseup"});
     },
     onPointerdown(e){
@@ -518,7 +520,7 @@ export default defineComponent({
         result = dragModel.parent.worldToLocal(result);
         dragModel.position.copy(result);
         global.emit("controlStart", dragModel.id);
-        global.emit("updateGroupWireframes");
+        global.SCENE.DT.updateGroupWireframes();
         global.emit("updateProp", {action: "wheel", mesh: dragModel});
       } else {  // 滚轮放缩镜头
         this.scene.orbitControl.enableZoom = true;
