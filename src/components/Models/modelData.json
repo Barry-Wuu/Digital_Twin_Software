@@ -9,6 +9,7 @@
         ]},
         {"title": "在制品", "children": [
             {"title": "货物", "model": "", "icon": "货物.jpg"},
+            {"title": "托盘", "model": "", "icon": "货物.jpg"},
             {"title": "发生器", "model": "", "icon": "发生器.jpg"},
             {"title": "回收器", "model": "", "icon": "回收器.jpg"}
         ]},
@@ -109,50 +110,60 @@
             }
         },
         "护栏": {
-            "geometry" : "new THREE.BoxGeometry( 2, 0.5, 1 )",
+            "geometry" : "new THREE.BoxGeometry(0.5, 2, 1)",
             "material" : { "color": "lightgray" },
             "rigid" : true, 
-            "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3( 1, 0.25, 0.5 ))"        
+            "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3(0.25, 1, 0.5))"        
         },
+        "传感器": {
+            "geometry" : "new THREE.BoxGeometry(0.1, 3, 0.8)",
+            "label" : "special",
+            "rigid" : true, 
+            "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3(0.05, 1.5, 0.4))",
+            "material" : { "color": "lime", "opacity": 0.5, "transparent": true },
+            "code" : "let rb : this.mesh.userData.physicsBody, \n rb.setMassProps(0, new Ammo.btVector3(0, 0, 0))"
+        },
+
         "货物": {
-            "geometry" : "new THREE.BoxGeometry( 1, 1, 1 )",
+            "geometry" : "new THREE.BoxGeometry(1, 1, 1)",
             "label" : "WIP",
             "mass" : 1,
             "material" : { "color": "blue" },
             "rigid" : true,
-            "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3( 0.5, 0.5, 0.5 ))"
+            "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3(0.5, 0.5, 0.5))"
+        },
+        "托盘": {
+            "geometry" : "new THREE.BoxGeometry(1.4, 0.4, 1.4)",
+            "label" : "WIP",
+            "mass" : 1,
+            "material" : { "color": "rgb(255, 255, 128)" },
+            "rigid" : true,
+            "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3(0.7, 0.2, 0.7))"
         },
         "发生器": {
-            "geometry" : "new THREE.BoxGeometry( 1, 1, 1 )",
+            "geometry" : "new THREE.BoxGeometry(1, 1, 1)",
             "label" : "special",
             "material" : { "color": "lime", "opacity": 0.5, "transparent": true },
             "timeInterval" : 5000
         },
         "回收器": {
-            "geometry" : "new THREE.BoxGeometry( 1, 1, 1 )",
+            "geometry" : "new THREE.BoxGeometry(1, 1, 1)",
             "label" : "special",
             "material" : { "color": "red", "opacity": 0.5, "transparent": true },
             "rigid" : true,
-            "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3( 0.5, 0.5, 0.5 ))"
+            "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3(0.5, 0.5, 0.5))"
         },
-        "传感器": {
-            "geometry" : "new THREE.BoxGeometry(3, 0.1, 0.1)",
-            "label" : "special",
-            "rigid" : true, 
-            "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3(1.5, 0.05, 0.05))",
-            "material" : { "color": "lime", "opacity": 0.5, "transparent": true },
-            "code" : "let rb : this.mesh.userData.physicsBody, \n rb.setMassProps(0, new Ammo.btVector3(0, 0, 0))"
-        },
+        
         "正方体": {
-            "geometry" : "new THREE.BoxGeometry( 1, 1, 1 )",
+            "geometry" : "new THREE.BoxGeometry(1, 1, 1)",
             "label" : "WIP",
             "material" : { "color": "lime" },
             "mass" : 1,
             "rigid" : true,
-            "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3( 0.5, 0.5, 0.5 ))"
+            "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3(0.5, 0.5, 0.5))"
         },
         "球": {
-            "geometry" : "new THREE.SphereGeometry( 0.5 )",
+            "geometry" : "new THREE.SphereGeometry(0.5)",
             "label" : "WIP",
             "material" : { "color": "red" },
             "mass" : 1,
@@ -165,10 +176,10 @@
             "material" : { "color": "blue" },
             "mass" : 1,
             "rigid" : true,
-            "rigidShape" : "new Ammo.btCylinderShape(new Ammo.btVector3( 0.5, 1, 0.5 ))"
+            "rigidShape" : "new Ammo.btCylinderShape(new Ammo.btVector3(0.5, 1, 0.5))"
         },
         "锥体":{
-            "geometry" : "new THREE.ConeGeometry( 0.5, 1, 12 )",
+            "geometry" : "new THREE.ConeGeometry(0.5, 1, 12)",
             "label" : "WIP",
             "material" : { "color": "yellow" },
             "mass" : 1,

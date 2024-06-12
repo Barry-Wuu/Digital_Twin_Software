@@ -857,10 +857,10 @@ export default class SceneBuilder{
                 }
                 const motionState = rb.getMotionState();
                 if (motionState) {
-                    if(DT.mass == 0 || DT.rigidFollow){  // 强制让刚体姿态等于网格姿态
+                    if(DT.mass == 0 || DT.rigidFollow){  // 强制让刚体位姿等于网格位姿
                         DT.updateRigidbodyTransform();
                     }
-                    else{  // 运行时将网格姿态更新为刚体姿态
+                    else{  // 运行时将网格位姿更新为刚体位姿
                         let transform = new Ammo.btTransform();
                         motionState.getWorldTransform( transform );
                         const P = transform.getOrigin();

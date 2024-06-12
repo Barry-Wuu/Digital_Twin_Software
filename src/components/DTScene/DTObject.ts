@@ -254,7 +254,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         global.emit("loading");
         for(let ptr in global.rb_mesh) 
             global.physicsWorld.removeRigidBody(global.rb_mesh[ptr].rb);
-        global.clear_rb_mesh();
+        global.rb_mesh = {};
         // 相机绑定的global.SCENE是Three.Scene，导入的场景this.mesh是Three.Group
         // 将Group克隆到global.SCENE中
         let group = this.mesh;
@@ -294,7 +294,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             for(let p of split) node = node[p];
             node[last] = newValue;
         }
-        this.updateRigidbodyTransform();  // 强制更新刚体姿态
+        this.updateRigidbodyTransform();  // 强制更新刚体位姿
     }
     setRow(expanded){  // 设置物体在树中的行数
         let children = this.children, lastRow = 0;
@@ -426,7 +426,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             DT.layers.wireframe = [wireframe];
         })
     }
-    updateRigidbodyTransform(mesh=this.mesh, force=false){  // 强制更新刚体姿态
+    updateRigidbodyTransform(mesh=this.mesh, force=false){  // 强制更新刚体位姿
         // 将物体的速度和角速度清零
         if(!mesh.DT?.rb && !force) return;
         this.rb.setLinearVelocity(zeroVector_Ammo);
@@ -436,7 +436,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             force = true;
         }
 
-        // 根据物体姿态强制设置其刚体姿态
+        // 根据物体位姿强制设置其刚体位姿
         let rb = mesh.DT ? mesh.DT.rb : mesh.parent.DT.rb;
         let transform = new Ammo.btTransform();
         const motionState = rb.getMotionState();

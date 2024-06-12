@@ -1,7 +1,7 @@
 <script lang="ts">
     import { defineComponent, ref } from 'vue'
     import Assets from './components/Assets.vue'
-    import Canvas from './components/ThreeScene/Canvas.vue'
+    import Canvas from './components/DTScene/Canvas.vue'
     import Console from './components/Console.vue'
     import Models from './components/Models.vue'
     import Properties from './components/Properties.vue'
