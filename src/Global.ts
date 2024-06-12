@@ -23,7 +23,6 @@ export default {  // 导出所有数据
         for(let DT of this.DTObjects.value){
             this.physicalIDMap[DT.physicalID] = DT;
         }
-        console.log(this.physicalIDMap)
     },
     // MITT库的方法，其中emit为发送消息，on为接收消息
     emit: MITT.emit,

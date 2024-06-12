@@ -226,7 +226,7 @@
             },
             saveScene(target=null, DTObjects="src/temp/DTObjects.txt", Scene="src/temp/Scene.txt"){
                 let DTScene = global.SCENE.DT;
-                // 暂时移除姿态控制器
+                // 暂时移除位姿控制器
                 let children = DTScene.mesh.children;
                 let controller = children.filter(mesh => mesh.isTransformControls)[0];
                 DTScene.mesh.remove(controller);

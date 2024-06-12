@@ -93,7 +93,7 @@
       <a-collapse-panel v-if="DT.rb" header="物理属性" key="物理属性">
         <Prop prop="rigid" title="刚体"/>
         <Prop prop="rb.constructor.name" title="刚体类型"/>
-        <Prop prop="rigidFollow" title="运动姿态跟随" type="follow"/>
+        <Prop prop="rigidFollow" title="运动位姿跟随" type="follow"/>
         <Prop prop="mass" title="质量" type="inputNumber"
         :options="{delta:0.1, min:0.1, max:5}"/>
         <Prop prop="friction0" title="静摩擦系数" type="inputNumber"

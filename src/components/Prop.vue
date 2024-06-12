@@ -512,7 +512,7 @@
       </span>
     </span> 
 
-    <!--运动姿态-->
+    <!--运动位姿-->
     <span v-else-if="type=='follow'">
       <a-dropdown-button :trigger="['click']">
         <a class="ant-dropdown-link" @click.prevent>
