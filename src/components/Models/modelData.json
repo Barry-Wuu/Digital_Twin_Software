@@ -116,10 +116,10 @@
             "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3(0.25, 1, 0.5))"        
         },
         "传感器": {
-            "geometry" : "new THREE.BoxGeometry(0.1, 3, 0.8)",
+            "geometry" : "new THREE.BoxGeometry(0.2, 3, 0.8)",
             "label" : "special",
             "rigid" : true, 
-            "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3(0.05, 1.5, 0.4))",
+            "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3(0.1, 1.5, 0.4))",
             "material" : { "color": "lime", "opacity": 0.5, "transparent": true },
             "code" : "let rb : this.mesh.userData.physicsBody, \n rb.setMassProps(0, new Ammo.btVector3(0, 0, 0))"
         },

@@ -56,14 +56,14 @@
             else choices.value.push(choice);  // 多选选择
             if(choices.value.length == 1){  // 只有一个物体被选时控制该物体
               global.emit("controlStart", choices.value[0]);
-              global.emit("updateGroupWireframes");
+              global.SCENE.DT.updateGroupWireframes();
             }
             else global.emit("controlEnd");  // 选中多个物体时收起控制器
           }
           else{  // 单选
             choices.value = [choice];
             global.emit("controlStart", choice);  // 选中物体开始控制
-            global.emit("updateGroupWireframes");
+            global.SCENE.DT.updateGroupWireframes();
           }
         });
         global.on("deselect", ()=>{this.deselect()});  // 取消选择
@@ -164,7 +164,7 @@
           else {  // 单选
             choices.value = [selection];
             global.emit("controlStart", selection);  // 选中物体开始控制
-            global.emit("updateGroupWireframes");
+            global.SCENE.DT.updateGroupWireframes();
             lastChoice = selection;
           }
         },
