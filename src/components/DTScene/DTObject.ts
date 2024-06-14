@@ -44,7 +44,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     v0: number  // 传送带中轴线速度
     constructor(mesh=null, addToScene=false, asset=null) {  
         if(mesh){
-            this.id = this.key = mesh.id;
+            this.id = this.key = this.physicalID = mesh.id;
             this.mesh = mesh;
             if(mesh.name) this.name = mesh.name;
             this.type = mesh.type;
@@ -430,6 +430,12 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             );
             wireframe.update();
         })
+    }
+    updatePhysicalIDMap(){  // 更新物理实体ID到物体的映射关系
+        global.physicalIDMap = {};
+        for(let DT of global.DTObjects.value){
+            global.physicalIDMap[DT.physicalID] = DT;
+        }
     }
     updateRigidbodyTransform(mesh=this.mesh, force=false){  // 强制更新刚体位姿
         // 将物体的速度和角速度清零

@@ -18,12 +18,6 @@ export default {  // 导出所有数据
         因为碰撞检测时碰撞体和刚体不同，而两者ptr相同，所以需要用ptr在此表中查找刚体和网格
     */
     SCENE: new THREE.Scene(),
-    updatePhysicalIDMap(){  // 更新物理实体ID到物体的映射关系
-        this.physicalIDMap = {};
-        for(let DT of this.DTObjects.value){
-            this.physicalIDMap[DT.physicalID] = DT;
-        }
-    },
     // MITT库的方法，其中emit为发送消息，on为接收消息
     emit: MITT.emit,
     on: MITT.on,
