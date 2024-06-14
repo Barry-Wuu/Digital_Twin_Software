@@ -30,7 +30,6 @@
         VideoCameraOutlined,
     } from "@ant-design/icons-vue";
 
-    import HttpServer from "./HttpServer/HttpServer"
     var BottomMessage;
     var BottomSpeed;
     const cameraMode = ref("透视");
@@ -41,7 +40,6 @@
     var fileOutput;  // 文件保存器
     const GLTFexporter = new GLTFExporter();
     const GLTFloader = new GLTFLoader();
-    var httpServerProcess = null; // 用于保存http-server进程的引用 
     const Layers = ref([
         "special", 
         "WIP", 
@@ -332,7 +330,6 @@
             fileOutput = document.getElementById("fileOutput");
             fileOutput.download = this.savepath;
             global.layers = Layers.value;
-            httpServerProcess = new HttpServer(13579);  // 启动http服务
 
             try {  // 有历史打开记录和自定义视角则加载
                 let file;
@@ -356,7 +353,6 @@
                     }
                 }
                 deleteFolder("src/temp");
-                httpServerProcess.kill();
             });
         },
     });
@@ -681,4 +677,3 @@
         <vr class="splitV"/><!--分隔符-->
     </span>
 </template>
-  

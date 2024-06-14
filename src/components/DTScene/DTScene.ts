@@ -636,11 +636,11 @@ export default class SceneBuilder{
         for(let key in obj) DT[key] = obj[key];
         if(typeof DT.geometry == "string") DT.geometry = eval(DT.geometry);
         mesh.material = new THREE.MeshPhongMaterial(DT.material);
-        if(mesh.DT.label == "WIP") mesh.rotateX(Math.PI/2);
         DT.name = item.modelname;
         mesh.geometry = DT.geometry;
         DT.setTitle();
         DT.updateWireframes();
+        if(mesh.DT.label == "WIP") mesh.rotateX(Math.PI/2);
 
         if(DT.label == "conveyor"){
             attachObjects.add(DT.mesh);
@@ -655,6 +655,7 @@ export default class SceneBuilder{
             item.userData.indicator = true; 
             item.visible = global.layers.includes("indicator");
             mesh.add(item);
+            item.position.z += 0.01;  // 将箭头稍微上调，以免和物体重叠
         }
         for (let item of DT.layers.attachPoint1) {  // 传送带入口连接点
             item.scale.setScalar(1 / DT.scale);
@@ -741,7 +742,7 @@ export default class SceneBuilder{
                 let v0 = DT1.v0;  // 传送带中轴线速度v0
                 let theta = R.z;  //传送带旋转角θ 
                 R = 5;  // 传送带中轴线半径R
-                if(DT1.name == "直道"){  // 摩擦力 F = kmg(v0-v)/||v0-v||，v和v0为向量
+                if(DT1.name?.includes("直道")){  // 摩擦力 F = kmg(v0-v)/||v0-v||，v和v0为向量
                     // 将v0从标量转换为货物处的速度矢量v0_real
                     let v0_real = new Ammo.btVector3(v0*Math.cos(theta), v0*Math.sin(theta), 0);
                     v = rb0.getLinearVelocity();
@@ -750,7 +751,7 @@ export default class SceneBuilder{
                     F.op_mul(k*m*g);
                     rb0.applyCentralForce(F);
                 }
-                else if(DT1.name && DT1.name.includes("弯道")){
+                else if(DT1.name?.includes("弯道")){
                     let dir = DT1.name == "逆时针弯道" ? -1 : 1;  // 传送带移动方向（顺/逆时针）
                     let r = new THREE.Vector3();
                     r.add(mesh0.position).sub(P);

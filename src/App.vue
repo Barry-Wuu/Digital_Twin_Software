@@ -8,8 +8,12 @@
   import { FullscreenExitOutlined } from '@ant-design/icons-vue';
   import global from "./Global"
 
+  import HttpClient from "./components/HttpService/HttpClient"
+  import HttpServer from "./components/HttpService/HttpServer"
+
   var dragPoint = [0, 0];
   var draggedSpliter;
+  var httpServerProcess = null; // 用于保存http-server进程的引用 
   var id = 0;
   var initSize = [0, 0];
   const layout = ref({
@@ -93,6 +97,7 @@
   addId(layout.value);
   onMounted(() => {  // 加载完成时
     addSplitMover(layout.value);
+    httpServerProcess = new HttpServer(13579);  // 启动http服务
     window.addEventListener("drop", ()=>{
       document.body.style.userSelect = '';  // 恢复文本选择功能
       draggedSpliter = null;
@@ -101,6 +106,9 @@
       document.body.style.userSelect = '';  // 恢复文本选择功能
       draggedSpliter = null;
     });
+    window.addEventListener("beforeunload", () => {  // 退出时清理临时文件（src/temp文件夹）
+      httpServerProcess.kill();
+    })
   })
 </script>
 

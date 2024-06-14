@@ -1,15 +1,18 @@
 {
     "model_layout": [
         {"title": "传送带", "children": [
-            {"title": "直道", "model": "传送带-直道.stl", "icon": "直道.jpg"},
-            {"title": "顺时针弯道", "model": "传送带-弯道.stl", "icon": "弯道1.jpg"},
-            {"title": "逆时针弯道", "model": "传送带-弯道.stl", "icon": "弯道2.jpg"},
+            {"title": "平行传送带-直道", "model": "平行传送带-直道.stl", "icon": "滚轮直道.jpg"},
+            {"title": "平行传送带-顺时针弯道", "model": "平行传送带-弯道.stl", "icon": "滚轮弯道1.jpg"},
+            {"title": "平行传送带-逆时针弯道", "model": "平行传送带-弯道.stl", "icon": "滚轮弯道2.jpg"},
+            {"title": "滚轮传送带-直道", "model": "滚轮传送带-直道.stl", "icon": "滚轮直道.jpg"},
+            {"title": "滚轮传送带-顺时针弯道", "model": "滚轮传送带-弯道.stl", "icon": "滚轮弯道1.jpg"},
+            {"title": "滚轮传送带-逆时针弯道", "model": "滚轮传送带-弯道.stl", "icon": "滚轮弯道2.jpg"},
             {"title": "护栏", "model": "", "icon": "护栏.jpg"},
             {"title": "传感器", "model": "", "icon": "传感器.jpg"}
         ]},
         {"title": "在制品", "children": [
             {"title": "货物", "model": "", "icon": "货物.jpg"},
-            {"title": "托盘", "model": "", "icon": "货物.jpg"},
+            {"title": "托盘", "model": "", "icon": "托盘.jpg"},
             {"title": "发生器", "model": "", "icon": "发生器.jpg"},
             {"title": "回收器", "model": "", "icon": "回收器.jpg"}
         ]},
@@ -20,11 +23,11 @@
             {"title": "锥体", "model": "", "icon": "cone.jpg"}
         ]},
             {"title": "其它", "children": [
-            {"title": "弯道（凸集）", "model": "传送带-弯道.stl", "icon": "弯道1.jpg"}
+            {"title": "弯道（凸集）", "model": "滚轮传送带-弯道.stl", "icon": "滚轮弯道1.jpg"}
         ]}
     ],
     "model_definition": {
-        "直道": {
+        "平行传送带-直道": {
             "material": { "color": "lightgray" },
             "rigid": true,
             "rigidShape": "convex",
@@ -37,7 +40,7 @@
                 "attachPoint2": "[this.createAttachPoint2(150, 0)]"
             }
         },
-        "顺时针弯道": {
+        "平行传送带-顺时针弯道": {
             "material" : { "color": "lightgray" },
             "rigid" : true,
             "scale" : 0.05,
@@ -67,7 +70,79 @@
             }
             
         },
-        "逆时针弯道":{
+        "平行传送带-逆时针弯道":{
+            "material" : { "color": "lightgray" },
+            "rigid" : true, 
+            "scale" : 0.05,
+            "v0" : 2,
+            "label" : "conveyor",
+            "rigidShape" :[
+                "()=>{",
+                    "const PI = Math.PI;",
+                    "let r = 3.6/this.scale, R = 6.4/this.scale, shape = new THREE.Shape();",
+                    "shape.moveTo(0, R);",
+                    "shape.absarc(0, 0, R, PI/2, PI, false);",
+                    "shape.lineTo(-r, 0);",
+                    "shape.absarc(0, 0, r, PI, PI/2, true);",
+                    "shape.closePath();",  
+                    "return new THREE.ExtrudeGeometry(shape, {",  
+                        "bevelEnabled: false,",  
+                        "curveSegments: 5,",  
+                        "depth: -12,",  
+                        "steps: 1,",  
+                    "})",
+                "}"
+            ],
+            "layers":{
+                "indicator" : "[this.createArrow(0, 5, 180)]",
+                "attachPoint1" : "[this.createAttachPoint1(0, 100)]",
+                "attachPoint2" : "[this.createAttachPoint2(-100, 0)]"
+            }
+        }, 
+        "滚轮传送带-直道": {
+            "material": { "color": "lightgray" },
+            "rigid": true,
+            "rigidShape": "convex",
+            "scale": 0.05,
+            "v0": 2,
+            "label": "conveyor",
+            "layers":{
+                "indicator": "[this.createArrow(0.5, 0, 0)]",
+                "attachPoint1": "[this.createAttachPoint1(0, 0)]",
+                "attachPoint2": "[this.createAttachPoint2(150, 0)]"
+            }
+        },
+        "滚轮传送带-顺时针弯道": {
+            "material" : { "color": "lightgray" },
+            "rigid" : true,
+            "scale" : 0.05,
+            "v0" : 2,
+            "label" : "conveyor",
+            "rigidShape" :[
+                "()=>{",
+                    "const PI = Math.PI;",
+                    "let r = 3.6/this.scale, R = 6.4/this.scale, shape = new THREE.Shape();",
+                    "shape.moveTo(0, R);",
+                    "shape.absarc(0, 0, R, PI/2, PI, false);",
+                    "shape.lineTo(-r, 0);",
+                    "shape.absarc(0, 0, r, PI, PI/2, true);",
+                    "shape.closePath();",  
+                    "return new THREE.ExtrudeGeometry(shape, {",
+                        "bevelEnabled: false,",
+                        "curveSegments: 5,",
+                        "depth: -12,",
+                        "steps: 1,",
+                    "})",
+                "}"
+            ],
+            "layers": {
+                "indicator" : "[this.createArrow(-5, 0, 90)]",
+                "attachPoint1" : "[this.createAttachPoint1(-100, 0)]",
+                "attachPoint2" : "[this.createAttachPoint2(0, 100)]"
+            }
+            
+        },
+        "滚轮传送带-逆时针弯道":{
             "material" : { "color": "lightgray" },
             "rigid" : true, 
             "scale" : 0.05,

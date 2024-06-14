@@ -185,15 +185,29 @@
         let prop = "DT.value." + this.prop + (item ? '.' + item : '');  // 结束编辑时更改属性值
         if(eval(prop).isColor) eval(prop).setStyle(result);
         else if(this.type == "inputString") {
-            eval(`${prop} = "${result}"`);
-            global.updatePhysicalIDMap();  // 更新物理实体ID到物体的映射关系
+            if(this.prop == "physicalID"){
+              let targetDT = global.physicalIDMap[result];
+              console.log(global.physicalIDMap);
+              if(targetDT && targetDT != DT.value){
+                  input_value.value = DT.value.physicalID;
+                  chosenProp.value = null;  // 结束编辑
+                  e.target.blur();  // 修改属性之后让元素自动失焦；
+                  alert("该物理实体ID已被占用，请重新输入");
+                  return;
+              }
+              eval(`${prop} = "${result}"`);
+              DT.value.updatePhysicalIDMap();  // 更新物理实体ID到物体的映射关系
+            }
+            else eval(`${prop} = "${result}"`);
         }
         else eval(`${prop} = ${result}`);
         this.$emit("change");
-        global.SCENE.DT.updateGroupWireframes();
         chosenProp.value = null;  // 结束编辑
         e.target.blur();  // 修改属性之后让元素自动失焦；
       },   
+      confirm(e){  // 按回车键确认并失焦
+        if(e.type == "keydown" && e.key == "Enter") e.target.blur();
+      },
       format(prop, N=1){  // 将输出参数格式化
         try{
           prop = JSON.parse(prop);
@@ -389,19 +403,15 @@
       <a-input class="propInput" :style="propStyle()" :title="help.input" 
       v-model:value="computedProp"
       @blur="e=>changeValue({e:e, type:'string'})" 
-      @click="startEdit" 
-      @dblclick="selectAll" 
-      @keydown="e=>changeValue({e:e, type:'string'})"/>
+      @click="startEdit" @dblclick="selectAll" @keydown="confirm"/>
     </span> 
-
 
     <!--编辑数值属性-->
     <span v-else-if="type=='inputNumber'">
       <a-input class="propInput" :style="propStyle()" :title="help.input" 
       v-model:value="computedProp"
       @blur="e=>changeValue(getOptions(e))" 
-      @click="startEdit" 
-      @keydown="e=>changeValue(getOptions(e))"
+      @click="startEdit" @dblclick="selectAll" @keydown="confirm"
       @wheel="e=>changeValue(getOptions(e))" @wheel.prevent/>
       <div v-if="options.suffix" class="inline">{{ options.suffix }}</div>
     </span> 
@@ -410,9 +420,8 @@
     <span v-else-if="type=='inputString'">
       <a-input class="propInput" :style="propStyle()" :title="help.input" 
       v-model:value="computedProp"
-      @blur="e=>changeValue(getOptions(e))" 
-      @click="startEdit" 
-      @keydown="e=>changeValue(getOptions(e))"
+      @blur="e=>changeValue(getOptions(e))"
+      @click="startEdit" @dblclick="selectAll" @keydown="confirm"
       @wheel="e=>changeValue(getOptions(e))" @wheel.prevent/>
     </span> 
 
@@ -424,24 +433,21 @@
         <a-input class="propInput" :style="propStyle()" :title="help.input" 
         v-model:value="computedX" :disabled="DT.label=='protected'"
         @blur="e=>changeValue(getOptions(e, 'x'))" 
-        @click="e=>startEdit(e, 'x')"
-        @keydown="e=>changeValue(getOptions(e, 'x'))"
+        @click="e=>startEdit(e, 'x')" @dblclick="selectAll" @keydown="confirm"
         @wheel="e=>changeValue(getOptions(e, 'x'))" @wheel.prevent/>
         <div v-if="options.suffix" class="inline">{{ options.suffix }}</div>&nbsp;
         <strong>y:</strong>
         <a-input class="propInput" :style="propStyle()" :title="help.input" 
         v-model:value="computedY" :disabled="DT.label=='protected'"
         @blur="e=>changeValue(getOptions(e, 'y'))" 
-        @click="e=>startEdit(e, 'y')" 
-        @keydown="e=>changeValue(getOptions(e, 'y'))"
+        @click="e=>startEdit(e, 'y')" @dblclick="selectAll" @keydown="confirm"
         @wheel="e=>changeValue(getOptions(e, 'y'))" @wheel.prevent/>
         <div v-if="options.suffix" class="inline">{{ options.suffix }}</div>&nbsp; 
         <strong>z:</strong>
         <a-input class="propInput" :style="propStyle()" :title="help.input" 
         v-model:value="computedZ" :disabled="DT.label=='protected'"
         @blur="e=>changeValue(getOptions(e, 'z'))" 
-        @click="e=>startEdit(e, 'z')" 
-        @keydown="e=>changeValue(getOptions(e, 'z'))"
+        @click="e=>startEdit(e, 'z')" @dblclick="selectAll" @keydown="confirm"
         @wheel="e=>changeValue(getOptions(e, 'z'))" @wheel.prevent/>
         <div v-if="options.suffix" class="inline">{{ options.suffix }}</div>
       </span>
@@ -451,24 +457,21 @@
         <a-input class="propInput" :style="propStyle()" :title="help.input" 
         v-model:value="computedX"
         @blur="e=>changeColor(e, 'r')" 
-        @click="e=>startEdit(e, 'r')" 
-        @keydown="e=>changeColor(e, 'r')"
+        @click="e=>startEdit(e, 'r')" @dblclick="selectAll" @keydown="confirm"
         @wheel="e=>changeColor(e, 'r')" @wheel.prevent/>
         &nbsp;
         <strong>G:</strong>
         <a-input class="propInput" :style="propStyle()" :title="help.input" 
         v-model:value="computedY"
         @blur="e=>changeColor(e, 'g')" 
-        @click="e=>startEdit(e, 'g')" 
-        @keydown="e=>changeColor(e, 'g')"
+        @click="e=>startEdit(e, 'g')" @dblclick="selectAll" @keydown="confirm"
         @wheel="e=>changeColor(e, 'g')" @wheel.prevent/>
         &nbsp; 
         <strong>B:</strong>
         <a-input class="propInput" :style="propStyle()" :title="help.input" 
         v-model:value="computedZ"
         @blur="e=>changeColor(e, 'b')" 
-        @click="e=>startEdit(e, 'b')" 
-        @keydown="e=>changeColor(e, 'b')"
+        @click="e=>startEdit(e, 'b')" @dblclick="selectAll" @keydown="confirm"
         @wheel="e=>changeColor(e, 'b')" @wheel.prevent/>
         <!--预览与编辑颜色-->
         <a-popconfirm :draggable="false" icon="" style="user-select: none;">

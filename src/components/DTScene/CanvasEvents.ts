@@ -81,15 +81,18 @@ export default defineComponent({
   },
   methods: {
     alignToConveyor(dragPoint, conveyor) {
+      tempModel.rotation.set(0, 0, 0);
+      if(dragModel.DT.label == "WIP") tempModel.rotateOnWorldAxis(  // 旋转在制品
+        RIGHT, Math.PI / 2
+      );
       tempTransform.alignToConveyor = true;
       let P = new THREE.Vector3();
       let Q = new THREE.Quaternion();
       conveyor.getWorldPosition(P);
       conveyor.getWorldQuaternion(Q);
-      if(conveyor.DT.name == ("直道")){
+      if(conveyor.DT.name.includes("直道")){
         let result = RIGHT.clone();
         conveyorRay.set(P, result.applyQuaternion(Q));  // 求鼠标到传送带中轴线最近的一点
-        tempModel.rotation.set(0, 0, 0);
         if(dragModel.DT.name == "护栏"){
           tempModel.rotateOnWorldAxis(  // 设置物体旋转
             UP, Math.atan(result.y / result.x) + Math.PI / 2
@@ -112,7 +115,6 @@ export default defineComponent({
         result.z = 0;
         outer = result.length() > 5;
         result.normalize();
-        tempModel.rotation.set(0, 0, 0);
         if(dragModel.DT.name == "护栏"){  // 设置物体旋转
           tempModel.rotateOnWorldAxis(UP, Math.atan(result.y / result.x));
           result.multiplyScalar(outer ? 6.4 : 3.6);
@@ -142,7 +144,7 @@ export default defineComponent({
         let mesh = intersect.object;
         if(mesh.isTransformControlsPlane) continue;  // 忽略控制器
         if(mesh.DT && mesh != dragModel && mesh != tempModel  // 若射线检测到的物体无DT则继续往后检测
-          || mesh.isTransformControls  // 允许点击控制器
+          || mesh.isTransformControls && !mesh.isLine  // 允许点击控制器
         ) {
           return [mesh, intersect.point];
         }
@@ -241,7 +243,7 @@ export default defineComponent({
                 const rotationChange = closestAttachPoint2.parent.rotation
                 dragModel.rotation.x = rotationChange.x;  // X轴旋转
                 dragModel.rotation.y = rotationChange.y;  // Y轴旋转
-                if (dragModel.DT.name=="直道"){
+                if (dragModel.DT.name.include("直道")){
                   dragModel.rotation.z = rotationChange.z;}
                 else{
                   dragModel.rotation.z = rotationChange.z-Math.PI/2;
@@ -342,6 +344,9 @@ export default defineComponent({
           tempModel.position.copy(intersect[1]);
           tempModel.position.add(delta);
           tempModel.rotation.set(0, 0, 0);  // 重置旋转
+          if(dragModel.DT.label == "WIP") tempModel.rotateOnWorldAxis(  // 旋转在制品
+            RIGHT, Math.PI / 2
+          );
           box.setFromObject(tempModel);
           // 若被拖动物体本身不是传送带，且碰到传送带，则将物体移动到传送带中轴线上
           if(dragModel.DT.label != "conveyor" && intersect[0].DT.label == "conveyor"){
@@ -420,16 +425,16 @@ export default defineComponent({
         if (mouseType[2]) { }  // 双击左右键则移动
         else if (global.mode == "edit") {  // 左键点击
           if (e.target.localName == "div"){
-            let result = this.intersectObject(e);
+            let result = this.intersectObject(e); console.log(result)
             let choice = result[0];
-            if (choice.isTransformControls){   // 点击控制器则忽略后文
+            if (choice?.isTransformControls){   // 点击控制器则忽略后文
               transformControls = true;
               return;
             }
             dragPoint = result[1];
-            if (!choice.parent.DT && choice.parent.DT)  // 点击指示箭头或吸附方块等
+            if (choice && !choice.parent.DT && choice.parent.DT)  // 点击指示箭头或吸附方块等
               choice = choice.parent;
-            if (choice.DT && !choice.userData.ground) {
+            if (choice?.DT && !choice.userData.ground) {
               global.emit("clickModel", {id: choice.id, shift: e.shiftKey});
               result[0].getWorldPosition(delta);
               delta.sub(result[1]);  // Δp = 选中物体的全局坐标 - 物体上点击处的坐标
@@ -488,7 +493,6 @@ export default defineComponent({
         this.onDrop();
         isDrag = false;
       }
-      global.SCENE.DT.updateGroupWireframes();
       global.emit("updateProp", {action:"mouseup"});
     },
     onPointerdown(e){
@@ -520,7 +524,6 @@ export default defineComponent({
         result = dragModel.parent.worldToLocal(result);
         dragModel.position.copy(result);
         global.emit("controlStart", dragModel.id);
-        global.SCENE.DT.updateGroupWireframes();
         global.emit("updateProp", {action: "wheel", mesh: dragModel});
       } else {  // 滚轮放缩镜头
         this.scene.orbitControl.enableZoom = true;
