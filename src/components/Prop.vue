@@ -186,8 +186,7 @@
         if(eval(prop).isColor) eval(prop).setStyle(result);
         else if(this.type == "inputString") {
             if(this.prop == "physicalID"){
-              let targetDT = global.physicalIDMap[result];
-              console.log(global.physicalIDMap);
+              let targetDT = global.physicalIDMap[result]
               if(targetDT && targetDT != DT.value){
                   input_value.value = DT.value.physicalID;
                   chosenProp.value = null;  // 结束编辑

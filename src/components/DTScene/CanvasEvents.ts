@@ -425,7 +425,7 @@ export default defineComponent({
         if (mouseType[2]) { }  // 双击左右键则移动
         else if (global.mode == "edit") {  // 左键点击
           if (e.target.localName == "div"){
-            let result = this.intersectObject(e); console.log(result)
+            let result = this.intersectObject(e);
             let choice = result[0];
             if (choice?.isTransformControls){   // 点击控制器则忽略后文
               transformControls = true;
@@ -467,7 +467,7 @@ export default defineComponent({
         // 中键或右键点击
       };
     },
-    onMousemove(e) {
+    onMousemove(e) { 
       if (mouseType[0] && mouseType[2]) {  // 同时按鼠标左右键移动相机
         this.scene.orbitControl.mouseButtons = {
           LEFT: MOVE, MIDDLE: -1, RIGHT: MOVE
@@ -574,7 +574,7 @@ export default defineComponent({
     this.rendered = true;
     this.resizeCanvas();
     resizeObserver.observe(canvas.parentElement.parentElement.parentElement);
-    window.addEventListener("keydown", (k) => {
+    canvas.addEventListener("keydown", (k) => {  // 全屏模式下按ESC退出
       if (k.code == "Escape" && fullscreen) {
         global.emit("changeFullscreen");
       }

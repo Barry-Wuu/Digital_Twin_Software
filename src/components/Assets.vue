@@ -274,6 +274,7 @@
             asset => asset.name == renamed.value && asset != renamingAsset.value
           ).length){
             global.emit("popup", {  // 弹窗询问是否重命名
+              title: "重命名组件",
               type: "yes_no",
               content: `组件“${renamed.value}”已存在。\r确定将其重命名吗？`,
               yes: ()=>{  // 确认重命名
@@ -283,7 +284,10 @@
                 create = false;
                 this.sort();
               },
-              no: ()=>{},  // 取消重命名
+              no: ()=>{  // 取消重命名
+                renamed.value = renamingAsset.value = null; 
+                create = false;
+              },
             });
             return;
           }

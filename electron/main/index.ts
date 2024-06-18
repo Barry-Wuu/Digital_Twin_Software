@@ -16,8 +16,8 @@ if (release().startsWith('6.1')) app.disableHardwareAcceleration()
 if (process.platform === 'win32') app.setAppUserModelId(app.getName())
 
 if (!app.requestSingleInstanceLock()) {
-  app.quit()
-  process.exit(0)
+  app.quit();
+  process.exit(0);
 }
 
 // Remove electron security warnings
@@ -25,14 +25,13 @@ if (!app.requestSingleInstanceLock()) {
 // Read more on https://www.electronjs.org/docs/latest/tutorial/security
 process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true'
 
-let win: BrowserWindow | null = null
-// Here, you can also use other preload
-const preload = join(__dirname, '../preload/index.js')
-const url = process.env.VITE_DEV_SERVER_URL
-const indexHtml = join(process.env.DIST, 'index.html')
+let window = null;
+const preload = join(__dirname, '../preload/index.js');  // Here, you can also use other preload
+const url = process.env.VITE_DEV_SERVER_URL;
+const indexHtml = join(process.env.DIST, 'index.html');
 
 async function createWindow() {
-  win = new BrowserWindow({
+  window = new BrowserWindow({
     title: 'Main window',
     icon: join(process.env.VITE_PUBLIC, 'favicon.ico'),
     webPreferences: {
@@ -44,23 +43,26 @@ async function createWindow() {
       contextIsolation: false,
     },
   })
-  win.setMenuBarVisibility(false)  // 隐藏窗口顶部工具栏，刷新按Ctrl+R，控制台按Ctrl+Shift+I
+  window.setMenuBarVisibility(false)  // 隐藏窗口顶部工具栏，刷新按Ctrl+R，控制台按Ctrl+Shift+I
 
   if (process.env.VITE_DEV_SERVER_URL) { // electron-vite-vue#298
-    win.loadURL(url)
-    // Open devTool if the app is not packaged
-    win.webContents.openDevTools()
+    window.loadURL(url)
+    window.webContents.openDevTools()  // Open devTool if the app is not packaged
   } else {
-    win.loadFile(indexHtml)
+    window.loadFile(indexHtml)
   }
 
-  // 浏览器加载完成后开始计时
-  win.webContents.on('did-finish-load', () => {
-    win?.webContents.send('main-process-message', new Date().toLocaleString())
+  window.on("close", e => {  // 阻止窗口被直接关闭，而是先弹出确认窗口
+    e.preventDefault();
+    window.webContents.send("closeConfirm"); // 弹窗询问是否关闭
+  })
+
+  window.webContents.on('did-finish-load', () => { // 浏览器加载完成后开始计时
+    window?.webContents.send('main-process-message', new Date().toLocaleString())
   })
 
   // Make all links open with the browser, not with the application
-  win.webContents.setWindowOpenHandler(({ url }) => {
+  window.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https:')) shell.openExternal(url)
     return { action: 'deny' }
   })
@@ -70,15 +72,15 @@ async function createWindow() {
 app.whenReady().then(createWindow)
 
 app.on('window-all-closed', () => {
-  win = null
+  window = null
   if (process.platform !== 'darwin') app.quit()
 })
 
 app.on('second-instance', () => {
-  if (win) {
+  if (window) {
     // Focus on the main window if the user tried to open another
-    if (win.isMinimized()) win.restore()
-    win.focus()
+    if (window.isMinimized()) window.restore()
+    window.focus()
   }
 })
 
@@ -92,7 +94,7 @@ app.on('activate', () => {
 })
 
 // Electron浏览器的事件
-ipcMain.handle('open-win', (_, arg) => {  // 窗口打开时
+ipcMain.handle("open-win", (_, arg) => {  // 窗口打开时
   const childWindow = new BrowserWindow({
     webPreferences: {
       preload,
@@ -106,6 +108,7 @@ ipcMain.handle('open-win', (_, arg) => {  // 窗口打开时
     childWindow.loadFile(indexHtml, { hash: arg })
   }    
 })
-ipcMain.on('openDevTools', () => { win.webContents.openDevTools(); })  // 打开开发人员工具
-ipcMain.on('closeDevTools', () => { win.webContents.closeDevTools(); })  // 关闭开发人员工具
-ipcMain.on('reload', () => { win.reload() })  // 重载页面
+ipcMain.on("openDevTools", () => window.webContents.openDevTools());  // 打开开发人员工具
+ipcMain.on("closeDevTools", () => window.webContents.closeDevTools());   // 关闭开发人员工具
+ipcMain.on("closeWindow", () => window.destroy());   // 关闭窗口
+ipcMain.on("reload", () => window.reload());  // 重载页面
