@@ -24,6 +24,7 @@
   var popup;
   var popupMask;
   const popupContent = ref('');
+  const popupTitle = ref('');
   const yesNoContent = ref({content:'', yes:()=>{}, no:()=>{}});
 
   export default{
@@ -74,23 +75,27 @@
       },
     },
     setup(){
-      return {addCustomProp, DT, global, customCodeFont, editProp, editValue, helpChange, helpContent,
-        helpTree, newCode, newProp, popup, popupContent, popupMask, yesNoContent}
+      return {
+        addCustomProp, DT, global, customCodeFont, editProp, editValue, 
+        helpChange, helpContent, helpTree, newCode, newProp, 
+        popup, popupContent, popupMask, popupTitle, yesNoContent
+      }
     },
     mounted(){
-      for(let node of helpTree){node.title = node.key}
-      global.on("popup", (obj:any)=>{  // 显示弹窗，弹窗类型由obj.type决定
-        DT.value = obj.DT;
-        yesNoContent.value = obj.type == "yes_no" ? obj : null;  // 显示“是否确认重命名组件”窗口
-        if(popupContent.value == obj.type) this.closePopup();
+      for(let node of helpTree) node.title = node.key;
+      global.on("popup", (data: any)=>{  // 显示弹窗，弹窗类型由obj.type决定
+        DT.value = data.DT;
+        yesNoContent.value = data.type == "yes_no" ? data : null;  // 显示“是否确认重命名组件”窗口
+        if(popupContent.value == data.type) this.closePopup();
         else {
-          popupContent.value = obj.type;
+          popupContent.value = data.type;
+          popupTitle.value = data.title;
           popup.style.display = popupMask.style.display = "block";
           this.$nextTick(()=>{  // 异步更新窗口位置
             let rect = popup.getBoundingClientRect();
             popup.style.top = (main.offsetHeight - rect.height)/2 + "px";
             popup.style.left = (main.offsetWidth - rect.width)/2 + "px";
-            if(obj.type == "code"){
+            if(data.type == "code"){
               newCode.value = DT.value.code ? DT.value.code : '';
             }
           });
@@ -188,12 +193,7 @@
   }[popupContent]}">
     <!--头部拖动栏-->  
     <div id="popup-header" class="popup-header">  
-      <strong style="color:white">
-        <div v-if="popupContent=='code'">自定义脚本</div>
-        <div v-if="popupContent=='help'">帮助</div>
-        <div v-if="popupContent=='prop'">自定义属性</div>
-        <div v-if="popupContent=='yes_no'">确认重命名</div>
-      </strong>
+      <strong style="color:white">{{ popupTitle }}</strong>
       <!--退出-->
       <a-button id="popup-quit" danger type="primary" @click="closePopup">
         <CloseOutlined/>
@@ -251,7 +251,7 @@
             v-model:value="newProp"
             placeholder="属性名"
             style="width:200px"
-            @keydown="(e)=>{if(e.key=='Enter') createCustomProp(e)}"
+            @keydown="e => {if(e.key=='Enter') createCustomProp()}"
           />&nbsp;
           <a-button style="border:#0B0 solid 1px; color:#0B0" @click="createCustomProp();">
             <CheckOutlined/>

@@ -119,14 +119,14 @@
 
       <!--自定义属性-->
       <a-collapse-panel v-if="DT.custom" header="自定义属性" key="自定义属性">
-        <a-button @click="global.emit('popup', {DT: DT, type: 'prop'})">
+        <a-button @click="global.emit('popup', {DT: DT, title: '编辑自定义属性', type: 'prop'})">
           编辑自定义属性
         </a-button>  
       </a-collapse-panel>
 
       <!--自定义脚本-->
       <a-collapse-panel v-if="DT.custom" header="自定义脚本" key="自定义脚本">
-        <a-button @click="global.emit('popup', {DT: DT, type: 'code'})">
+        <a-button @click="global.emit('popup', {DT: DT, title: '编辑自定义脚本', type: 'code'})">
           编辑自定义脚本
         </a-button>  
       </a-collapse-panel>

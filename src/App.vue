@@ -98,6 +98,10 @@
   onMounted(() => {  // 加载完成时
     addSplitMover(layout.value);
     httpServerProcess = new HttpServer(13579);  // 启动http服务
+    
+    global.on("beforeunload", () => {  // 退出时清理临时文件（src/temp文件夹）
+      httpServerProcess.kill();
+    })
     window.addEventListener("drop", ()=>{
       document.body.style.userSelect = '';  // 恢复文本选择功能
       draggedSpliter = null;
@@ -106,9 +110,6 @@
       document.body.style.userSelect = '';  // 恢复文本选择功能
       draggedSpliter = null;
     });
-    window.addEventListener("beforeunload", () => {  // 退出时清理临时文件（src/temp文件夹）
-      httpServerProcess.kill();
-    })
   })
 </script>
 

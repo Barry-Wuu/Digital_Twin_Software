@@ -417,6 +417,7 @@ export default class SceneBuilder{
         global.on("changeFogColor", (isGround)=>{  // 更改地面颜色时同时更改雾的颜色
             if(isGround) global.SCENE.fog.color.copy(this.ground.material.color);
         });
+        global.SCENE.DT.updatePhysicalIDMap();
         emulateMode = "stop";
         loading = false;
         if(!animate){

@@ -40,6 +40,7 @@
     var fileOutput;  // 文件保存器
     const GLTFexporter = new GLTFExporter();
     const GLTFloader = new GLTFLoader();
+    const ipc = electron.ipcRenderer;   // 向页面发送信息 
     const Layers = ref([
         "special", 
         "WIP", 
@@ -173,9 +174,6 @@
                 this.$nextTick(()=>{viewName.value = ''});
             },
             clearLoads(){global.emit("clearLoads")},  // 清除所有货物
-            ipcRenderer(data){   // 刷新页面 
-                electron.ipcRenderer.send(data); 
-            },
             lightON(e, condition = true){  // 鼠标移入图标时将其点亮
                 if(condition) e.target.style.color = 'dodgerblue';
             },
@@ -215,10 +213,11 @@
             },
             message(data){ BottomMessage.textContent = data; },
             reload(){  // 重新加载
-                global.emit("popup", {  // 弹窗询问是否重命名
+                global.emit("popup", {  // 弹窗询问是否重新加载页面
+                    title: "重新加载页面",
                     type: "yes_no",
                     content: "确定要重载界面吗？",
-                    yes: ()=>{this.ipcRenderer('reload')},  // 确认重命名
+                    yes: ()=>{ipc.send("reload")},  // 确认重命名
                     no: ()=>{},  // 取消重命名
                 });
             },
@@ -323,7 +322,19 @@
             };
         },
         mounted(){  
-            this.ipcRenderer("closeDevTools");  // 默认关闭开发人员工具
+            ipc.send("closeDevTools");  // 默认关闭开发人员工具
+            ipc.on("closeConfirm", () => {  // 退出前弹窗确认
+                global.emit("popup", {  // 弹窗询问是否关闭
+                    title: "关闭窗口",
+                    type: "yes_no",
+                    content: "确定要关闭窗口吗？",
+                    yes: ()=>{  // 确认关闭
+                        global.emit("closeWindow");
+                        ipc.send("closeWindow");
+                    },
+                    no: ()=>{},  // 取消关闭
+                });
+            });
             BottomMessage = document.getElementById("BottomMessage");
             BottomSpeed = document.getElementById("BottomSpeed");
             fileInput = document.getElementById("fileInput");
@@ -340,8 +351,7 @@
             } 
             catch {}
 
-            global.on("saveInitScene", ()=>{this.saveScene("src/temp/New.DTScene")});
-            window.addEventListener("beforeunload", () => {  // 退出时清理临时文件（src/temp文件夹）
+            global.on("closeWindow", () => {  // 退出时清理临时文件（src/temp文件夹）
                 function deleteFolder(path) {
                     if (fs.existsSync(path)) {
                         fs.readdirSync(path).forEach(function(file) {
@@ -354,6 +364,7 @@
                 }
                 deleteFolder("src/temp");
             });
+            global.on("saveInitScene", ()=>{this.saveScene("src/temp/New.DTScene")});
         },
     });
 </script>
@@ -533,7 +544,8 @@
                 </div>
 
                 <!--帮助-->
-                <div class="logo marginLR10 top16" @click="global.emit('popup', {type:'help'})"
+                <div class="logo marginLR10 top16"
+                 @click="global.emit('popup', {title:'帮助', type:'help'})"
                 @mousedown.prevent @mouseenter = "lightON" @mouseleave = "lightOFF">
                     <QuestionCircleOutlined class="logoBig"/>
                     <br>帮助

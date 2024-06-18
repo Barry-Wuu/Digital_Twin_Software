@@ -1,9 +1,9 @@
 {
     "model_layout": [
         {"title": "传送带", "children": [
-            {"title": "平行传送带-直道", "model": "平行传送带-直道.stl", "icon": "滚轮直道.jpg"},
-            {"title": "平行传送带-顺时针弯道", "model": "平行传送带-弯道.stl", "icon": "滚轮弯道1.jpg"},
-            {"title": "平行传送带-逆时针弯道", "model": "平行传送带-弯道.stl", "icon": "滚轮弯道2.jpg"},
+            {"title": "平行传送带-直道", "model": "平行传送带-直道.stl", "icon": "平行直道.jpg"},
+            {"title": "平行传送带-顺时针弯道", "model": "平行传送带-弯道.stl", "icon": "平行弯道1.jpg"},
+            {"title": "平行传送带-逆时针弯道", "model": "平行传送带-弯道.stl", "icon": "平行弯道2.jpg"},
             {"title": "滚轮传送带-直道", "model": "滚轮传送带-直道.stl", "icon": "滚轮直道.jpg"},
             {"title": "滚轮传送带-顺时针弯道", "model": "滚轮传送带-弯道.stl", "icon": "滚轮弯道1.jpg"},
             {"title": "滚轮传送带-逆时针弯道", "model": "滚轮传送带-弯道.stl", "icon": "滚轮弯道2.jpg"},
