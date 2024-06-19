@@ -26,14 +26,14 @@ var dragPoint0;  // 新的拖动点
 var front = new THREE.Vector3();
 var fullscreen = false;
 var isDrag = false;  // 是否在用鼠标移动模型
-var keys = { shift: false, space: false };  // 按下的按键
+const keys: any = {};  // 同一时刻按下的按键
 var mouseType = [false, false, false];  // 左、中、右键是否按下
 const ray = new THREE.Raycaster();  // 从鼠标发出的射线检测器
 var parent;
 var resizeObserver;
 var style;
 var tempTransform = {  // 在物体吸附到传送带之前临时存储位姿，解除吸附后恢复
-  alignToConveyor: false,
+  alignMode: false,
   position: new THREE.Vector3(),
   rotation: new THREE.Euler(),
 };
@@ -85,7 +85,7 @@ export default defineComponent({
       if(dragModel.DT.label == "WIP") tempModel.rotateOnWorldAxis(  // 旋转在制品
         RIGHT, Math.PI / 2
       );
-      tempTransform.alignToConveyor = true;
+      tempTransform.alignMode = true;
       let P = new THREE.Vector3();
       let Q = new THREE.Quaternion();
       conveyor.getWorldPosition(P);
@@ -138,15 +138,17 @@ export default defineComponent({
       );
       ray.setFromCamera(mouse, this.scene.camera);        
     },
-    intersectObject(e) {  // 求鼠标发出的射线与物体的交点
+    intersectObject(e, controller=true) {  // 求鼠标发出的射线与物体的交点
       this.castRay(e);  // 射线检测
       for (let intersect of ray.intersectObject(global.SCENE)) {
         let mesh = intersect.object;
         if(mesh.isTransformControlsPlane) continue;  // 忽略控制器
-        if(mesh.DT && mesh != dragModel && mesh != tempModel  // 若射线检测到的物体无DT则继续往后检测
-          || mesh.isTransformControls && !mesh.isLine  // 允许点击控制器
+        if(
+          mesh.DT && mesh != dragModel && mesh != tempModel ||  // 若射线检测到的物体无DT则继续往后检测
+          controller && mesh.isTransformControls && !mesh.isLine  // 允许点击控制器
         ) {
-          return [mesh, intersect.point];
+          intersect.mesh = intersect.object;
+          return intersect;
         }
       }
       return new THREE.Vector3(999, 999, 999)  // 若无交点
@@ -179,15 +181,17 @@ export default defineComponent({
       findImg(e.fromElement);
       data.setDragImage(document.createElement("img"), 0, 0);
       // 拖入模型
+      let point = this.intersectObject(e).point;
+      if(!point) return;  // 若拖到天空上则不创建模型
       dragFromOutside = true;
       switch(dragData.type){
         case "asset":
           let DT = dragData.data.DT;
-          dragModel = this.scene.createMeshFromAssets(DT, this.intersectObject(e)[1]);
+          dragModel = this.scene.createMeshFromAssets(DT, point);
           break;
         case "model":
           let item = dragData.item;
-          dragModel = this.scene.createMeshFromModels(item, this.intersectObject(e)[1]);
+          dragModel = this.scene.createMeshFromModels(item, point);
           break;
         default: return;
       }
@@ -216,10 +220,36 @@ export default defineComponent({
       if (dragModel && tempModel) {
         var attachPoint1;
         tempModel.position.set(0, 0, 0);  // 初始化物体位姿
-        if (!dragFromOutside) {  // 拖动时，物体位置 = 鼠标与平面z=H的交点坐标 + Δp
+        if (dragFromOutside) {  // 从外部拖入模型时将其包围盒中心移到鼠标
+          let intersect = this.intersectObject(e);
+          tempModel.position.copy(intersect.point);
+          tempModel.position.add(delta);
+          tempModel.rotation.set(0, 0, 0);  // 重置旋转
+          if(dragModel.DT.label == "WIP") tempModel.rotateOnWorldAxis(  // 旋转在制品
+            RIGHT, Math.PI / 2
+          );
+          box.setFromObject(tempModel);
+          // 若被拖动物体本身不是传送带，且碰到传送带，则将物体移动到传送带中轴线上
+          if(dragModel.DT.label != "conveyor" && intersect.mesh.DT.label == "conveyor"){
+            this.alignToConveyor(intersect.point, intersect.mesh);
+          } else {
+            let box0 = new THREE.Box3().setFromObject(intersect.mesh);
+            tempModel.position.z += box0.max.z - box.min.z;
+            // 解除吸附时恢复物体在吸附前的旋转
+            if(tempTransform.alignMode){
+              tempModel.position.copy(tempTransform.position);
+              tempModel.rotation.copy(tempTransform.rotation);
+              dragModel.rotation.copy(tempTransform.rotation);
+            }
+            tempTransform.alignMode = false;
+            tempTransform.position.copy(tempModel.position);
+            tempTransform.rotation.copy(tempModel.rotation);
+          }
+        }
+        else {  // 拖动时，物体位置 = 鼠标与平面z=H的交点坐标 + Δp
           if (dragModel.DT.label == "conveyor"){  // 拖入传送带时
             attachPoint1 = dragModel.getObjectByName('ap1');
-            if (keys.space) {  // 检查空格键和左键是否同时被按下
+            if (keys.Space) {  // 检查空格键和左键是否同时被按下
               let minDistance = Infinity;  // 初始化最小距离为无穷大
               let closestAttachPoint2 = null;
               let worldPositionAP1 = new THREE.Vector3();
@@ -243,7 +273,7 @@ export default defineComponent({
                 const rotationChange = closestAttachPoint2.parent.rotation
                 dragModel.rotation.x = rotationChange.x;  // X轴旋转
                 dragModel.rotation.y = rotationChange.y;  // Y轴旋转
-                if (dragModel.DT.name.include("直道")){
+                if (dragModel.DT.name.includes("直道")){
                   dragModel.rotation.z = rotationChange.z;}
                 else{
                   dragModel.rotation.z = rotationChange.z-Math.PI/2;
@@ -301,7 +331,7 @@ export default defineComponent({
           }
 
           let result;
-          if(keys.space){  // 拖动非传送带类物体时，按空格对齐到传送带
+          if(keys.KeyA && dragModel.DT.label != "conveyor"){  // 拖动非传送带类物体时，按A键对齐到传送带
             box.setFromObject(dragModel);
             this.castRay(e);
             let conveyor;
@@ -323,47 +353,32 @@ export default defineComponent({
           } 
           else {
             // 解除吸附时恢复物体在吸附前的旋转
-            if(tempTransform.alignToConveyor){
+            if(tempTransform.alignMode){
               tempModel.position.copy(tempTransform.position);
               tempModel.rotation.copy(tempTransform.rotation);
               dragModel.rotation.copy(tempTransform.rotation);
             }
-            tempTransform.alignToConveyor = false;
+            tempTransform.alignMode = false;
             tempTransform.position.copy(tempModel.position);
             tempTransform.rotation.copy(tempModel.rotation);
             result = dragPoint0.clone();
             result.add(delta);  // 更新模型的全局坐标
           }
+          if(keys.KeyS){  // 拖动物体时，按S键将其z坐标吸附到地面
+            box.setFromObject(dragModel);
+            if(!tempTransform.alignMode) tempTransform.position.copy(delta);  // 拖动之前储存delta
+            tempTransform.alignMode = true;
+            result.z -= box.min.z;
+            delta.z -= box.min.z; 
+          }
+          else if(tempTransform.alignMode){
+            tempTransform.alignMode = false;
+            delta.copy(tempTransform.position);  // 拖动之后释放delta
+          }
           // 将模型的全局坐标转换为局部坐标
           tempModel.position.copy(dragModel.parent.worldToLocal(result));
           // 拖动时强制更新属性栏的位移和旋转
           global.emit("updateProp", {action: "dragover", mesh: dragModel});
-        }
-        else {  // 从外部拖入模型时将其包围盒中心移到鼠标
-          let intersect = this.intersectObject(e);
-          tempModel.position.copy(intersect[1]);
-          tempModel.position.add(delta);
-          tempModel.rotation.set(0, 0, 0);  // 重置旋转
-          if(dragModel.DT.label == "WIP") tempModel.rotateOnWorldAxis(  // 旋转在制品
-            RIGHT, Math.PI / 2
-          );
-          box.setFromObject(tempModel);
-          // 若被拖动物体本身不是传送带，且碰到传送带，则将物体移动到传送带中轴线上
-          if(dragModel.DT.label != "conveyor" && intersect[0].DT.label == "conveyor"){
-            this.alignToConveyor(intersect[1], intersect[0]);
-          } else {
-            let box0 = new THREE.Box3().setFromObject(intersect[0]);
-            tempModel.position.z += box0.max.z - box.min.z;
-            // 解除吸附时恢复物体在吸附前的旋转
-            if(tempTransform.alignToConveyor){
-              tempModel.position.copy(tempTransform.position);
-              tempModel.rotation.copy(tempTransform.rotation);
-              dragModel.rotation.copy(tempTransform.rotation);
-            }
-            tempTransform.alignToConveyor = false;
-            tempTransform.position.copy(tempModel.position);
-            tempTransform.rotation.copy(tempModel.rotation);
-          }
         }
         dragModel.position.copy(tempModel.position);
       }
@@ -413,11 +428,10 @@ export default defineComponent({
     },
     onKeydown(k) {
       if (k.code == "Delete") global.emit("deleteChoices");
-      else if (k.code == "ShiftLeft") keys.shift = true;
-      else if (k.code == "Space") keys.space = true;
+      else keys[k.code] = true;  // 记录按下的按键
     },
     onKeyup(k) {
-      if (k.code == "Space") keys.space = false;
+      keys[k.code] = false;  // 删除按下的按键
     },
     onMousedown(e) {
       mouseType[e.button] = true;
@@ -426,18 +440,18 @@ export default defineComponent({
         else if (global.mode == "edit") {  // 左键点击
           if (e.target.localName == "div"){
             let result = this.intersectObject(e);
-            let choice = result[0];
+            let choice = result.mesh;
             if (choice?.isTransformControls){   // 点击控制器则忽略后文
               transformControls = true;
               return;
             }
-            dragPoint = result[1];
+            dragPoint = result.point;
             if (choice && !choice.parent.DT && choice.parent.DT)  // 点击指示箭头或吸附方块等
               choice = choice.parent;
             if (choice?.DT && !choice.userData.ground) {
               global.emit("clickModel", {id: choice.id, shift: e.shiftKey});
-              result[0].getWorldPosition(delta);
-              delta.sub(result[1]);  // Δp = 选中物体的全局坐标 - 物体上点击处的坐标
+              result.mesh.getWorldPosition(delta);
+              delta.sub(result.point);  // Δp = 选中物体的全局坐标 - 物体上点击处的坐标
               dragModel = choice;
               dragModel.isDrag = true;
               tempModel = dragModel.clone();

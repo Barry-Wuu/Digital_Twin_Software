@@ -24,6 +24,9 @@
       }
     },
     methods:{
+      deselect(){  // 点击卡片时取消选择物体
+        global.emit("deselect");
+      },
       getIMG(item){  // src为预览时的图片根目录，public/assets为打包后对应的图片根目录
         return new URL(`${"../assets/icons/" + item.icon}`, import.meta.url).href
       },
@@ -118,7 +121,7 @@
         <a-collapse-panel v-for="group of model_layout" 
         :header="group.title" style="text-align: left;">
           <a-card v-for="item of group.children" class="model-card" draggable="true" hoverable 
-          @dragstart="e=>transfer(e, item, group.title)">
+          @dragstart="e=>transfer(e, item, group.title)" @mousedown="deselect">
             <div class="model-imgBorder">
               <img :src="getIMG(item)" class="model-img" draggable="false"/>
             </div>
@@ -130,7 +133,7 @@
       <div v-else>
         <a-card v-if="searchResult.length" v-for="item of searchResult" 
         class="model-card" draggable="true" hoverable 
-        @dragstart="e=>transfer(e, item)">
+        @dragstart="e=>transfer(e, item)" @mousedown="deselect">
           <div class="model-imgBorder">
             <img :src="getIMG(item)" class="model-img" draggable="false"/>
           </div>

@@ -68,7 +68,7 @@
     methods: {
       action(e){
         let option = e.key;
-        if(option == "删除" && dragAsset.value.type != "return"){
+        if(option == "删除" && dragAsset.value?.type != "return"){
           this.deleteAsset(dragAsset.value);
         }
       },
