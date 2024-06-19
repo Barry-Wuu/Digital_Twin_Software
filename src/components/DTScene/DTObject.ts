@@ -7,7 +7,7 @@ const zeroVector_Ammo = new Ammo.btVector3();
 
 export default class DTObject {  // 用DTObject类包裹场景中的对象
     children = []  // 子物体（自动计算）
-    code: string  // 自定义脚本
+    code = ''  // 自定义脚本
     custom = {}  // 自定义属性
     expanded: boolean  // 是否在层级树中展开
     friction0 = 0.5  // 静摩擦力
@@ -36,10 +36,12 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     rigidFollow = false  // 若为是则让刚体强制跟随网格，否则默认让网格跟随刚体
     row = 0  // 子树在层级树模块中占几行
     scale = 1  // 尺寸
+    sensorPass=null  // 是否允许物体通过传送带上的传感器
     skybox: object  // 天空盒
     timer = performance.now()  // 定时器（自动计算）
     timeInterval: number  // 定时器触发时间
     title: string  // 标题 = 物体类型 + 名称 + 序号（自动计算）
+    touchSensor = false  // 是否接触到传感器
     type: string  // 物体的网格类型
     v0: number  // 传送带中轴线速度
     constructor(mesh=null, addToScene=false, asset=null) {  
@@ -132,7 +134,9 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         if(target == "rigidHelper") target = this.layers.rigidHelper[0];
         target.userData.physicsBody = rb;
         if (mass>0) {rb.setActivationState(4);}  // 质量为0代表为固定的刚体
-        global.physicsWorld.addRigidBody( rb );
+        // 将传感器设置为单独的碰撞组，物体mask为1时可通过传感器，3时会碰到传感器
+        if(this.label == "sensor") global.physicsWorld.addRigidBody(rb, 2, 3);
+        else global.physicsWorld.addRigidBody(rb, 1, 3);
         global.rb_mesh[rb.ptr] = {mesh:this.mesh, rb:rb};
         rb.setFriction( this.friction0 );  // 静摩擦力
     }
@@ -227,11 +231,9 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             }
         }
         global.emit("controlEnd");  // 如果控制器绑定了该物体，则先解绑
+        delete global.physicalIDMap[this.physicalID];
         this.removeRigidBody();
-        try{
-            this.mesh.removeFromParent();
-        } 
-        catch {}
+        try {this.mesh.removeFromParent()} catch {}
         let index = global.DTObjects.value.indexOf(this);
         if(index != -1) global.DTObjects.value.splice(index, 1);  // 原地修改DTObject.value，以防监听不到其变化
     }
@@ -283,9 +285,15 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             global.physicsWorld.removeRigidBody(rb);
         }
     }
-    sensorStop() {
-        let rb = this.mesh.userData.physicsBody;
-        rb.setMassProps(0, new Ammo.btVector3(0, 0, 0));
+    sensorClose(){  // 禁止物体通过传感器
+        global.physicsWorld.removeRigidBody(this.rb);
+        global.physicsWorld.addRigidBody(this.rb, 1, 3);
+        this.touchSensor = false;
+    }
+    sensorOpen(){  // 允许物体通过传感器
+        global.physicsWorld.removeRigidBody(this.rb);
+        global.physicsWorld.addRigidBody(this.rb, 1, 1);
+        this.sensorPass = 1;
     }   
     setProp(prop=null, newValue=null) {  // 改变物体及其刚体的属性
         if(prop){

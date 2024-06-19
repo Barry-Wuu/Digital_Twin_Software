@@ -212,7 +212,7 @@ export default defineComponent({
         dragModel.DT.destroy();
         dragModel = null;
       }
-      tempModel.remove();
+      tempModel?.remove();
       // e.dataTransfer.setDragImage(tempImg, 0, 0);  // 隐藏拖动图像
     },
     onDragover(e) {

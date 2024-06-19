@@ -1,6 +1,6 @@
 {
     "model_layout": [
-        {"title": "传送带", "children": [
+        {"title": "传送带元件", "children": [
             {"title": "平行传送带-直道", "model": "平行传送带-直道.stl", "icon": "平行直道.jpg"},
             {"title": "平行传送带-顺时针弯道", "model": "平行传送带-弯道.stl", "icon": "平行弯道1.jpg"},
             {"title": "平行传送带-逆时针弯道", "model": "平行传送带-弯道.stl", "icon": "平行弯道2.jpg"},
@@ -192,7 +192,7 @@
         },
         "传感器": {
             "geometry" : "new THREE.BoxGeometry(0.2, 3, 0.8)",
-            "label" : "special",
+            "label" : "sensor",
             "rigid" : true, 
             "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3(0.1, 1.5, 0.4))",
             "material" : { "color": "lime", "opacity": 0.5, "transparent": true },

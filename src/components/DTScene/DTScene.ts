@@ -244,6 +244,11 @@ export default class SceneBuilder{
             this.controller.detach();
             this.controller.setMode("translate");  // 取消选择时把控制器恢复为平移模式
         });
+        this.canvas.addEventListener("keyup", ()=>{
+            this.controller.setTranslationSnap( null );
+			this.controller.setRotationSnap( null );
+			this.controller.setScaleSnap( null );
+        })
 
         // 透视和正交相机导向器（Gizmo）
         this.gizmoPersp = new ViewHelper(this.cameraPersp, canvasDOM);
@@ -359,6 +364,13 @@ export default class SceneBuilder{
             global.emit("clickModel", {id:mesh.id, shift:false});  // 创建物体后模拟点击该物体
         });
 
+        // 托盘位置更新
+        global.on("updateTrayPosition", (data: {ID, RFID}) => {
+            let sensorDT = global.physicalIDMap[data.ID];
+            let trayDT = global.physicalIDMap[data.RFID];
+            trayDT.sensorPass = sensorDT;
+        })
+
         // 快捷键设置
         this.canvas.addEventListener("keydown", e => {
             if(global.mode == "edit"){  // 在编辑模式下
@@ -399,11 +411,7 @@ export default class SceneBuilder{
                 new THREE.Ray(p0, front).intersectPlane(Ground, this.orbitControl.target);
             }
         })
-        this.canvas.addEventListener("keyup", ()=>{
-            this.controller.setTranslationSnap( null );
-			this.controller.setRotationSnap( null );
-			this.controller.setScaleSnap( null );
-        })
+
         // 预先载入自定义模型
         this.preloadModels();
         global.on("init", ()=>this.init());
@@ -715,7 +723,7 @@ export default class SceneBuilder{
         this.gizmoPersp.render(this.renderer);
         this.gizmoOrtho.render(this.renderer);
     } 
-    transport(){  // 检测物理世界中的物体是否与传送带碰撞，若有则施力
+    onCollision(){  // 检测物理世界中的物体是否与传送带碰撞，若有则施力
         const dispatcher = global.physicsWorld.getDispatcher();  
         for(var i=0; i<dispatcher.getNumManifolds(); i++){ 
             let collision = dispatcher.getManifoldByIndexInternal(i);
@@ -724,12 +732,13 @@ export default class SceneBuilder{
             let rb0 = global.rb_mesh[ptr0].rb, rb1 = global.rb_mesh[ptr1].rb;
             let mesh0 = global.rb_mesh[ptr0].mesh, mesh1 = global.rb_mesh[ptr1].mesh;
             let DT0 = mesh0.DT, DT1 = mesh1.DT;
-            
+
             if(DT1.label == "WIP"){// 让在制品排在前面，即等于mesh0
-                let t=rb0; rb0=rb1; rb1=t; 
-                t=mesh0; mesh0=mesh1; mesh1=t; 
-                t=DT0; DT0=DT1; DT1=t;
+                [rb0, rb1] = [rb1, rb0];
+                [mesh0, mesh1] = [mesh1, mesh0];
+                [DT0, DT1] = [DT1, DT0];
             }
+            
             if(DT1.label == "conveyor"){  // 让在制品遇到货物时受摩擦力作用
                 let J = 5;  // 转动惯量J
                 let k = Math.min(DT0.friction, DT1.friction);  // 滑动摩擦系数k
@@ -751,25 +760,31 @@ export default class SceneBuilder{
                     F.op_add(v0_real).op_sub(v).normalize();
                     F.op_mul(k*m*g);
                     rb0.applyCentralForce(F);
-                }
-                else if(DT1.name?.includes("弯道")){
+                } else if(DT1.name?.includes("弯道")) {
                     let dir = DT1.name == "逆时针弯道" ? -1 : 1;  // 传送带移动方向（顺/逆时针）
                     let r = new THREE.Vector3();
                     r.add(mesh0.position).sub(P);
                     r.setZ(0);
-                    let ra = r.length();  // 径向矢量r=v0-v，模ra=||v0-v||
+                    let ra = r.length();  // 周向矢量r=v0-v，模ra=||v0-v||
                     if(ra>=3.2 && ra<=6.4){  // 当货物到弯道的半径为3.2≤ra≤6.4时向其质心施力
                         // 将v0从标量转换为货物处的速度矢量v0_vec
                         let v0_vec = new Ammo.btVector3(r.y, -r.x, 0);  // 旋转v0
                         v0_vec.normalize();
                         v0_vec.op_mul(dir * v0 * ra / R);  // 将传送带上r=R处的速度转换为r=ra处的速度
                         v = rb0.getLinearVelocity();
-                        let F = new Ammo.btVector3();  // 摩擦力 F = μmg(v0-v)/||v0-v||，v和v0为向量
+                        let F = new Ammo.btVector3();  // 周向摩擦力F = μmg(v0-v)/||v0-v||，v和v0为向量
                         F.op_add(v0_vec);
                         F.op_sub(v);
                         F.normalize();
                         F.op_mul(k*m*g);
                         rb0.applyCentralForce(F);
+                        // 施加径向摩擦力，使在制品运动时尽量恢复到中轴线
+                        let Fn = new Ammo.btVector3();
+                        Fn.setX(mesh0.position.x - P.x);
+                        Fn.setY(mesh0.position.y - P.y);
+                        Fn.normalize();
+                        Fn.op_mul((ra > R ? -1 : 1)*k*m*g);
+                        rb0.applyCentralForce(Fn);
                         // 然后施加转矩
                         let w0 = -dir * v0_vec.length() / ra;  //传送带角速度ω0 
                         let w = rb0.getAngularVelocity().z();  //货物角速度ω0
@@ -777,14 +792,31 @@ export default class SceneBuilder{
                         rb0.applyTorque(M);  // 同理，摩擦力矩 M = kw*J*(ω0-ω)
                     }  
                 }
+                if(DT0.sensorPass == 1){  // 让在制品同步位置之后3s恢复和传感器的碰撞
+                    DT0.sensorPass = null;
+                    setTimeout(() => DT0.sensorClose(), 3000);
+                } else if(DT0.sensorPass && !DT0.touchSensor) {  // 若同步位置时在制品比实物后到传感器
+                    DT0.mesh.position.copy(DT0.sensorPass.mesh.position);  // 将在制品瞬移到传感器处
+                    DT0.updateRigidbodyTransform();  // 强制更新刚体位姿
+                    DT0.sensorOpen();    
+                }
+            }
+            // 若同步位置时在制品比实物先到传感器，则直接放行
+            else if (DT1.label == "sensor"){
+                DT0.touchSensor = true;
+                if (DT0.sensorPass && DT0.sensorPass != 1){
+                    console.log(DT1, DT0.sensorPass)
+                    if(DT1 != DT0.sensorPass){  // 若在制品的虚实体碰到的不是同一传感器
+                        DT0.mesh.position.copy(DT0.sensorPass.mesh.position);  // 将在制品瞬移到实际传感器处
+                        DT0.updateRigidbodyTransform();  // 强制更新刚体位姿
+                    }
+                    DT0.sensorOpen();
+                }
             }
             else if (DT1.label == "special"){
                 if (DT1.name == "回收器"){
                     DT0.destroy();
                     global.emit("print", `【${DT0.name}${mesh0.id}】被【${DT1.name}${DT1.id}】回收`);
-                }
-                else if (DT1.name == "传感器") {
-                    DT0.sensorStop();
                 }
             }
         }
@@ -827,7 +859,7 @@ export default class SceneBuilder{
             global.rb_mesh[DT.rb.ptr] = {mesh:DT.mesh, rb:DT.rb};
         }
     }
-    updatePhysics( deltaTime ) {  // 步进 
+    updatePhysics(deltaTime){  // 步进 
         let now = performance.now();     
         let pause = emulateMode == "pause", stop = emulateMode == "stop";  // 是否暂停或停止
         this.updateFPSandTime(now, pause, stop);
@@ -839,8 +871,8 @@ export default class SceneBuilder{
         }
         for(let DT of global.DTObjects.value){  // 让网格位置等于刚体位置
             const mesh = DT.mesh, rb = DT.rb;
-            try{ if(DT.code != '') eval(DT.code) }  // 若物体有自定义脚本则执行 
-            catch(e) {console.log(e)}
+            try{ if(DT.code) eval(DT.code) }  // 若物体有自定义脚本则执行 
+            catch(e) {}
             if(!DT.rb){
                 if(!stop && DT.name == "发生器"){  // 未暂停时制造货物
                     if(now - DT.timer >= DT.timeInterval){  // 秒变毫秒
@@ -879,7 +911,7 @@ export default class SceneBuilder{
                 }
             }
         }
-        this.transport();
+        this.onCollision();
         if(emulateMode == "step") emulateMode = "pause";  // 步进模式下，每仿真完一步就停止
     }
 }
