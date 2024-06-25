@@ -238,8 +238,12 @@
           </template>
         </a-tree>
         <div v-if="helpContent=='场景'" class="help-content">
+          <strong>窗口</strong><br>
+          按<div class="keyboard">Ctrl</div>+<div class="keyboard">R</div>键会弹出确认重新加载窗口；<br>
+          按<div class="keyboard">Ctrl</div>+<div class="keyboard">W</div>键会弹出确认退出程序窗口。<br>
+          <br>
           <strong>相机控制</strong><br>
-          在场景中，按鼠标中键或同时按鼠标左右键可移动相机，按右键可旋转相机，滚动滚轮可放大或缩小。<br>
+          在场景中，按鼠标中键或同时按鼠标左右键可移动相机，按右键可旋转相机，滚动滚轮可放大或缩小；<br>
           双击层级树中的结点可将镜头拉近到该物体。<br>
           <br>
           <strong>编辑模式</strong><br>
@@ -249,12 +253,12 @@
           按<div class="keyboard">E</div>键切换全局坐标系或局部坐标系；<br>
           按<div class="keyboard">Esc</div>或<div class="keyboard">Ctrl</div>+<div class="keyboard">Z</div>键撤销当前做出的移动。<br>
           <br>
-          拖动物体时，若滚动滚轮，则可让物体围绕滚轮旋转。<br>  
-          拖动物体时，若按下<div class="keyboard">A</div>键，则可将物体的底面吸附到鼠标所指的物体的顶面。<br>
-          拖动物体时，若在物体靠近传送带时按下<div class="keyboard">S</div>键，则可将物体吸附到地面。<br>
-          拖动传送带时，若其靠近另一个传送带，按住<div class="keyboard">Space</div>键可将其<div class="inline_R">入口</div>吸附到另一传送带的<div class="inline_G">出口</div>，或将其<div class="inline_G">出口</div>吸附到另一传送带的<div class="inline_R">入口</div>。<br>
-          拖动物体时，若按下<div class="keyboard">Shift</div>键，则可改变物体高度。<br>
-          按住<div class="keyboard">Shift</div>键再点击物体可多选或取消多选物体。<br>
+          拖动物体时，若滚动滚轮，则可让物体围绕滚轮旋转；<br>  
+          拖动物体时，若按下<div class="keyboard">A</div>键，则可将物体的底面吸附到鼠标所指的物体的顶面；<br>
+          拖动物体时，若在物体靠近传送带时按下<div class="keyboard">S</div>键，则可将物体吸附到地面；<br>
+          拖动传送带时，若其靠近另一个传送带，按住<div class="keyboard">Space</div>键可将其<div class="inline_R">入口</div>吸附到另一传送带的<div class="inline_G">出口</div>，或将其<div class="inline_G">出口</div>吸附到另一传送带的<div class="inline_R">入口</div>；<br>
+          拖动物体时，若按下<div class="keyboard">Shift</div>键，则可改变物体高度；<br>
+          按住<div class="keyboard">Shift</div>键再点击物体可多选或取消多选物体；<br>
           按<div class="keyboard">Delete</div>键将删除所有被选中的物体。<br>
           <br>
           <strong>浏览模式</strong><br>

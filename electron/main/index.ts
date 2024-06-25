@@ -57,6 +57,11 @@ async function createWindow() {
     window.webContents.send("closeConfirm"); // 弹窗询问是否关闭
   })
 
+  window.on("reload", e => {  // 重载之前也先弹出确认窗口
+    e.preventDefault();
+    window.webContents.send("reloadConfirm"); // 弹窗询问是否关闭
+  })
+
   window.webContents.on('did-finish-load', () => { // 浏览器加载完成后开始计时
     window?.webContents.send('main-process-message', new Date().toLocaleString())
   })

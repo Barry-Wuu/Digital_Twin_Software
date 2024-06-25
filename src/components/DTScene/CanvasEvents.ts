@@ -10,7 +10,7 @@ const attachObjects = JSON.parse(storedattachObjects);
 var app;
 var canvas;
 const conveyorRay = new THREE.Ray();
-var delta = new THREE.Vector3();
+const delta = new THREE.Vector3();
 const delta_angle = 15;  // 滚轮旋转物体的角度
 const cos_theta = Math.cos(delta_angle * Math.PI / 180);
 const sin_theta = Math.sin(delta_angle * Math.PI / 180);
@@ -384,8 +384,8 @@ export default defineComponent({
       }
       else if(dragModel?.isLight){  // 拖动光源
         e = {
-          offsetX: e.offsetX + delta.x,
-          offsetY: e.offsetY + delta.y,
+          offsetX: e.offsetX + delta.dx,
+          offsetY: e.offsetY + delta.dy,
           shiftKey: e.shiftKey,
           target:{
             clientWidth: e.target.clientWidth,
@@ -393,9 +393,9 @@ export default defineComponent({
           }
         };
         if (e.shiftKey) {  // 左键+shift拖动物体以改变其高度
-          dragModel.position.z = this.intersectPlaneV(e, delta.pos).z;
+          dragModel.position.z = this.intersectPlaneV(e, delta).z;
         } else {  // 左键拖动物体在水平面内移动
-          dragModel.position.copy(this.intersectPlaneH(e, delta.pos));
+          dragModel.position.copy(this.intersectPlaneH(e, delta));
         }
         // 拖动时强制更新属性栏的位移和旋转
         global.emit("updateProp", {action: "dragover", mesh: dragModel});
@@ -448,7 +448,7 @@ export default defineComponent({
             dragPoint = result.point;
             if (choice && !choice.parent.DT && choice.parent.DT)  // 点击指示箭头或吸附方块等
               choice = choice.parent;
-            if (choice?.DT && !choice.userData.ground) {
+            if (choice?.DT && !choice.userData.ground && !choice.isLight) {
               global.emit("clickModel", {id: choice.id, shift: e.shiftKey});
               result.mesh.getWorldPosition(delta);
               delta.sub(result.point);  // Δp = 选中物体的全局坐标 - 物体上点击处的坐标
@@ -471,14 +471,16 @@ export default defineComponent({
             );
             let P_e = new THREE.Vector2(e.clientX, e.clientY);
             P.sub(P_e);  // Δp = 选中物体的全局坐标 - 物体上点击处的坐标
-            delta = {x: P.x, y: P.y, pos: choice.position};
+            delta.copy(choice.position);
+            delta.dx = P.x;
+            delta.dy = P.y;
             dragModel = choice;
             isDrag = true;
           }
         }
       }
-      else {
-        // 中键或右键点击
+      else if(mouseType[2]){// 右键点击
+        let pos = this.scene.camera.position;
       };
     },
     onMousemove(e) { 
