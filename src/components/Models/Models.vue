@@ -1,42 +1,36 @@
 <script lang="ts">
+  
+  import {CloseOutlined} from "@ant-design/icons-vue";  // 清除图标
+  const fs = require("fs");
+  import global from "../../Global"
+  import modelData from "./modelData.json";
   import { ref } from "vue";
-  import {
-    CloseOutlined,  // 清除图标
-  } from "@ant-design/icons-vue";
-  import modelData from "./Models/modelData.json";
-  import global from "../Global"
 
   // JSON格式的模型列表，模型路径为src/assets/models，图标路径为src/assets/icons
   const activeKeys = ref([]);
+  const customModels = ref();
   const model_layout = ref(modelData.model_layout);
   const searchResult = ref([]);
   const searchValue = ref("");
+  var txt;
 
   export default {
     components: {
       CloseOutlined,
-    },
-    computed: {
-      activeAll() {
-        let x = [];
-        for(let i in Object.keys(model_layout)){x.push(String(i))};
-        return x;
-      }
     },
     methods:{
       deselect(){  // 点击卡片时取消选择物体
         global.emit("deselect");
       },
       getIMG(item){  // src为预览时的图片根目录，public/assets为打包后对应的图片根目录
-        return new URL(`${"../assets/icons/" + item.icon}`, import.meta.url).href
+        return new URL(`${"../../assets/icons/" + item.icon}`, import.meta.url).href
       },
-      transfer(e, item, groupType=null) {
-        e.dataTransfer.setDragImage(document.createElement("img"), 0, 0); 
-        global.emit("dragModelStart", {type: "model", item: {
-          group: groupType ? groupType : item.group, 
-          modelname: item.title,
-          modelpath: item.model,
-        }});
+      loadCustomModel(){  // 读取自定义模型
+        try{
+          txt = fs.readFileSync("src/config/customModels.txt", "utf-8");
+          customModels.value = JSON.parse(txt);
+        }
+        catch {}
       },
       onRightClick(e){
         let option = e.key;
@@ -46,6 +40,13 @@
         else if(option == "全部折叠"){
           activeKeys.value = [];
         }
+      },
+      saveCustomModel(DT){  // 保存自定义模型
+        try{
+          txt = JSON.stringify(customModels.value);
+          fs.writeFileSync("src/config/customModels.txt", txt);
+        }
+        catch {}
       },
       search(){  // 搜索栏内容改变时
         if(searchValue.value){
@@ -69,10 +70,24 @@
           text,
           item.title.substring(item.title.indexOf(text) + text.length),
         ];
-      }
+      },
+      transfer(e, item, groupType=null) {
+        e.dataTransfer.setDragImage(document.createElement("img"), 0, 0); 
+        global.emit("dragModelStart", {type: "model", item: {
+          group: groupType ? groupType : item.group, 
+          modelname: item.title,
+          modelpath: item.model,
+        }});
+      },
     },
     setup() {return {activeKeys, model_layout, searchValue, searchResult}},
-    mounted(){}
+    mounted(){
+      model_layout.value.push(
+        {"title": "自定义模型", "children": []}
+      )
+      this.loadCustomModel();
+      global.on("saveCustomModel", DT => this.saveCustomModel(DT));
+    }
   }
 </script>
 
@@ -118,8 +133,9 @@
       <!--模型列表-->
       <a-collapse v-if="!searchValue" v-model:activeKey="activeKeys" 
       id="collapse" style="user-select: none">
-        <a-collapse-panel v-for="group of model_layout" 
-        :header="group.title" style="text-align: left;">
+        <a-collapse-panel v-for="group of model_layout" :disabled="!group.children.length"
+        :header="group.title + (group.children.length ? '' : '（无）')" 
+        style="text-align: left;">
           <a-card v-for="item of group.children" class="model-card" draggable="true" hoverable 
           @dragstart="e=>transfer(e, item, group.title)" @mousedown="deselect">
             <div class="model-imgBorder">

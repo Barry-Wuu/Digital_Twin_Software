@@ -112,12 +112,13 @@
             traverse(TREE.value[0]);
           }
           if(option == "全部折叠") this.expanded = [];
+          if(option == "保存模型") global.emit("saveCustomModel", this.findDTObjectById(choices[0]));
           if(option == "删除") this.deleteChoices();
           this.updateLine();
         },
         deleteChoices(){
           for(let id of choices.value){
-            let DTObject = global.SCENE.DT.findDTObjectById(id);
+            let DTObject = this.findDTObjectById(id);
             if(DTObject) DTObject.destroy();
           }
           global.emit("hideProperty");  // 清空属性栏
@@ -143,12 +144,15 @@
             this.updateLine();
           }
         },
+        findDTObjectById(id){
+          return global.SCENE.DT.findDTObjectById(id);
+        },
         foldAll(){  // 折叠全部并隐藏连接线
           this.expanded.value = [];
           this.updateLine();
         },
         onClick(_, Selection){  // 点击Tree中的项目)
-          let selection = Selection.node.key;
+          let selection = _.node ? _.node.key : Selection.node.key;
           if(choices.value.length == 1 && selection == lastChoice) {  // 取消选择
             choices.value = choices.value.filter(k => k != selection);
             global.emit("controlEnd");  // 收起控制器
@@ -274,7 +278,7 @@
       :selectedKeys="choices" 
       :tree-data="TREE" 
       style="margin-left: 6px"
-      @dblclick="doubleClick" @expand="update" @select="onClick"
+      @dblclick="doubleClick" @expand="update" @select="onClick" @rightClick="onClick"
       @dragstart="dragFrom" @drop="dragTo">
         <!--各个结点-->
         <template #title="DT">
@@ -329,6 +333,9 @@
         </a-sub-menu>
         <a-menu-item key="全部展开">全部展开</a-menu-item>
         <a-menu-item key="全部折叠">全部折叠</a-menu-item>
+        <a-menu-item v-if="findDTObjectById(choices[0])?.label == 'WIP'" key="保存模型">
+          保存模型
+        </a-menu-item>
         <a-menu-item key="删除">删除</a-menu-item>
       </a-menu>
     </template>

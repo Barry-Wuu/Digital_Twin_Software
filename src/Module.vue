@@ -3,7 +3,7 @@
     import Assets from './components/Assets.vue'
     import Canvas from './components/DTScene/Canvas.vue'
     import Console from './components/Console.vue'
-    import Models from './components/Models.vue'
+    import Models from './components/Models/Models.vue'
     import Properties from './components/Properties.vue'
     import Tree from './components/Tree.vue'
     export default defineComponent({

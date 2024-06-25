@@ -22,7 +22,7 @@
             {"title": "圆柱", "model": "", "icon": "cylinder.jpg"},
             {"title": "锥体", "model": "", "icon": "cone.jpg"}
         ]},
-            {"title": "其它", "children": [
+        {"title": "其它", "children": [
             {"title": "弯道（凸集）", "model": "滚轮传送带-弯道.stl", "icon": "滚轮弯道1.jpg"}
         ]}
     ],

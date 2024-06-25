@@ -26,6 +26,7 @@ import { TransformControls } from "three/examples/jsm/controls/TransformControls
 
 var attached;  // 控制器附着的物体
 var BottomFPS, BottomTimer;
+const cameraFrontRay = new THREE.Ray();
 let customModels = {};
 let attachObjects = new THREE.Group();
 var emulateMode = "stop";  // 仿真模式
@@ -34,15 +35,15 @@ var frames = 0;  // 帧率计算
 let front = new THREE.Vector3(); 
 var groundColor = "azure";
 const groundSize = 250;  // 地面范围：-groundSize ≤ x ≤ groundSize，-groundSize ≤ y ≤ groundSize
-var Ground = new THREE.Plane(UP);  // 平面z=0
+const Ground = new THREE.Plane(UP);  // 平面z=0
 var loader = new STLLoader();
 var loading = false;
+const minCameraFocusDistance = 5;  // 双击拉近时相机到物体的最小距离
 const model_definition = modelData.model_definition;
 var origin = new THREE.Vector3(0, 0, 0);
 var speed = 1;
 var temp = false;
 var UP = new THREE.Vector3(0, 0, 1);  // z轴朝上
-const zeroVector_Ammo = new Ammo.btVector3();
 
 // 物理量
 var animate;
@@ -368,7 +369,7 @@ export default class SceneBuilder{
         global.on("updateTrayPosition", (data: {ID, RFID}) => {
             let sensorDT = global.physicalIDMap[data.ID];
             let trayDT = global.physicalIDMap[data.RFID];
-            trayDT.sensorPass = sensorDT;
+            if(trayDT) trayDT.sensorPass = sensorDT;
         })
 
         // 快捷键设置
@@ -456,9 +457,9 @@ export default class SceneBuilder{
                     }
                     
                     // 求相机到物体的距离d与d*相机朝向
-                    if(!r || targetObject.DT.label == "protected") r = 0;
+                    if(!r || targetObject.DT.label == "protected") r = minCameraFocusDistance;
                     d = r * targetObject.DT.scale * 2.5;  // 距离 = 包围球半径 * 物体缩放 * 2.5
-                    d = Math.max(d, 5);  // 让相机不能离物体太近
+                    d = Math.max(d, minCameraFocusDistance);  // 让相机不能离物体太近
                     this.camera.getWorldDirection(front);
                     let delta = front.clone();
                     delta.multiplyScalar(d);
@@ -466,13 +467,13 @@ export default class SceneBuilder{
                     p_end = center.sub(delta);
                     moveToId = -1;
                 }
-                if(moveToId < 0){  // 移动中
+                else if(moveToId < 0){  // 移动中
                     frameCounter++;
                     this.cameraMovable.position.lerpVectors(p_start, p_end, frameCounter/60);
-                    let target = this.cameraMovable.position.clone();
-                    this.camera.position.copy(target);
-                    new THREE.Ray(target, front).intersectPlane(Ground, this.orbitControl.target);
-                    if (frameCounter >= 60){  // 结束移动
+                    this.camera.position.copy(this.cameraMovable.position);
+                    cameraFrontRay.set(this.cameraMovable.position, front);
+                    cameraFrontRay.intersectPlane(Ground, this.orbitControl.target);  console.log(this.orbitControl.target)
+                    if (frameCounter >= 60){  // 移动结束
                         this.orbitControl.enableRotate = true;
                         frameCounter = moveToId = 0;
                     }
@@ -805,7 +806,6 @@ export default class SceneBuilder{
             else if (DT1.label == "sensor"){
                 DT0.touchSensor = true;
                 if (DT0.sensorPass && DT0.sensorPass != 1){
-                    console.log(DT1, DT0.sensorPass)
                     if(DT1 != DT0.sensorPass){  // 若在制品的虚实体碰到的不是同一传感器
                         DT0.mesh.position.copy(DT0.sensorPass.mesh.position);  // 将在制品瞬移到实际传感器处
                         DT0.updateRigidbodyTransform();  // 强制更新刚体位姿

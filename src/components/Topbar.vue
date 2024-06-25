@@ -271,7 +271,7 @@
                     let newest = recent.splice(recent.indexOf(path), 1);
                     recent.push(path);
                 }
-                fs.writeFileSync("src/recentOpened.txt", JSON.stringify(recent));
+                fs.writeFileSync("src/config/recentOpened.txt", JSON.stringify(recent));
             },
             setMode(newMode){  // 切换编辑/浏览模式
                 global.mode = newMode;
@@ -297,7 +297,7 @@
                 return customViews.value.filter(view=>view.name==viewName.value)[0]; 
             },
             viewSave(){  // 保存自定义视角
-                fs.writeFileSync("src/customViews.txt", JSON.stringify(customViews.value));
+                fs.writeFileSync("src/config/customViews.txt", JSON.stringify(customViews.value));
             },
             viewSelect(e){  // 选择视角
                 if(e.key == "新增视角" || e.key == "移除视角") return;
@@ -344,9 +344,9 @@
 
             try {  // 有历史打开记录和自定义视角则加载
                 let file;
-                file = fs.readFileSync("src/recentOpened.txt", "utf-8"); 
+                file = fs.readFileSync("src/config/recentOpened.txt", "utf-8"); 
                 recentOpened.value = JSON.parse(file);
-                file = fs.readFileSync("src/customViews.txt", "utf-8"); 
+                file = fs.readFileSync("src/config/customViews.txt", "utf-8"); 
                 customViews.value = JSON.parse(file);
             } 
             catch {}
