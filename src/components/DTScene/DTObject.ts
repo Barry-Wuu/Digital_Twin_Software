@@ -36,12 +36,12 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     rigidFollow = false  // 若为是则让刚体强制跟随网格，否则默认让网格跟随刚体
     row = 0  // 子树在层级树模块中占几行
     scale = 1  // 尺寸
-    sensorPass=null  // 是否允许物体通过传送带上的传感器
+    sensorPass = null  // 光电门是否在冷却
     skybox: object  // 天空盒
     timer = performance.now()  // 定时器（自动计算）
     timeInterval: number  // 定时器触发时间
     title: string  // 标题 = 物体类型 + 名称 + 序号（自动计算）
-    touchSensor = false  // 是否接触到传感器
+    touchSensor: DTObject  // 是否接触到光电门
     type: string  // 物体的网格类型
     v0: number  // 传送带中轴线速度
     constructor(mesh=null, addToScene=false, asset=null) {  
@@ -134,7 +134,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         if(target == "rigidHelper") target = this.layers.rigidHelper[0];
         target.userData.physicsBody = rb;
         if (mass>0) {rb.setActivationState(4);}  // 质量为0代表为固定的刚体
-        // 将传感器设置为单独的碰撞组，物体mask为1时可通过传感器，3时会碰到传感器
+        // 将光电门设置为单独的碰撞组，物体mask为1时可通过光电门，3时会碰到光电门
         if(this.label == "sensor") global.physicsWorld.addRigidBody(rb, 2, 3);
         else global.physicsWorld.addRigidBody(rb, 1, 3);
         global.rb_mesh[rb.ptr] = {mesh:this.mesh, rb:rb};
@@ -285,16 +285,6 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             global.physicsWorld.removeRigidBody(rb);
         }
     }
-    sensorClose(){  // 禁止物体通过传感器
-        global.physicsWorld.removeRigidBody(this.rb);
-        global.physicsWorld.addRigidBody(this.rb, 1, 3);
-        this.touchSensor = false;
-    }
-    sensorOpen(){  // 允许物体通过传感器
-        global.physicsWorld.removeRigidBody(this.rb);
-        global.physicsWorld.addRigidBody(this.rb, 1, 1);
-        this.sensorPass = 1;
-    }   
     setProp(prop=null, newValue=null) {  // 改变物体及其刚体的属性
         if(prop){
             let node = this, split = prop.split('.');
