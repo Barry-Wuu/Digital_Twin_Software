@@ -8,7 +8,7 @@
             {"title": "滚轮传送带-顺时针弯道", "model": "滚轮传送带-弯道.stl", "icon": "滚轮弯道1.jpg"},
             {"title": "滚轮传送带-逆时针弯道", "model": "滚轮传送带-弯道.stl", "icon": "滚轮弯道2.jpg"},
             {"title": "护栏", "model": "", "icon": "护栏.jpg"},
-            {"title": "传感器", "model": "", "icon": "传感器.jpg"}
+            {"title": "光电门", "model": "", "icon": "光电门.jpg"}
         ]},
         {"title": "在制品", "children": [
             {"title": "货物", "model": "", "icon": "货物.jpg"},
@@ -190,7 +190,7 @@
             "rigid" : true, 
             "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3(0.25, 1, 0.5))"        
         },
-        "传感器": {
+        "光电门": {
             "geometry" : "new THREE.BoxGeometry(0.2, 3, 0.8)",
             "label" : "sensor",
             "rigid" : true, 

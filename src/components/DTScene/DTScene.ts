@@ -365,11 +365,31 @@ export default class SceneBuilder{
             global.emit("clickModel", {id:mesh.id, shift:false});  // 创建物体后模拟点击该物体
         });
 
-        // 托盘位置更新
+        // 更新托盘位置
         global.on("updateTrayPosition", (data: {ID, RFID}) => {
-            let sensorDT = global.physicalIDMap[data.ID];
+            let sensor = global.physicalIDMap[data.ID];
             let trayDT = global.physicalIDMap[data.RFID];
-            if(trayDT) trayDT.sensorPass = sensorDT;
+            if(trayDT && !trayDT.sensorPass){  // 修改托盘的碰撞掩码，使之可通过光电门
+                trayDT.sensorPass = true;
+                global.physicsWorld.removeRigidBody(trayDT.rb);
+                global.physicsWorld.addRigidBody(trayDT.rb, 1, 1);
+                if(!trayDT.touchSensor) {  // 若同步位置时实物比在制品先到光电门
+                    trayDT.mesh.position.copy(sensor.mesh.position);  // 将在制品瞬移到光电门处
+                    trayDT.updateRigidbodyTransform();  // 强制更新刚体位姿
+                }
+                setTimeout(() => {  // 一坤秒后修改托盘的碰撞掩码，禁止其物体通过光电门
+                    global.physicsWorld.removeRigidBody(trayDT.rb);
+                    global.physicsWorld.addRigidBody(trayDT.rb, 1, 3);
+                    trayDT.sensorPass = false;
+                    trayDT.touchSensor = null;
+                }, 2500);
+            }
+            else if (trayDT.sensorPass){
+                console.log("光电门冷却中");
+            }
+            else{
+                console.log("光电门不存在");
+            }
         })
 
         // 快捷键设置
@@ -733,13 +753,12 @@ export default class SceneBuilder{
             let rb0 = global.rb_mesh[ptr0].rb, rb1 = global.rb_mesh[ptr1].rb;
             let mesh0 = global.rb_mesh[ptr0].mesh, mesh1 = global.rb_mesh[ptr1].mesh;
             let DT0 = mesh0.DT, DT1 = mesh1.DT;
-
             if(DT1.label == "WIP"){// 让在制品排在前面，即等于mesh0
                 [rb0, rb1] = [rb1, rb0];
                 [mesh0, mesh1] = [mesh1, mesh0];
                 [DT0, DT1] = [DT1, DT0];
             }
-            
+
             if(DT1.label == "conveyor"){  // 让在制品遇到货物时受摩擦力作用
                 let J = 5;  // 转动惯量J
                 let k = Math.min(DT0.friction, DT1.friction);  // 滑动摩擦系数k
@@ -762,7 +781,7 @@ export default class SceneBuilder{
                     F.op_mul(k*m*g);
                     rb0.applyCentralForce(F);
                 } else if(DT1.name?.includes("弯道")) {
-                    let dir = DT1.name == "逆时针弯道" ? -1 : 1;  // 传送带移动方向（顺/逆时针）
+                    let dir = DT1.name.includes("逆时针弯道") ? -1 : 1;  // 传送带移动方向（顺/逆时针）
                     let r = new THREE.Vector3();
                     r.add(mesh0.position).sub(P);
                     r.setZ(0);
@@ -793,25 +812,9 @@ export default class SceneBuilder{
                         rb0.applyTorque(M);  // 同理，摩擦力矩 M = kw*J*(ω0-ω)
                     }  
                 }
-                if(DT0.sensorPass == 1){  // 让在制品同步位置之后3s恢复和传感器的碰撞
-                    DT0.sensorPass = null;
-                    setTimeout(() => DT0.sensorClose(), 3000);
-                } else if(DT0.sensorPass && !DT0.touchSensor) {  // 若同步位置时在制品比实物后到传感器
-                    DT0.mesh.position.copy(DT0.sensorPass.mesh.position);  // 将在制品瞬移到传感器处
-                    DT0.updateRigidbodyTransform();  // 强制更新刚体位姿
-                    DT0.sensorOpen();    
-                }
             }
-            // 若同步位置时在制品比实物先到传感器，则直接放行
             else if (DT1.label == "sensor"){
-                DT0.touchSensor = true;
-                if (DT0.sensorPass && DT0.sensorPass != 1){
-                    if(DT1 != DT0.sensorPass){  // 若在制品的虚实体碰到的不是同一传感器
-                        DT0.mesh.position.copy(DT0.sensorPass.mesh.position);  // 将在制品瞬移到实际传感器处
-                        DT0.updateRigidbodyTransform();  // 强制更新刚体位姿
-                    }
-                    DT0.sensorOpen();
-                }
+                DT0.touchSensor = DT1;
             }
             else if (DT1.label == "special"){
                 if (DT1.name == "回收器"){
