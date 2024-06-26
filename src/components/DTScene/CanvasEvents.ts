@@ -247,86 +247,97 @@ export default defineComponent({
           }
         }
         else {  // 拖动时，物体位置 = 鼠标与平面z=H的交点坐标 + Δp
+          let pointc;
           if (dragModel.DT.label == "conveyor"){  // 拖入传送带时
             attachPoint1 = dragModel.getObjectByName('ap1');
-            if (keys.Space) {  // 检查空格键和左键是否同时被按下
-              let minDistance = Infinity;  // 初始化最小距离为无穷大
-              let closestAttachPoint2 = null;
-              let worldPositionAP1 = new THREE.Vector3();
-              attachPoint1.getWorldPosition(worldPositionAP1);  // 获取ap1在世界坐标系中的位置
-              global.SCENE.traverse((child) => {  // 遍历场景中的所有对象，寻找名为'ap2'的物体
-                if (child.name === 'ap2') {
-                  let worldPositionAP2 = new THREE.Vector3();
-                  child.getWorldPosition(worldPositionAP2);  // 获取ap2在世界坐标系中的位置
-                  // console.log("ap2 position is" , worldPositionAP2);
-                  let distance = worldPositionAP1.distanceTo(worldPositionAP2);
-                  if (distance < minDistance) { // 更新最近的ap2
-                    minDistance = distance;
-                    closestAttachPoint2 = child;
-                  }
-                }
-              });
-              if (closestAttachPoint2 && minDistance < 1) {// 如果找到最近的ap2，并且距离小于1
-                const newWorldPosition = new THREE.Vector3();
-                closestAttachPoint2.getWorldPosition(newWorldPosition);
-                const offset = newWorldPosition.sub(worldPositionAP1);// 计算从 dragModel 到 ap1 当前世界位置的偏移
-                const rotationChange = closestAttachPoint2.parent.rotation
-                dragModel.rotation.x = rotationChange.x;  // X轴旋转
-                dragModel.rotation.y = rotationChange.y;  // Y轴旋转
-                if (dragModel.DT.name.includes("直道")){
-                  dragModel.rotation.z = rotationChange.z;}
-                else{
-                  dragModel.rotation.z = rotationChange.z-Math.PI/2;
-                  console.log(dragModel)
-                }
-                dragModel.position.add(offset);  // 更新 dragModel 的位置
-                dragModel.updateMatrixWorld(true);  // 确保场景中所有变换都是最新的
-              }
-            };
           }
           if (e.shiftKey) {  // 左键+shift拖动物体以改变其高度
             dragPoint0 = dragPoint.clone();
             dragPoint0.z = this.intersectPlaneV(e, dragPoint).z;
           }
           else {  // 左键拖动物体在水平面内移动
-            if (dragModel.label == "conveyor"){  // 拖动传送带时
-              let minDistance = Infinity;  // 初始化最小距离为无穷大
-              let closestAttachPoint2 = null;
-              let worldPositionAP1 = new THREE.Vector3();
-              let initialColor1 = attachPoint1.material.color.clone();  // 存储原始颜色
-              let hasColorChanged = false;  // 标记颜色是否已经被改变
-              attachPoint1.getWorldPosition(worldPositionAP1);  // 获取ap1在世界坐标系中的位置
-              global.SCENE.traverse((child) => {  // 遍历场景中的所有对象，寻找名为'ap2'的物体
-                if (child.name === 'ap2') {
-                  let worldPositionAP2 = new THREE.Vector3();
-                  child.getWorldPosition(worldPositionAP2);  // 获取ap2在世界坐标系中的位置
-                  // console.log("ap2 position is" , worldPositionAP2);
-                  let distance = worldPositionAP1.distanceTo(worldPositionAP2);
-                  if (distance < minDistance) { // 更新最近的ap2
-                    minDistance = distance;
-                    closestAttachPoint2 = child;
-                    if (distance < 1.5) {
-                      // 在距离小于1.5时变金色
-                      attachPoint1.material.color.set('gold');
-                      child.material.color.set('gold');
-                      hasColorChanged = true;
-                    }
-                    else { 
-                      attachPoint1.material.color.set('red');
-                      closestAttachPoint2.material.color.set('lime');
-                    }
+            if (dragModel.label == "conveyor") {  // 拖动传送带时
+
+            }
+            let minDistance = Infinity;  // 初始化最小距离为无穷大
+            let closestAttachPoint2 = null;
+            let worldPositionAP1 = new THREE.Vector3();
+            attachPoint1 = dragModel.getObjectByName('ap1');
+            attachPoint1.getWorldPosition(worldPositionAP1);  // 获取ap1在世界坐标系中的位置
+            pointc = this.intersectPlaneH(e, worldPositionAP1);
+            let dis1 = pointc.distanceTo(worldPositionAP1);//pointc到ap1的位置距离
+            global.SCENE.traverse((child) => {  // 遍历场景中的所有对象，寻找名为'ap2'的物体
+              if (child.name === 'ap2') {
+                let worldPositionAP2 = new THREE.Vector3();
+                child.getWorldPosition(worldPositionAP2);  // 获取ap2在世界坐标系中的位置
+                child.visible = true;
+                let distance = worldPositionAP1.distanceTo(worldPositionAP2);
+                if (distance < minDistance) { // 更新最近的ap2
+                  minDistance = distance;
+                  closestAttachPoint2 = child;
+                  if (distance < 1.5) {
+                    // 在距离小于1.5时变金色
+                    attachPoint1.material.color.set('gold');
+                    child.material.color.set('gold');
+                  }
+                  else {
+                    global.SCENE.traverse((mesh) => {  // 遍历场景中的所有对象，寻找名为'ap2'的物体
+                      if (mesh.name === 'ap1') {
+                        mesh.material.color.set('red');
+                      }
+                    });
+                    child.material.color.set('lime');
                   }
                 }
-              });
-              if (minDistance > 1.5 && hasColorChanged) {
-                // 如果距离大于1.5，并且颜色已经改变了，恢复原始颜色
-                attachPoint1.material.color.set('red');
-                if (closestAttachPoint2) {
-                  closestAttachPoint2.material.color.set('lime');  // 假设我们也存储了closestAttachPoint2的原始颜色
-                }
-                hasColorChanged = false; // 更新颜色改变标记
               }
+            });
+            if (closestAttachPoint2 && minDistance < 1 && dis1 < 10) {// 如果找到最近的ap2，并且距离小于1
+              const newWorldPosition = new THREE.Vector3();
+              const boundingBoxCenter = new THREE.Vector3();
+              let changed = 1;
+              box.getCenter(boundingBoxCenter);
+              closestAttachPoint2.getWorldPosition(newWorldPosition);
+              const offset = newWorldPosition.sub(worldPositionAP1);// 计算从 dragModel 到 ap1 当前世界位置的偏移
+              const rotationChange = closestAttachPoint2.parent.rotation
+              let parent = dragModel.parent;  // 将被旋转物体暂时与父物体断开关系
+              global.SCENE.attach(dragModel);
+              dragModel.rotation.x = rotationChange.x;  // X轴旋转
+              dragModel.rotation.y = rotationChange.y;  // Y轴旋转
+              // if (dragModel.DT.name.includes("直道")) {
+              //   dragModel.rotation.z = rotationChange.z;
+              // }
+              // else if (dragModel.DT.name.includes("逆时针弯道")) {
+              //   dragModel.rotation.z = rotationChange.z + Math.PI;
+              // }
+              // else if(dragModel.DT.name.includes("顺时针弯道")&& changed == 1){
+              //   dragModel.rotation.z = rotationChange.z - Math.PI / 2;
+              //   // dragModel.position.copy(pointc)
+              //   console.log(newWorldPosition)
+              //   changed=0
+              // }
+              // else if(dragModel.DT.name == "顺时针弯道"&& changed == 0){
+              //   dragModel.rotation.z = rotationChange.z - Math.PI / 2;
+              //   // dragModel.position.set(pointc)
+              // }
+              if(minDistance > 1){
+                dragModel.position.set(pointc)
+              }
+              parent.attach(dragModel);  // 将被旋转物体加回原来的父物体
+              dragModel.position.add(offset);
+              global.emit("controlStart", dragModel.id);
+              this.scene.updateMatrixWorld(true); // 确保场景中所有变换都是最新的
             }
+            //设置可见性
+            global.SCENE.traverse((mesh) => {  // 遍历场景中的所有对象，寻找名为'ap2'的物体
+              if (mesh.name === 'ap2') {
+                mesh.visible = true;
+              }
+            });
+            global.SCENE.traverse((mesh) => {  // 遍历场景中的所有对象，寻找名为'ap1'的物体
+              if (mesh.name === 'ap1') {
+                mesh.visible = true;
+              }
+            });
             dragPoint0 = this.intersectPlaneH(e, dragPoint);
           }
 
@@ -425,6 +436,17 @@ export default defineComponent({
         }
         dragModel = tempModel = null;
       }
+      //设置可见性
+      global.SCENE.traverse((mesh) => {  // 遍历场景中的所有对象，寻找名为'ap2'的物体
+        if (mesh.name === 'ap2') {
+          mesh.visible = false;
+        }
+      });
+      global.SCENE.traverse((mesh) => {  // 遍历场景中的所有对象，寻找名为'ap1'的物体
+        if (mesh.name === 'ap1') {
+          mesh.visible = false;
+        }
+      });
     },
     onKeydown(k) {
       if (k.code == "Delete") global.emit("deleteChoices");
