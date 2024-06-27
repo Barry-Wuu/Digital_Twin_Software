@@ -392,15 +392,20 @@ export default class SceneBuilder{
             }
         })
 
-        // 快捷键设置
+        // 控制器快捷键设置
         this.canvas.addEventListener("keydown", e => {
             if(global.mode == "edit"){  // 在编辑模式下
                 if(e.code == "KeyQ") this.controller.setMode("translate");  // 按Q平移
                 else if(e.code == "KeyW") this.controller.setMode("rotate");  // 按W旋转
-                //else if(e.code == "KeyE") this.controller.setMode("scale");  // 屏蔽缩放
                 else if(e.code == "KeyE") {  // 按R切换全局坐标系和局部坐标系
                     if(this.controller.space == "world") this.controller.setSpace("local");
                     else this.controller.setSpace("world");this.updateRigidBodies();
+                }
+                else if(e.code == "KeyA") {  // 按A拉伸直道传送带
+                    let target = this.controller.object;
+                    if(target.DT.label == "conveyor"){
+                        this.controller.setMode("scale");
+                    }
                 }
                 else if(e.code == "Escape") this.controller.reset();  // 按ESC恢复
                 else if(e.ctrlKey) {  // 按Ctrl将移动间距离散化

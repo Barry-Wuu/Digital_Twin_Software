@@ -13,7 +13,7 @@
 
   var dragPoint = [0, 0];
   var draggedSpliter;
-  var httpServerProcess = null; // 用于保存http-server进程的引用 
+  var httpProcess = null; // 用于保存http-server进程的引用 
   var id = 0;
   var initSize = [0, 0];
   const layout = ref({
@@ -97,10 +97,10 @@
   addId(layout.value);
   onMounted(() => {  // 加载完成时
     addSplitMover(layout.value);
-    httpServerProcess = new HttpServer(13579);  // 启动http服务
-    
+    httpProcess = new HttpClient(24680);  // 启动http服务
+    httpProcess.startPolling();  // 轮询启动
     global.on("beforeunload", () => {  // 退出时清理临时文件（src/temp文件夹）
-      httpServerProcess.kill();
+      httpProcess.kill();
     })
     window.addEventListener("drop", ()=>{
       document.body.style.userSelect = '';  // 恢复文本选择功能

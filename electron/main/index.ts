@@ -45,6 +45,22 @@ async function createWindow() {
   })
   window.setMenuBarVisibility(false)  // 隐藏窗口顶部工具栏，刷新按Ctrl+R，控制台按Ctrl+Shift+I
 
+  // 避免用http协议跨域访问网址时报错
+  app.commandLine.appendSwitch('disable-web-security');
+  window.webContents.session.webRequest.onBeforeSendHeaders(
+    (details, callback) => {
+      callback({ requestHeaders: { Origin: '*', ...details.requestHeaders } });
+    },
+  );
+  window.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        'Access-Control-Allow-Origin': ['*'],
+        ...details.responseHeaders,
+      },
+    });
+  });
+
   if (process.env.VITE_DEV_SERVER_URL) { // electron-vite-vue#298
     window.loadURL(url)
     window.webContents.openDevTools()  // Open devTool if the app is not packaged
