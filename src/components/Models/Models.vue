@@ -1,5 +1,4 @@
 <script lang="ts">
-  
   import {CloseOutlined} from "@ant-design/icons-vue";  // 清除图标
   const fs = require("fs");
   import global from "../../Global"
@@ -23,7 +22,9 @@
         global.emit("deselect");
       },
       getIMG(item){  // src为预览时的图片根目录，public/assets为打包后对应的图片根目录
-        return new URL(`${"../../assets/icons/" + item.icon}`, import.meta.url).href
+        return new URL(`${
+          "../../assets/icons/" + modelData.model_definition[item.title].icon
+        }`, import.meta.url).href
       },
       loadCustomModel(){  // 读取自定义模型
         try{
@@ -76,7 +77,7 @@
         global.emit("dragModelStart", {type: "model", item: {
           group: groupType ? groupType : item.group, 
           modelname: item.title,
-          modelpath: item.model,
+          modelpath: modelData.model_definition[item.title].model,
         }});
       },
     },
