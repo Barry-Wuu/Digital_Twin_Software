@@ -1,52 +1,56 @@
 {
     "model_layout": [
         {"title": "传送带元件", "children": [
-            {"title": "平行传送带-直道", "model": "平行传送带-直道.stl", "icon": "平行直道.jpg"},
-            {"title": "平行传送带-顺时针弯道", "model": "平行传送带-弯道.stl", "icon": "平行弯道1.jpg"},
-            {"title": "平行传送带-逆时针弯道", "model": "平行传送带-弯道.stl", "icon": "平行弯道2.jpg"},
-            {"title": "滚轮传送带-直道", "model": "滚轮传送带-直道.stl", "icon": "滚轮直道.jpg"},
-            {"title": "滚轮传送带-顺时针弯道", "model": "滚轮传送带-弯道.stl", "icon": "滚轮弯道1.jpg"},
-            {"title": "滚轮传送带-逆时针弯道", "model": "滚轮传送带-弯道.stl", "icon": "滚轮弯道2.jpg"},
-            {"title": "护栏", "model": "", "icon": "护栏.jpg"},
-            {"title": "光电门", "model": "", "icon": "光电门.jpg"}
+            {"title": "平行传送带-直道"},
+            {"title": "平行传送带-顺时针弯道"},
+            {"title": "平行传送带-逆时针弯道"},
+            {"title": "滚轮传送带-直道"},
+            {"title": "滚轮传送带-顺时针弯道"},
+            {"title": "滚轮传送带-逆时针弯道"},
+            {"title": "护栏"},
+            {"title": "光电门"}
         ]},
         {"title": "在制品", "children": [
-            {"title": "货物", "model": "", "icon": "货物.jpg"},
-            {"title": "托盘", "model": "", "icon": "托盘.jpg"},
-            {"title": "发生器", "model": "", "icon": "发生器.jpg"},
-            {"title": "回收器", "model": "", "icon": "回收器.jpg"}
+            {"title": "货物"},
+            {"title": "托盘"},
+            {"title": "发生器"},
+            {"title": "回收器"}
         ]},
         {"title": "在制品（基本几何体）", "children": [
-            {"title": "正方体", "model": "", "icon": "cube.jpg"},
-            {"title": "球", "model": "", "icon": "sphere.jpg"},
-            {"title": "圆柱", "model": "", "icon": "cylinder.jpg"},
-            {"title": "锥体", "model": "", "icon": "cone.jpg"}
+            {"title": "正方体"},
+            {"title": "球"},
+            {"title": "圆柱"},
+            {"title": "锥体"}
         ]},
         {"title": "其它", "children": [
-            {"title": "弯道（凸集）", "model": "滚轮传送带-弯道.stl", "icon": "滚轮弯道1.jpg"}
+            {"title": "弯道（凸集）"}
         ]}
     ],
     "model_definition": {
         "平行传送带-直道": {
+            "icon": "平行直道.jpg",
             "material": { "color": "lightgray" },
+            "model": "平行传送带-直道.stl", 
             "rigid": true,
             "rigidShape": "convex",
             "scale": 0.05,
             "v0": 2,
             "label": "conveyor",
-            "layers":{
+            "layers": {
                 "indicator": "[this.createArrow(0.5, 0, 0)]",
                 "attachPoint1": "[this.createAttachPoint1(0, 0)]",
                 "attachPoint2": "[this.createAttachPoint2(150, 0)]"
             }
         },
         "平行传送带-顺时针弯道": {
-            "material" : { "color": "lightgray" },
-            "rigid" : true,
-            "scale" : 0.05,
-            "v0" : 2,
-            "label" : "conveyor",
-            "rigidShape" :[
+            "icon": "平行弯道1.jpg",
+            "material": { "color": "lightgray" },
+            "model": "平行传送带-弯道.stl", 
+            "rigid": true,
+            "scale": 0.05,
+            "v0": 2,
+            "label": "conveyor",
+            "rigidShape": [
                 "()=>{",
                     "const PI = Math.PI;",
                     "let r = 3.6/this.scale, R = 6.4/this.scale, shape = new THREE.Shape();",
@@ -64,19 +68,21 @@
                 "}"
             ],
             "layers": {
-                "indicator" : "[this.createArrow(-5, 0, 90)]",
-                "attachPoint1" : "[this.createAttachPoint1(-100, 0)]",
-                "attachPoint2" : "[this.createAttachPoint2(0, 100)]"
+                "indicator": "[this.createArrow(-5, 0, 90)]",
+                "attachPoint1": "[this.createAttachPoint1(-100, 0)]",
+                "attachPoint2": "[this.createAttachPoint2(0, 100)]"
             }
             
         },
-        "平行传送带-逆时针弯道":{
-            "material" : { "color": "lightgray" },
-            "rigid" : true, 
-            "scale" : 0.05,
-            "v0" : 2,
-            "label" : "conveyor",
-            "rigidShape" :[
+        "平行传送带-逆时针弯道": {
+            "icon": "平行弯道2.jpg",
+            "material": { "color": "lightgray" },
+            "model": "平行传送带-弯道.stl", 
+            "rigid": true, 
+            "scale": 0.05,
+            "v0": 2,
+            "label": "conveyor",
+            "rigidShape": [
                 "()=>{",
                     "const PI = Math.PI;",
                     "let r = 3.6/this.scale, R = 6.4/this.scale, shape = new THREE.Shape();",
@@ -93,32 +99,36 @@
                     "})",
                 "}"
             ],
-            "layers":{
-                "indicator" : "[this.createArrow(0, 5, 180)]",
-                "attachPoint1" : "[this.createAttachPoint1(0, 100)]",
-                "attachPoint2" : "[this.createAttachPoint2(-100, 0)]"
+            "layers": {
+                "indicator": "[this.createArrow(0, 5, 180)]",
+                "attachPoint1": "[this.createAttachPoint1(0, 100)]",
+                "attachPoint2": "[this.createAttachPoint2(-100, 0)]"
             }
         }, 
         "滚轮传送带-直道": {
+            "icon": "滚轮直道.jpg",
             "material": { "color": "lightgray" },
+            "model": "滚轮传送带-直道.stl", 
             "rigid": true,
             "rigidShape": "convex",
             "scale": 0.05,
             "v0": 2,
             "label": "conveyor",
-            "layers":{
+            "layers": {
                 "indicator": "[this.createArrow(0.5, 0, 0)]",
                 "attachPoint1": "[this.createAttachPoint1(0, 0)]",
                 "attachPoint2": "[this.createAttachPoint2(150, 0)]"
             }
         },
         "滚轮传送带-顺时针弯道": {
-            "material" : { "color": "lightgray" },
-            "rigid" : true,
-            "scale" : 0.05,
-            "v0" : 2,
-            "label" : "conveyor",
-            "rigidShape" :[
+            "icon": "滚轮弯道1.jpg",
+            "material": { "color": "lightgray" },
+            "model": "滚轮传送带-弯道.stl", 
+            "rigid": true,
+            "scale": 0.05,
+            "v0": 2,
+            "label": "conveyor",
+            "rigidShape": [
                 "()=>{",
                     "const PI = Math.PI;",
                     "let r = 3.6/this.scale, R = 6.4/this.scale, shape = new THREE.Shape();",
@@ -136,19 +146,21 @@
                 "}"
             ],
             "layers": {
-                "indicator" : "[this.createArrow(-5, 0, 90)]",
-                "attachPoint1" : "[this.createAttachPoint1(-100, 0)]",
-                "attachPoint2" : "[this.createAttachPoint2(0, 100)]"
+                "indicator": "[this.createArrow(-5, 0, 90)]",
+                "attachPoint1": "[this.createAttachPoint1(-100, 0)]",
+                "attachPoint2": "[this.createAttachPoint2(0, 100)]"
             }
             
         },
-        "滚轮传送带-逆时针弯道":{
-            "material" : { "color": "lightgray" },
-            "rigid" : true, 
-            "scale" : 0.05,
-            "v0" : 2,
-            "label" : "conveyor",
-            "rigidShape" :[
+        "滚轮传送带-逆时针弯道": {
+            "icon": "滚轮弯道2.jpg",
+            "material": { "color": "lightgray" },
+            "model": "滚轮传送带-弯道.stl", 
+            "rigid": true, 
+            "scale": 0.05,
+            "v0": 2,
+            "label": "conveyor",
+            "rigidShape": [
                 "()=>{",
                     "const PI = Math.PI;",
                     "let r = 3.6/this.scale, R = 6.4/this.scale, shape = new THREE.Shape();",
@@ -166,100 +178,112 @@
                 "}"
             ],
             "layers":{
-                "indicator" : "[this.createArrow(0, 5, 180)]",
-                "attachPoint1" : "[this.createAttachPoint1(0, 100)]",
-                "attachPoint2" : "[this.createAttachPoint2(-100, 0)]"
+                "indicator": "[this.createArrow(0, 5, 180)]",
+                "attachPoint1": "[this.createAttachPoint1(0, 100)]",
+                "attachPoint2": "[this.createAttachPoint2(-100, 0)]"
             }
         }, 
         "弯道（凸集）": {
-            "material" : { "color": "lightgray" },
-            "rigid" : true, 
-            "rigidShape" : "convex",
-            "scale" : 0.05,
-            "v0" : 2,
-            "label" : "conveyor",
-            "layers":{
-                "indicator" : "[this.createArrow(-5, 0, 90)]",
-                "attachPoint1" : "[this.createAttachPoint1(-100, 0)]",
-                "attachPoint2" : "[this.createAttachPoint2(0, 100)]"
+            "icon": "滚轮弯道1.jpg",
+            "material": { "color": "lightgray" },
+            "model": "滚轮传送带-弯道.stl", 
+            "rigid": true, 
+            "rigidShape": "convex",
+            "scale": 0.05,
+            "v0": 2,
+            "label": "conveyor",
+            "layers": {
+                "indicator": "[this.createArrow(-5, 0, 90)]",
+                "attachPoint1": "[this.createAttachPoint1(-100, 0)]",
+                "attachPoint2": "[this.createAttachPoint2(0, 100)]"
             }
         },
         "护栏": {
-            "geometry" : "new THREE.BoxGeometry(0.5, 2, 1)",
-            "material" : { "color": "lightgray" },
-            "rigid" : true, 
-            "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3(0.25, 1, 0.5))"        
+            "icon": "护栏.jpg",
+            "geometry": "new THREE.BoxGeometry(0.5, 2, 1)",
+            "material": { "color": "lightgray" },
+            "rigid": true, 
+            "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(0.25, 1, 0.5))"        
         },
         "光电门": {
-            "geometry" : "new THREE.BoxGeometry(0.2, 3, 0.8)",
-            "label" : "sensor",
-            "rigid" : true, 
-            "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3(0.1, 1.5, 0.4))",
-            "material" : { "color": "lime", "opacity": 0.5, "transparent": true },
-            "code" : "let rb : this.mesh.userData.physicsBody, \n rb.setMassProps(0, new Ammo.btVector3(0, 0, 0))"
+            "icon": "光电门.jpg",
+            "geometry": "new THREE.BoxGeometry(0.2, 3, 0.8)",
+            "label": "sensor",
+            "rigid": true, 
+            "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(0.1, 1.5, 0.4))",
+            "material": { "color": "lime", "opacity": 0.5, "transparent": true },
+            "code": "let rb: this.mesh.userData.physicsBody, \n rb.setMassProps(0, new Ammo.btVector3(0, 0, 0))"
         },
 
         "货物": {
-            "geometry" : "new THREE.BoxGeometry(1, 1, 1)",
-            "label" : "WIP",
-            "mass" : 1,
-            "material" : { "color": "blue" },
-            "rigid" : true,
-            "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3(0.5, 0.5, 0.5))"
+            "icon": "货物.jpg",
+            "geometry": "new THREE.BoxGeometry(1, 1, 1)",
+            "label": "WIP",
+            "mass": 1,
+            "material": { "color": "blue" },
+            "rigid": true,
+            "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(0.5, 0.5, 0.5))"
         },
         "托盘": {
-            "geometry" : "new THREE.BoxGeometry(1.4, 0.4, 1.4)",
-            "label" : "WIP",
-            "mass" : 1,
-            "material" : { "color": "rgb(255, 255, 128)" },
-            "rigid" : true,
-            "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3(0.7, 0.2, 0.7))"
+            "icon": "托盘.jpg",
+            "geometry": "new THREE.BoxGeometry(1.4, 0.4, 1.4)",
+            "label": "WIP",
+            "mass": 1,
+            "material": { "color": "rgb(255, 255, 128)" },
+            "rigid": true,
+            "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(0.7, 0.2, 0.7))"
         },
         "发生器": {
-            "geometry" : "new THREE.BoxGeometry(1, 1, 1)",
-            "label" : "special",
-            "material" : { "color": "lime", "opacity": 0.5, "transparent": true },
-            "timeInterval" : 5000
+            "icon": "发生器.jpg",
+            "geometry": "new THREE.BoxGeometry(1, 1, 1)",
+            "label": "special",
+            "material": { "color": "lime", "opacity": 0.5, "transparent": true },
+            "timeInterval": 5000
         },
         "回收器": {
-            "geometry" : "new THREE.BoxGeometry(1, 1, 1)",
-            "label" : "special",
-            "material" : { "color": "red", "opacity": 0.5, "transparent": true },
-            "rigid" : true,
-            "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3(0.5, 0.5, 0.5))"
+            "icon": "回收器.jpg",
+            "geometry": "new THREE.BoxGeometry(1, 1, 1)",
+            "label": "special",
+            "material": { "color": "red", "opacity": 0.5, "transparent": true },
+            "rigid": true,
+            "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(0.5, 0.5, 0.5))"
         },
         
         "正方体": {
-            "geometry" : "new THREE.BoxGeometry(1, 1, 1)",
-            "label" : "WIP",
-            "material" : { "color": "lime" },
-            "mass" : 1,
-            "rigid" : true,
-            "rigidShape" : "new Ammo.btBoxShape(new Ammo.btVector3(0.5, 0.5, 0.5))"
+            "icon": "cube.jpg",
+            "geometry": "new THREE.BoxGeometry(1, 1, 1)",
+            "label": "WIP",
+            "material": { "color": "lime" },
+            "mass": 1,
+            "rigid": true,
+            "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(0.5, 0.5, 0.5))"
         },
         "球": {
-            "geometry" : "new THREE.SphereGeometry(0.5)",
-            "label" : "WIP",
-            "material" : { "color": "red" },
-            "mass" : 1,
-            "rigid" : true,
-            "rigidShape" : "new Ammo.btSphereShape(0.5)"
+            "icon": "sphere.jpg",
+            "geometry": "new THREE.SphereGeometry(0.5)",
+            "label": "WIP",
+            "material": { "color": "red" },
+            "mass": 1,
+            "rigid": true,
+            "rigidShape": "new Ammo.btSphereShape(0.5)"
         },      
         "圆柱": {
-            "geometry" : "new THREE.CylinderGeometry(0.5, 0.5, 1)",
-            "label" : "WIP",
-            "material" : { "color": "blue" },
-            "mass" : 1,
-            "rigid" : true,
-            "rigidShape" : "new Ammo.btCylinderShape(new Ammo.btVector3(0.5, 1, 0.5))"
+            "icon": "cylinder.jpg",
+            "geometry": "new THREE.CylinderGeometry(0.5, 0.5, 1)",
+            "label": "WIP",
+            "material": { "color": "blue" },
+            "mass": 1,
+            "rigid": true,
+            "rigidShape": "new Ammo.btCylinderShape(new Ammo.btVector3(0.5, 1, 0.5))"
         },
-        "锥体":{
-            "geometry" : "new THREE.ConeGeometry(0.5, 1, 12)",
-            "label" : "WIP",
-            "material" : { "color": "yellow" },
-            "mass" : 1,
-            "rigid" : true,
-            "rigidShape" : "new Ammo.btConeShape(0.5, 1, 12)"
+        "锥体": {
+            "icon": "cone.jpg",
+            "geometry": "new THREE.ConeGeometry(0.5, 1, 12)",
+            "label": "WIP",
+            "material": { "color": "yellow" },
+            "mass": 1,
+            "rigid": true,
+            "rigidShape": "new Ammo.btConeShape(0.5, 1, 12)"
         }
     }
 }

@@ -75,7 +75,7 @@ export default defineComponent({
       global.emit("changeQuitFullscreen", fullscreen);
       this.resizeCanvas();
     });
-    global.on("dragModelStart", (data) => { dragData = data });
+    global.on("dragModelStart", data => {dragData = data; console.log(data)});
     global.on("dropout", () => dragModel.remove());
     return { description: null, rendered: false, }
   },

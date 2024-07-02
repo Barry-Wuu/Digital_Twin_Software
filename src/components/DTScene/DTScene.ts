@@ -731,11 +731,10 @@ export default class SceneBuilder{
         }
         searchFiles(modelPath);  // 然后异步载入相应几何体（THREE.geometry）
         for(let modelPath in customModels){
-            let load = loader.loadAsync(modelPath);
-            load.then((geom)=>{customModels[modelPath] = geom;});   
+            loader.loadAsync(modelPath).then(geom => {customModels[modelPath] = geom;});   
         }
     }
-    removeRigidBody( mesh ){  // 移除刚体
+    removeRigidBody(mesh){  // 移除刚体
         let rb = mesh.DT.rb;
         delete global.rb_mesh[rb.ptr].mesh.userData.rb;
         delete global.rb_mesh[rb.ptr];
