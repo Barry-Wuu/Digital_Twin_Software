@@ -97,7 +97,13 @@
   addId(layout.value);
   onMounted(() => {  // 加载完成时
     addSplitMover(layout.value);
-    httpProcess = new HttpClient(24680);  // 启动http服务
+    httpProcess = new HttpClient({  // 启动http服务
+      site:"192.168.137.155", 
+      port: 8888, 
+      path: "111",
+      interval: 100,  // ms
+      timeout: 500000,  // ms
+    });
     //httpProcess.startPolling();  // 轮询启动
     global.on("beforeunload", () => {  // 退出时清理临时文件（src/temp文件夹）
       httpProcess.kill();
@@ -148,4 +154,3 @@
     </a-config-provider>
   </div>
 </template>
-./components/Global./components/Global./Global

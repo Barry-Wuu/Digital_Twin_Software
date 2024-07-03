@@ -77,7 +77,6 @@
       methods: {
         action(e){  // 从右键菜单选择操作
           let option = e.key;
-          var DT;
           if(option == "取消选择") choices.value = []; 
           if(option == "创建群组")
             global.emit("createMesh", "Group");
@@ -86,6 +85,7 @@
           if(option == "创建环境光")
             global.emit("createMesh", "AmbientLight");
           if(option == "克隆"){
+            let DT = this.findDTObjectById(choices.value[0]);
             if(!choices.value.includes(DT.id)) choices.value = [DT.id];
             let temp = []
             for(let id of choices.value){
@@ -96,7 +96,11 @@
             for(let id of temp)choices.value.push(id);
           }
           if(option == "保存模型"){
-            console.log()
+            for(let id of choices.value) {
+              let DT = this.findDTObjectById(id);
+              let data = {basename: DT.basename, name: DT.name, physicalID: DT.physicalID};
+              global.emit("saveCustomModel", data);
+            }
           }
           if(option == "全部展开") {
             function traverse(DTObject){
@@ -110,7 +114,6 @@
             traverse(TREE.value[0]);
           }
           if(option == "全部折叠") this.expanded = [];
-          if(option == "保存模型") global.emit("saveCustomModel", this.findDTObjectById(choices[0]));
           if(option == "删除") this.deleteChoices();
           this.updateTree();
         },
@@ -183,7 +186,7 @@
             );
           }
         },
-        updateTree(){  // 更新线框和属性栏
+        updateTree(){  // 更新层级树的内容
           emitProperty();
           if(wireframe == "包围盒"){  // 更新物体包围盒线框
             global.emit("hideEdgeGlow");  // 熄灭被选中物体的边缘
@@ -206,7 +209,6 @@
             );
           }
           DTObjects = global.SCENE.DT.getDTObjects();
-          TREE.value = [];
           TREE.value = [global.SCENE.DT];
           this.updateTreeLines();
         },
@@ -334,8 +336,8 @@
           <a-menu-item key="创建平行光">平行光</a-menu-item>
           <a-menu-item key="创建环境光">环境光</a-menu-item>
         </a-sub-menu>
-        <a-menu-item v-if="choices.length == 1 &&
-        findDTObjectById(choices[0])?.label == 'WIP'" key="保存模型">
+        <a-menu-item v-if="choices.length == 1 && ['sensor', 'WIP'].includes(
+        findDTObjectById(choices[0])?.label)" key="保存模型">
           保存模型
         </a-menu-item>
         <a-menu-item key="全部展开">全部展开</a-menu-item>

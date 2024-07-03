@@ -14,10 +14,6 @@ const delta = new THREE.Vector3();
 const delta_angle = 15;  // 滚轮旋转物体的角度
 const cos_theta = Math.cos(delta_angle * Math.PI / 180);
 const sin_theta = Math.sin(delta_angle * Math.PI / 180);
-const rotation_matrix_p = new THREE.Matrix4();
-const rotation_matrix_n = new THREE.Matrix4();
-rotation_matrix_p.makeRotationZ(delta_angle * Math.PI / 180);  // 逆时针旋转
-rotation_matrix_n.makeRotationZ(-delta_angle * Math.PI / 180);  // 顺时针旋转
 var dragFromOutside;  // 是否从外界拖入
 var dragData;
 var dragModel;
@@ -75,7 +71,7 @@ export default defineComponent({
       global.emit("changeQuitFullscreen", fullscreen);
       this.resizeCanvas();
     });
-    global.on("dragModelStart", data => {dragData = data;});
+    global.on("dragModelStart", data => {dragData = data});
     global.on("dropout", () => dragModel.remove());
     return { description: null, rendered: false, }
   },
@@ -184,17 +180,10 @@ export default defineComponent({
       let point = this.intersectObject(e).point;
       if(!point) return;  // 若拖到天空上则不创建模型
       dragFromOutside = true;
-      switch(dragData.type){
-        case "asset":
-          let DT = dragData.data.DT;
-          dragModel = this.scene.createMeshFromAssets(DT, point);
-          break;
-        case "model":
-          let item = dragData.item;
-          dragModel = this.scene.createMeshFromModels(item, point);
-          break;
-        default: return;
-      }
+      if(dragData.type == "asset")
+          dragModel = this.scene.createMeshFromAssets(dragData.data.DT, point);
+      if(dragData.type == "model")
+          dragModel = this.scene.createMeshFromModels(dragData.data, point);
       dragModel.isDrag = true;
       dragModel.material.transparent = true;
       tempOpacity = dragModel.material.opacity;
@@ -324,7 +313,8 @@ export default defineComponent({
                 parent.attach(dragModel);  // 将被旋转物体加回原来的父物体
                 dragModel.position.add(offset);
                 global.emit("controlStart", dragModel.id);
-                this.scene.updateMatrixWorld(true); // 确保场景中所有变换都是最新的
+                return;  // 后一行未起作用
+                // this.scene.updateMatrixWorld(true); 确保场景中所有变换都是最新的
               }
               //设置可见性
               global.SCENE.traverse((mesh) => {  // 遍历场景中的所有对象，寻找名为'ap2'的物体
@@ -420,15 +410,11 @@ export default defineComponent({
         }
 
         let rb = dragModel.DT.rb;
-        if (rb) {}  // 让网格跟随刚体
-        else if (dragModel.DT.rigidShape) {
+        if (!rb && dragModel.DT.rigidShape) {  // 让网格跟随刚体
           dragModel.DT.createRigidBody();
-          global.DTObjects.value.push(dragModel.DT);
         }
-
-        // 强制更新刚体位姿
-        dragModel.DT.updateRigidbodyTransform();
-
+        global.DTObjects.value.push(dragModel.DT);
+        dragModel.DT.updateRigidbodyTransform();  // 强制更新刚体位姿
         if (tempModel) {
           tempModel.clear();
           tempModel.removeFromParent();

@@ -8,8 +8,8 @@
   // JSON格式的模型列表，模型路径为src/assets/models，图标路径为src/assets/icons
   const activeKeys1 = ref([]);
   const activeKeys2 = ref([]);
-  const customModel = ref([]);
-  const customModels: any = ref({});
+  const customModelGroup = ref([]);
+  const customModels: any = ref([]);
   const model_layout = ref(modelData.model_layout);
   const preservedModel = ref([]);
   const searchResult = ref([]);
@@ -23,6 +23,10 @@
     methods:{
       deselect(){  // 点击卡片时取消选择物体
         global.emit("deselect");
+      },
+      dragModelStart(e, data) {  // 发送要拖动的模型
+        e.dataTransfer.setDragImage(document.createElement("img"), 0, 0); 
+        global.emit("dragModelStart", {type: "model", data: data});
       },
       getIMG(item){  // src为预览时的图片根目录，public/assets为打包后对应的图片根目录
         return new URL(`${
@@ -42,11 +46,11 @@
           activeKeys1.value = Object.keys(model_layout.value);
           activeKeys2.value = Object.keys(customModels.value);
           preservedModel.value = ["内置模型"];
-          customModel.value = ["自定义模型"];
+          customModelGroup.value = ["自定义模型"];
         }
         else if(option == "全部折叠"){
           activeKeys1.value = activeKeys2.value = [];
-          preservedModel.value = customModel.value = [];
+          preservedModel.value = customModelGroup.value = [];
         }
         else if(option == "保存自定义模型"){
           this.saveCustomModel();
@@ -57,16 +61,14 @@
           this.saveCustomModel();
         }
         else if(option == "删除所有自定义模型"){
-          customModels.value = {};
+          customModels.value = [];
           this.saveCustomModel();
         }
       },
-      saveCustomModel(DT){  // 保存自定义模型
-        try{
-          txt = JSON.stringify(customModels.value);
-          fs.writeFileSync("src/config/customModels.txt", txt);
-        }
-        catch {}
+      saveCustomModel(data){  // 保存自定义模型
+        data.title = data.basename;
+        customModels.value.push(data);
+        console.log(data);
       },
       search(){  // 搜索栏内容改变时
         if(searchValue.value){
@@ -91,19 +93,18 @@
           item.title.substring(item.title.indexOf(text) + text.length),
         ];
       },
-      transfer(e, item, groupType=null) {
-        e.dataTransfer.setDragImage(document.createElement("img"), 0, 0); 
-        global.emit("dragModelStart", {type: "model", item: {
-          group: groupType ? groupType : item.group, 
-          modelname: item.title,
-          modelpath: modelData.model_definition[item.title].model,
-        }});
-      },
+      writeCustomModel(){  // 储存自定义模型到JSON
+        try{
+          txt = JSON.stringify(customModels.value);
+          fs.writeFileSync("src/config/customModels.txt", txt);
+        }
+        catch {}
+      }
     },
     setup() {return {
       activeKeys1, 
       activeKeys2, 
-      customModel,
+      customModelGroup,
       customModels,
       model_layout, 
       preservedModel, 
@@ -111,8 +112,8 @@
       searchResult
     }},
     mounted(){
-      this.loadCustomModel();
-      global.on("saveCustomModel", DT => this.saveCustomModel(DT));
+      // this.loadCustomModel();
+      global.on("saveCustomModel", data => this.saveCustomModel(data));
     }
   }
 </script>
@@ -171,7 +172,7 @@
               :header="group.title + (group.children.length ? '' : '（无）')" 
               style="text-align: left;">
                 <a-card v-for="item of group.children" class="model-card" draggable="true" hoverable 
-                @dragstart="e=>transfer(e, item, group.title)" @mousedown="deselect">
+                @dragstart="e=>dragModelStart(e, item)" @mousedown="deselect">
                   <div class="model-imgBorder">
                     <img :src="getIMG(item)" class="model-img" draggable="false"/>
                   </div>
@@ -182,23 +183,18 @@
           </a-collapse-panel>
         </a-collapse>
         <!--自定义模型-->
-        <a-collapse v-model:activeKey="preservedModel">
+        <a-collapse v-model:activeKey="customModelGroup">
           <a-collapse-panel key="自定义模型" 
           :header="'自定义模型' + (Object.keys(customModels).length ? '' : '（无）')" 
           :disabled="!Object.keys(customModels).length">
-            <a-collapse v-model:activeKey="activeKeys2" class="model-collapse">
-              <a-collapse-panel v-for="group of customModels" :disabled="!group.children.length"
-              :header="group.title + (group.children.length ? '' : '（无）')" 
-              style="text-align: left;">
-                <a-card v-for="item of group.children" class="model-card" draggable="true" hoverable 
-                @dragstart="e=>transfer(e, item, group.title)" @mousedown="deselect">
-                  <div class="model-imgBorder">
-                    <img :src="getIMG(item)" class="model-img" draggable="false"/>
-                  </div>
-                  <div class="model-title">{{item.title}}</div>
-                </a-card>
-              </a-collapse-panel>
-            </a-collapse>
+            <a-card v-for="item of customModels" class="model-card" draggable="true" hoverable 
+              @dragstart="e=>dragModelStart(e, item)" @mousedown="deselect">
+                <div class="model-imgBorder">
+                  <img :src="getIMG(item)" class="model-img" draggable="false"/>
+                </div>
+                <div class="model-title">{{item.title}}</div>
+                {{item}}
+              </a-card>
           </a-collapse-panel>
         </a-collapse>
       </div>
@@ -206,7 +202,7 @@
       <div v-else>
         <a-card v-if="searchResult.length" v-for="item of searchResult" 
         class="model-card" draggable="true" hoverable 
-        @dragstart="e=>transfer(e, item)" @mousedown="deselect">
+        @dragstart="e=>dragModelStart(e, item)" @mousedown="deselect">
           <div class="model-imgBorder">
             <img :src="getIMG(item)" class="model-img" draggable="false"/>
           </div>
