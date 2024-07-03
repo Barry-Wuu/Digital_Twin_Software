@@ -203,7 +203,7 @@ export default class SceneBuilder{
                 // 物体旋转时将控制器移到包围盒中心
             }
         };
-        global.on("changeControllerVisibility", (x)=>{  // 改变控制器的可见性
+        global.on("changeControllerVisibility", x => {  // 改变控制器的可见性
             this.controller.visible = x;
             if(x && attached){  // 显示控制器时将其添加回场景
                 global.SCENE.add(this.controller);
@@ -214,8 +214,11 @@ export default class SceneBuilder{
                 this.controller.detach();
             }
         });
-        global.on("controlStart", (id: any) => {  // 选中物体开始控制
-            id = parseInt(id);  // 若id为数字字符串则转换为数字
+        global.on("controlStart", (data: any) => {  // 选中物体开始控制
+            console.log(data)
+            let id, left_click;
+            if(typeof data == "object") {left_click=data.left_click; data=data.id};
+            id = parseInt(data);  // 若id为数字字符串则转换为数字
             attached = global.SCENE.getObjectById(id);
             if(!global.layers.includes("controller")) return;
             global.SCENE.add(this.controller);
@@ -235,7 +238,7 @@ export default class SceneBuilder{
                     this.controller.position.copy(center.sub(POS));
                 }
             }
-            else global.emit("controlEnd");  // 点击地面等则移除控制器
+            else if(left_click) global.emit("controlEnd");  // 点击地面等则移除控制器
         });
         global.on("controlEnd", ()=>{  // 取消选择时移除控制器
             if(!attached) return;
@@ -666,21 +669,23 @@ export default class SceneBuilder{
             let modelPath = "src/assets/models/" + item.modelpath;
             DT.geometry = customModels[modelPath];  
         }
-        // 先复制JSON中的模型定义再赋值，否则会JSON中的模型定义会被修改
+        // 先复制JSON中的模型定义再赋值，否则JSON中的模型定义会被修改
         let obj = JSON.parse(JSON.stringify(model_definition[item.modelname]));
         for(let key in obj) DT[key] = obj[key];
         if(typeof DT.geometry == "string") DT.geometry = eval(DT.geometry);
         mesh.material = new THREE.MeshPhongMaterial(DT.material);
-        DT.name = item.modelname;
+        DT.basename = DT.name = item.modelname;
         mesh.geometry = DT.geometry;
         DT.setTitle();
         DT.updateWireframes();
-        if(mesh.DT.label == "WIP") mesh.rotateX(Math.PI/2);
+
 
         if(DT.label == "conveyor"){
             attachObjects.add(DT.mesh);
             localStorage.setItem('attachObjects', JSON.stringify(attachObjects));
         }
+        if(DT.label == "WIP") mesh.rotateX(Math.PI/2);
+
         for(let layer in DT.layers){  // 解析图层
             let result = DT.layers[layer];
             if(typeof result == "string") DT.layers[layer] = eval(result); 

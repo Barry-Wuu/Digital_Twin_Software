@@ -98,7 +98,7 @@
   onMounted(() => {  // 加载完成时
     addSplitMover(layout.value);
     httpProcess = new HttpClient(24680);  // 启动http服务
-    httpProcess.startPolling();  // 轮询启动
+    //httpProcess.startPolling();  // 轮询启动
     global.on("beforeunload", () => {  // 退出时清理临时文件（src/temp文件夹）
       httpProcess.kill();
     })

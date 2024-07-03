@@ -161,7 +161,7 @@
       changeColor(e, item){  // 修改颜色的分量
         this.changeValue({e:e, item:item, unit:1/255, min:0, max:255});
       },
-      changeValue({e, item='',  // 按回车键或滚轮时更改属性的值，超出范围时取边界值，fixed为小数位数
+      changeValue({e, item='',  // 更改属性值时调用，超出范围时取边界值，fixed为小数位数
         unit=null, min=null, max=null, delta=1, fixed=2, loop=false, type="number"}){
         input_value.value = e.target.value;
         let blur = e.type == "blur";
@@ -200,6 +200,8 @@
             else eval(`${prop} = "${result}"`);
         }
         else eval(`${prop} = ${result}`);
+
+        if(this.prop == "name") {DT.value.setTitle(); global.emit("updateTree");}
         this.$emit("change");
         chosenProp.value = null;  // 结束编辑
         e.target.blur();  // 修改属性之后让元素自动失焦；

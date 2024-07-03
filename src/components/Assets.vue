@@ -36,7 +36,7 @@
   );
   var assetInput;
   var create;
-  var currentFolder = ref(assets.value);
+  var currentFolder: any = ref(assets.value);
   var dragAsset = ref();  // 被拖动的组件
   var loadingModel = false;  // 载入模型时禁止再导入其它模型
   const options = ref(["114514"]);
@@ -170,7 +170,7 @@
         dragAsset.value = null;
       },
       goto(index, jump=true){  // 点击路径即可跳转
-        let target = assets.value;
+        let target: any = assets.value;
         for(let i=1; i<=index; i++){
           for(let child of target.children){
             if(child.type == "folder" && child.name == Path.value[i]){
@@ -546,7 +546,9 @@
           创建时间
         </a-menu-item>
         <!--删除-->
-        <a-menu-item key="删除" :disabled="!dragAsset">删除</a-menu-item>
+        <a-menu-item key="删除" :disabled="!dragAsset" style="color:red">
+          删除
+        </a-menu-item>
       </a-menu>
     </template>
   </a-dropdown>

@@ -15,7 +15,7 @@
     import { computed, defineComponent, ref, watch } from 'vue';
 
     var choices = ref([]);  // 已选项，内为各个被选中模型的ID
-    var clipboard;  //  剪贴板，即被复制的选项
+    var clipboard;  //  剪贴板，以后用于复制黏贴选项
     var DTObjects;
     var expanded = ref([]);  // 展开的选项
     var lastChoice;  //  上一个选项
@@ -24,7 +24,7 @@
     const searchValue = ref("");
     var TREE = ref();
     var TREEs = ref([]);
-    var wireframe = "包围盒";
+    var wireframe: any = "包围盒";
 
     function emitProperty(){  // 将物体id发送到属性栏
       let len = choices.value.length;
@@ -66,17 +66,12 @@
             global.SCENE.DT.updateGroupWireframes();
           }
         });
-        global.on("deselect", ()=>{this.deselect()});  // 取消选择
-        global.on("deleteChoices", ()=>{this.deleteChoices()});
-        global.on("foldAll", ()=>{this.foldAll()});
-        global.on("updateSearch", ()=>{this.search(TREE.value)});
-        global.on("updateTree", ()=>{
-          try {global.SCENE.DT.setRow(expanded.value);} 
-          catch(e) {console.log(e)}
-          let DTScene = global.SCENE.DT;
-          DTObjects = DTScene.getDTObjects();         
-          TREE.value = [DTScene];
-        });
+        global.on("deselect", () => this.deselect());  // 取消选择
+        global.on("deleteChoices", () => this.deleteChoices());
+        global.on("foldAll", () => this.foldAll());
+        global.on("updateSearch", () => this.search(TREE.value));
+        global.on("updateTree", () => this.updateTree());
+        global.on("updateTreeLines", () => this.updateTreeLines());  // 更新层级树连接线
         return {choices, expanded, TREE, TREEs};
       },
       methods: {
@@ -91,7 +86,7 @@
           if(option == "创建环境光")
             global.emit("createMesh", "AmbientLight");
           if(option == "克隆"){
-            if(!choices.value.includes(DT.id)) choices.value = [DT.id]
+            if(!choices.value.includes(DT.id)) choices.value = [DT.id];
             let temp = []
             for(let id of choices.value){
               let clone = DT.clone();
@@ -99,6 +94,9 @@
               temp.push(clone.id);
             }
             for(let id of temp)choices.value.push(id);
+          }
+          if(option == "保存模型"){
+            console.log()
           }
           if(option == "全部展开") {
             function traverse(DTObject){
@@ -114,7 +112,7 @@
           if(option == "全部折叠") this.expanded = [];
           if(option == "保存模型") global.emit("saveCustomModel", this.findDTObjectById(choices[0]));
           if(option == "删除") this.deleteChoices();
-          this.updateLine();
+          this.updateTree();
         },
         deleteChoices(){
           for(let id of choices.value){
@@ -122,7 +120,7 @@
             if(DTObject) DTObject.destroy();
           }
           global.emit("hideProperty");  // 清空属性栏
-          global.emit("updateTree");
+          this.updateTree();
         },  // 删除所选模型
         deselect(){  // 点别处取消点选模型
           global.emit("deselectAsset");
@@ -134,16 +132,6 @@
           choices.value = [lastChoice];
           global.emit("cameraMoveTo", lastChoice);
         },
-        dragTo(e){  // 结束拖拽
-          let sourceDT = e.dragNode.dataRef, targetDT = e.node.dataRef;
-          if(!targetDT.children.includes(sourceDT)){
-            targetDT.mesh.attach(sourceDT.mesh);  // attach方法改变父子关系，同时不改变物体的绝对坐标
-            //sourceDT.mesh.scale.setScalar(1, 1, 1);
-            global.SCENE.DT.updateChildren();
-            if(!expanded.value.includes(targetDT.key)) expanded.value.push(targetDT.key);
-            this.updateLine();
-          }
-        },
         findDTObjectById(id){
           return global.SCENE.DT.findDTObjectById(id);
         },
@@ -151,13 +139,14 @@
           this.expanded.value = [];
           this.updateLine();
         },
-        onClick(_, Selection){  // 点击Tree中的项目)
-          let selection = _.node ? _.node.key : Selection.node.key;
-          if(choices.value.length == 1 && selection == lastChoice) {  // 取消选择
+        onClick(e, Selection){  // 点击Tree中的项目，!e.event代表用左键点击，反之则为右键点击
+          let selection = e.node ? e.node.key : Selection.node.key;
+          if(e.event && choices.value.length > 1) return;  // 选中多个选项时按右键不改变选项
+          if(!e.event && choices.value.length == 1 && selection == lastChoice) {  // 左键取消选择
             choices.value = choices.value.filter(k => k != selection);
             global.emit("controlEnd");  // 收起控制器
           } 
-          else if(shift) {  // 按shift进入默认的多选模式
+          else if(!e.event && shift) {  // 按shift为左键多选
             if(choices.value.includes(selection)){  // 多选取消
               choices.value = choices.value.filter(k => k != selection);
             } else {  // 多选选择
@@ -165,11 +154,21 @@
             }
             global.emit("controlEnd");  // 收起控制器
           }
-          else {  // 单选
+          else{  // 左键或右键单选，右键不取消单选
             choices.value = [selection];
-            global.emit("controlStart", selection);  // 选中物体开始控制
+            global.emit("controlStart", {id:selection, left_click:!e.event});  // 选中物体开始控制
             global.SCENE.DT.updateGroupWireframes();
             lastChoice = selection;
+          }
+        },
+        onDrop(e){  // 结束拖拽
+          let sourceDT = e.dragNode.dataRef, targetDT = e.node.dataRef;
+          if(!targetDT.children.includes(sourceDT)){
+            targetDT.mesh.attach(sourceDT.mesh);  // attach方法改变父子关系，同时不改变物体的绝对坐标
+            //sourceDT.mesh.scale.setScalar(1, 1, 1);
+            global.SCENE.DT.updateChildren();
+            if(!expanded.value.includes(targetDT.key)) expanded.value.push(targetDT.key);
+            this.updateTree();
           }
         },
         onKeydown(k){
@@ -184,7 +183,7 @@
             );
           }
         },
-        update(){  // 更新线框和属性栏
+        updateTree(){  // 更新线框和属性栏
           emitProperty();
           if(wireframe == "包围盒"){  // 更新物体包围盒线框
             global.emit("hideEdgeGlow");  // 熄灭被选中物体的边缘
@@ -206,10 +205,14 @@
               .map(DT => DT.mesh)
             );
           }
-          this.updateLine();
+          DTObjects = global.SCENE.DT.getDTObjects();
+          TREE.value = [];
+          TREE.value = [global.SCENE.DT];
+          this.updateTreeLines();
         },
-        updateLine(){  // 更新层级树的连接线和内容
-          global.emit("updateTree");   
+        updateTreeLines(){  // 更新层级树的连接线和内容 
+          try {global.SCENE.DT.setRow(expanded.value);} 
+          catch(e) {console.log(e)}
         }
       },
       
@@ -231,12 +234,12 @@
           if (k.code == "Space") space = false;
         });  
         watch(computed(()=>choices.value[0]), ()=>{  // 根据选项变化来确定被选物体，并展示或隐藏物体边框
-          this.update();
+          this.updateTree();
         });
         watch(computed(()=>choices.value.length), ()=>{
-          this.update();
+          this.updateTree();
         });
-        watch(TREE, ()=>{global.emit('updateSearch');});
+        watch(TREE, ()=>{global.emit('updateSearch')});
       },
     });
 </script>
@@ -278,8 +281,8 @@
       :selectedKeys="choices" 
       :tree-data="TREE" 
       style="margin-left: 6px"
-      @dblclick="doubleClick" @expand="update" @select="onClick" @rightClick="onClick"
-      @dragstart="dragFrom" @drop="dragTo">
+      @dblclick="doubleClick" @expand="updateTree" @select="onClick" @rightClick="onClick"
+      @drop="onDrop">
         <!--各个结点-->
         <template #title="DT">
           <span style="white-space: nowrap">
@@ -325,18 +328,19 @@
     <!--右键菜单-->
     <template #overlay v-if="!searchValue">
       <a-menu @click="action">
-        <a-menu-item :disabled="!choices.length" key="取消选择">取消选择</a-menu-item>
+        <a-menu-item v-if="choices.length" key="取消选择">取消选择</a-menu-item>
         <a-sub-menu title="创建">
           <a-menu-item key="创建群组">群组</a-menu-item>
           <a-menu-item key="创建平行光">平行光</a-menu-item>
           <a-menu-item key="创建环境光">环境光</a-menu-item>
         </a-sub-menu>
-        <a-menu-item key="全部展开">全部展开</a-menu-item>
-        <a-menu-item key="全部折叠">全部折叠</a-menu-item>
-        <a-menu-item v-if="findDTObjectById(choices[0])?.label == 'WIP'" key="保存模型">
+        <a-menu-item v-if="choices.length == 1 &&
+        findDTObjectById(choices[0])?.label == 'WIP'" key="保存模型">
           保存模型
         </a-menu-item>
-        <a-menu-item key="删除">删除</a-menu-item>
+        <a-menu-item key="全部展开">全部展开</a-menu-item>
+        <a-menu-item key="全部折叠">全部折叠</a-menu-item>
+        <a-menu-item v-if="choices.length" key="删除" style="color:red">删除</a-menu-item>
       </a-menu>
     </template>
   </a-dropdown> 

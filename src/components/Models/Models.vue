@@ -6,11 +6,14 @@
   import { ref } from "vue";
 
   // JSON格式的模型列表，模型路径为src/assets/models，图标路径为src/assets/icons
-  const activeKeys = ref([]);
-  const customModels = ref();
+  const activeKeys1 = ref([]);
+  const activeKeys2 = ref([]);
+  const customModel = ref([]);
+  const customModels: any = ref({});
   const model_layout = ref(modelData.model_layout);
+  const preservedModel = ref([]);
   const searchResult = ref([]);
-  const searchValue = ref("");
+  const searchValue = ref('');
   var txt;
 
   export default {
@@ -36,10 +39,26 @@
       onRightClick(e){
         let option = e.key;
         if(option == "全部展开"){
-          activeKeys.value = Object.keys(model_layout.value);
+          activeKeys1.value = Object.keys(model_layout.value);
+          activeKeys2.value = Object.keys(customModels.value);
+          preservedModel.value = ["内置模型"];
+          customModel.value = ["自定义模型"];
         }
         else if(option == "全部折叠"){
-          activeKeys.value = [];
+          activeKeys1.value = activeKeys2.value = [];
+          preservedModel.value = customModel.value = [];
+        }
+        else if(option == "保存自定义模型"){
+          this.saveCustomModel();
+        }
+        else if(option == "删除自定义模型"){
+          let modelname = e.item.props.title;
+          delete customModels.value[modelname];
+          this.saveCustomModel();
+        }
+        else if(option == "删除所有自定义模型"){
+          customModels.value = {};
+          this.saveCustomModel();
         }
       },
       saveCustomModel(DT){  // 保存自定义模型
@@ -81,11 +100,17 @@
         }});
       },
     },
-    setup() {return {activeKeys, model_layout, searchValue, searchResult}},
+    setup() {return {
+      activeKeys1, 
+      activeKeys2, 
+      customModel,
+      customModels,
+      model_layout, 
+      preservedModel, 
+      searchValue, 
+      searchResult
+    }},
     mounted(){
-      model_layout.value.push(
-        {"title": "自定义模型", "children": []}
-      )
       this.loadCustomModel();
       global.on("saveCustomModel", DT => this.saveCustomModel(DT));
     }
@@ -99,6 +124,11 @@
     width:100%; 
     height:50px; 
   }  
+  .model-collapse{
+    border: 1px solid darkgray;
+    margin: -12px; 
+    user-select: none;
+  }
   .model-img {  
     display: flex; 
     width: 100%; 
@@ -132,20 +162,46 @@
   <a-dropdown :trigger="['contextmenu']">
     <div>
       <!--模型列表-->
-      <a-collapse v-if="!searchValue" v-model:activeKey="activeKeys" 
-      id="collapse" style="user-select: none">
-        <a-collapse-panel v-for="group of model_layout" :disabled="!group.children.length"
-        :header="group.title + (group.children.length ? '' : '（无）')" 
-        style="text-align: left;">
-          <a-card v-for="item of group.children" class="model-card" draggable="true" hoverable 
-          @dragstart="e=>transfer(e, item, group.title)" @mousedown="deselect">
-            <div class="model-imgBorder">
-              <img :src="getIMG(item)" class="model-img" draggable="false"/>
-            </div>
-            <div class="model-title">{{item.title}}</div>
-          </a-card>
-        </a-collapse-panel>
-      </a-collapse>
+      <div v-if="!searchValue">
+        <!--内置模型-->
+        <a-collapse v-model:activeKey="preservedModel">
+          <a-collapse-panel key="内置模型" header="内置模型">
+            <a-collapse v-model:activeKey="activeKeys1" class="model-collapse">
+              <a-collapse-panel v-for="group of model_layout" :disabled="!group.children.length"
+              :header="group.title + (group.children.length ? '' : '（无）')" 
+              style="text-align: left;">
+                <a-card v-for="item of group.children" class="model-card" draggable="true" hoverable 
+                @dragstart="e=>transfer(e, item, group.title)" @mousedown="deselect">
+                  <div class="model-imgBorder">
+                    <img :src="getIMG(item)" class="model-img" draggable="false"/>
+                  </div>
+                  <div class="model-title">{{item.title}}</div>
+                </a-card>
+              </a-collapse-panel>
+            </a-collapse>
+          </a-collapse-panel>
+        </a-collapse>
+        <!--自定义模型-->
+        <a-collapse v-model:activeKey="preservedModel">
+          <a-collapse-panel key="自定义模型" 
+          :header="'自定义模型' + (Object.keys(customModels).length ? '' : '（无）')" 
+          :disabled="!Object.keys(customModels).length">
+            <a-collapse v-model:activeKey="activeKeys2" class="model-collapse">
+              <a-collapse-panel v-for="group of customModels" :disabled="!group.children.length"
+              :header="group.title + (group.children.length ? '' : '（无）')" 
+              style="text-align: left;">
+                <a-card v-for="item of group.children" class="model-card" draggable="true" hoverable 
+                @dragstart="e=>transfer(e, item, group.title)" @mousedown="deselect">
+                  <div class="model-imgBorder">
+                    <img :src="getIMG(item)" class="model-img" draggable="false"/>
+                  </div>
+                  <div class="model-title">{{item.title}}</div>
+                </a-card>
+              </a-collapse-panel>
+            </a-collapse>
+          </a-collapse-panel>
+        </a-collapse>
+      </div>
       <!--搜索列表-->
       <div v-else>
         <a-card v-if="searchResult.length" v-for="item of searchResult" 

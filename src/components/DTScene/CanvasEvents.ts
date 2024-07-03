@@ -75,7 +75,7 @@ export default defineComponent({
       global.emit("changeQuitFullscreen", fullscreen);
       this.resizeCanvas();
     });
-    global.on("dragModelStart", data => {dragData = data; console.log(data)});
+    global.on("dragModelStart", data => {dragData = data;});
     global.on("dropout", () => dragModel.remove());
     return { description: null, rendered: false, }
   },
@@ -464,7 +464,6 @@ export default defineComponent({
             let choice = result.mesh;
             if (choice?.isTransformControls){   // 点击控制器则忽略后文
               transformControls = true;
-              console.log(choice)
               return;
             }
             dragPoint = result.point;

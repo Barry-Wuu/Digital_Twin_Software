@@ -52,7 +52,7 @@
         <Prop prop="type" title="物体类型"/>
         <Prop prop="id" title="物体网格ID" :options="{fixed:0}"/>
         <Prop prop="physicalID" title="物理实体ID" type="inputString" width="120"/>
-        <Prop prop="name" title="物体名称"/>
+        <Prop prop="name" title="物体名称" type="inputString" width="120"/>
         <Prop prop="label" title="物体标签"/>
         <Prop prop="mesh.visible" title="是否可见" type="checkbox"/>
         <Prop prop="mesh.position" title="位移" type="inputVector"/>
