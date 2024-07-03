@@ -6,6 +6,7 @@ import * as THREE from "three"
 const zeroVector_Ammo = new Ammo.btVector3();
 
 export default class DTObject {  // 用DTObject类包裹场景中的对象
+    basename: string  // 模型在模型库中的名称
     children = []  // 子物体（自动计算）
     code = ''  // 自定义脚本
     custom = {}  // 自定义属性
@@ -75,7 +76,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
                     newDTObject.children.push(child.clone());
                 }
             }
-            else if(this[prop].uuid) continue;  // 排除网格、几何体、材质等属性
+            else if(this[prop]["uuid"]) continue;  // 排除网格、几何体、材质等属性
             else newDTObject[prop] = this[prop];
         }
         return newDTObject;

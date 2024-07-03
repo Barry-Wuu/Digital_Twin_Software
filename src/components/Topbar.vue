@@ -422,7 +422,8 @@
                     <hr class="splitH"/>          
                     <a-menu-item @click="setHistory('clear')">清空历史记录</a-menu-item>
                 </a-sub-menu>
-                <a-menu-item v-else-if="option!='——'" :key="option" :title="{option}" 
+                <a-menu-item v-else-if="option!='——'" :key="option"
+                :style="option == '退出' ? {color: 'red'} : {}" :title="{option}"
                 @click="action(option)">
                     {{option}}
                 </a-menu-item>  
