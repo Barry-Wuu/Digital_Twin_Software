@@ -215,7 +215,6 @@ export default class SceneBuilder{
             }
         });
         global.on("controlStart", (data: any) => {  // 选中物体开始控制
-            console.log(data)
             let id, left_click;
             if(typeof data == "object") {left_click=data.left_click; data=data.id};
             id = parseInt(data);  // 若id为数字字符串则转换为数字
