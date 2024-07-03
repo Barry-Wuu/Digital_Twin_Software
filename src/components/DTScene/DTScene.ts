@@ -661,23 +661,24 @@ export default class SceneBuilder{
         global.SCENE.add(mesh0);
         return mesh0;
     }   
-    createMeshFromModels(item, position: Object){  // 定义拖入的物体属性
+    createMeshFromModels(data, position: Object){  // 定义拖入的物体属性
         let mesh = new THREE.Mesh();
         let DT = new DTObject(mesh);
-        if(item.modelpath){
-            let modelPath = "src/assets/models/" + item.modelpath;
-            DT.geometry = customModels[modelPath];  
+        let title = data.title;
+        let path = modelData.model_definition[title].modelPath;
+        if(path){
+            path = "src/assets/models/" + path;
+            DT.geometry = customModels[path];  
         }
-        // 先复制JSON中的模型定义再赋值，否则JSON中的模型定义会被修改
-        let obj = JSON.parse(JSON.stringify(model_definition[item.modelname]));
+        // 先复制JSON中的模型定义再使用，以免相应的模型定义在使用时被自动修改
+        let obj = JSON.parse(JSON.stringify(model_definition[data.title]));
         for(let key in obj) DT[key] = obj[key];
         if(typeof DT.geometry == "string") DT.geometry = eval(DT.geometry);
         mesh.material = new THREE.MeshPhongMaterial(DT.material);
-        DT.basename = DT.name = item.modelname;
+        DT.basename = DT.name = data.title;
         mesh.geometry = DT.geometry;
         DT.setTitle();
         DT.updateWireframes();
-
 
         if(DT.label == "conveyor"){
             attachObjects.add(DT.mesh);
@@ -887,10 +888,11 @@ export default class SceneBuilder{
             if(!DT.rb){
                 if(!stop && DT.name == "发生器"){  // 未暂停时制造货物
                     if(now - DT.timer >= DT.timeInterval){  // 秒变毫秒
-                        let mesh0 = this.createMeshFromModels({modelname:"货物"}, mesh.position);                 
+                        let mesh0 = this.createMeshFromModels({title:"货物"}, mesh.position);                 
                         mesh0.rotation.copy(mesh.rotation);
                         global.DTObjects.value.push(mesh0.DT);
                         global.SCENE.DT.children.push(mesh0.DT);
+                        mesh0.DT.createRigidBody(); console.log(global.DTObjects.value)
                         global.emit("print", `【${DT.name}${DT.id}】创建了【${mesh0.DT.name}${mesh0.id}】`);
                         DT.timer = now;
                     }

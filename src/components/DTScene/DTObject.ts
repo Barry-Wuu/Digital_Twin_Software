@@ -441,9 +441,9 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         if(!mesh.DT?.rb && !force) return;
         this.rb.setLinearVelocity(zeroVector_Ammo);
         this.rb.setAngularVelocity(zeroVector_Ammo);
+
         if(this.rigidShape = "box") {
             mesh = this.layers.rigidHelper[0];
-            force = true;
         }
 
         // 根据物体位姿强制设置其刚体位姿
