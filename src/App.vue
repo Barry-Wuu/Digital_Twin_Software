@@ -100,11 +100,11 @@
     httpProcess = new HttpClient({  // 启动http服务
       site:"192.168.137.155", 
       port: 8888, 
-      path: "111",
+      path: "positionfeedback/frontclient",
       interval: 100,  // ms
       timeout: 500000,  // ms
     });
-    //httpProcess.startPolling();  // 轮询启动
+    // httpProcess.startConnect();  // 连接启动
     global.on("beforeunload", () => {  // 退出时清理临时文件（src/temp文件夹）
       httpProcess.kill();
     })
