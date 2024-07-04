@@ -368,8 +368,8 @@ export default class SceneBuilder{
         });
 
         // 更新托盘位置
-        global.on("updateTrayPosition", (data: {ID, RFID}) => {
-            let sensor = global.physicalIDMap[data.ID];
+        global.on("updateTrayPosition", (data: {deviceID, RFID}) => {
+            let sensor = global.physicalIDMap[data.deviceID];
             let trayDT = global.physicalIDMap[data.RFID];
             if(trayDT && !trayDT.sensorPass){  // 修改托盘的碰撞掩码，使之可通过光电门
                 trayDT.sensorPass = true;

@@ -112,7 +112,8 @@
         if(!data.name) data.name = data.basename;
         if(!data.physicalID) data.physicalID = '0';
         customModels.value.push(data);
-        if(!customModelGroup.value.length) customModelGroup.value = ["自定义模型"];
+        if(!customModelGroup.value.includes("自定义模型"))
+          customModelGroup.value.push("自定义模型");
       },
       search(){  // 搜索栏内容改变时
         if(searchValue.value){
