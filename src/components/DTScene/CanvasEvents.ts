@@ -2,7 +2,6 @@ import { defineComponent, ref, watch } from "vue"
 import * as THREE from "three"
 import DTScene from "./DTScene"
 import global from "../../Global"
-import { contentQuotesLinter } from "ant-design-vue/es/_util/cssinjs/linters";
 
 const storedattachObjects = localStorage.getItem('attachObjects');
 const attachObjects = JSON.parse(storedattachObjects);
@@ -44,7 +43,6 @@ const ROTATE = THREE.MOUSE.ROTATE;
 const ZOOM = THREE.MOUSE.DOLLY;
 const RIGHT = new THREE.Vector3(1, 0, 0);  // x轴朝右
 const UP = new THREE.Vector3(0, 0, 1);  // z轴朝上
-const Q90 = new THREE.Quaternion().setFromAxisAngle(UP, Math.PI/2);
 
 export default defineComponent({
   name: "DTScene",
@@ -176,14 +174,20 @@ export default defineComponent({
       }
       findImg(e.fromElement);
       data.setDragImage(document.createElement("img"), 0, 0);
+
       // 拖入模型
+      data = dragData.data;
       let point = this.intersectObject(e).point;
       if(!point) return;  // 若拖到天空上则不创建模型
       dragFromOutside = true;
       if(dragData.type == "asset")
-          dragModel = this.scene.createMeshFromAssets(dragData.data.DT, point);
+        dragModel = this.scene.createMeshFromAssets(data.DT, point);
       if(dragData.type == "model")
-          dragModel = this.scene.createMeshFromModels(dragData.data, point);
+        dragModel = this.scene.createMeshFromModels(data, point);
+      if(data.name) dragModel.DT.name = data.name;  // 复制自定义模型名称
+      if(data.physicalID && !global.physicalIDMap[data.physicalID])  // 复制自定义模型物理实体ID
+        dragModel.DT.physicalID = data.physicalID;  // 若该ID被占用则忽略
+
       dragModel.isDrag = true;
       dragModel.material.transparent = true;
       tempOpacity = dragModel.material.opacity;
@@ -421,7 +425,8 @@ export default defineComponent({
         }
         dragModel = tempModel = null;
       }
-      //设置可见性
+
+      // 设置可见性
       global.SCENE.traverse((mesh) => {  // 遍历场景中的所有对象，寻找名为'ap2'的物体
         if (mesh.name === 'ap2') {
           mesh.visible = false;
@@ -432,6 +437,9 @@ export default defineComponent({
           mesh.visible = false;
         }
       });
+
+      // 更新物理实体ID映射表
+      global.SCENE.DT.updatePhysicalIDMap();
     },
     onKeydown(k) {
       if (k.code == "Delete") global.emit("deleteChoices");

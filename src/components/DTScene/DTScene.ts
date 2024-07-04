@@ -892,7 +892,7 @@ export default class SceneBuilder{
                         mesh0.rotation.copy(mesh.rotation);
                         global.DTObjects.value.push(mesh0.DT);
                         global.SCENE.DT.children.push(mesh0.DT);
-                        mesh0.DT.createRigidBody(); console.log(global.DTObjects.value)
+                        mesh0.DT.createRigidBody();
                         global.emit("print", `【${DT.name}${DT.id}】创建了【${mesh0.DT.name}${mesh0.id}】`);
                         DT.timer = now;
                     }

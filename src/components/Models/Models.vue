@@ -1,5 +1,5 @@
 <script lang="ts">
-  import {CloseOutlined} from "@ant-design/icons-vue";  // 清除图标
+  import {CloseOutlined, EditOutlined} from "@ant-design/icons-vue";  // 清除图标
   const fs = require("fs");
   import global from "../../Global"
   import modelData from "./modelData.json";
@@ -8,8 +8,11 @@
   // JSON格式的模型列表，模型路径为src/assets/models，图标路径为src/assets/icons
   const activeKeys1 = ref([]);
   const activeKeys2 = ref([]);
+  const currentModel = ref();
   const customModelGroup = ref([]);
   const customModels: any = ref([]);
+  var fileOutput;
+  var modelInput;
   const model_layout = ref(modelData.model_layout);
   const preservedModel = ref([]);
   const searchResult = ref([]);
@@ -17,30 +20,9 @@
   var txt;
 
   export default {
-    components: {
-      CloseOutlined,
-    },
+    components: {CloseOutlined, EditOutlined},
     methods:{
-      deselect(){  // 点击卡片时取消选择物体
-        global.emit("deselect");
-      },
-      dragModelStart(e, data) {  // 发送要拖动的模型
-        e.dataTransfer.setDragImage(document.createElement("img"), 0, 0); 
-        global.emit("dragModelStart", {type: "model", data: data});
-      },
-      getIMG(item){  // src为预览时的图片根目录，public/assets为打包后对应的图片根目录
-        return new URL(`${
-          "../../assets/icons/" + modelData.model_definition[item.title].icon
-        }`, import.meta.url).href
-      },
-      loadCustomModel(){  // 读取自定义模型
-        try{
-          txt = fs.readFileSync("src/config/customModels.txt", "utf-8");
-          customModels.value = JSON.parse(txt);
-        }
-        catch {}
-      },
-      onRightClick(e){
+      action(e){  // 选择菜单选项
         let option = e.key;
         if(option == "全部展开"){
           activeKeys1.value = Object.keys(model_layout.value);
@@ -48,27 +30,89 @@
           preservedModel.value = ["内置模型"];
           customModelGroup.value = ["自定义模型"];
         }
-        else if(option == "全部折叠"){
+        if(option == "全部折叠"){
           activeKeys1.value = activeKeys2.value = [];
           preservedModel.value = customModelGroup.value = [];
         }
-        else if(option == "保存自定义模型"){
-          this.saveCustomModel();
+        if(option == "添加到自定义模型"){
+          this.saveCustomModel(currentModel.value);
         }
-        else if(option == "删除自定义模型"){
-          let modelname = e.item.props.title;
-          delete customModels.value[modelname];
-          this.saveCustomModel();
+        if(option == "导入自定义模型"){
+          modelInput.click();
         }
-        else if(option == "删除所有自定义模型"){
-          customModels.value = [];
-          this.saveCustomModel();
+        if(option == "导出自定义模型"){
+          this.exportCustomModel();
+        }
+        if(option == "修改模型名称"){
+          global.emit("popup", {  // 弹窗查看名称和确认重命名
+              title: "确认重命名",
+              type: "rename",
+              content: "重命名模型：",
+              value: currentModel.value.name,
+              yes: newValue => {currentModel.value.name = newValue;},  // 确认重命名
+              // no为取消关闭
+          });
+        }
+        if(option == "修改物理实体ID"){
+          global.emit("popup", {  // 弹窗查看名称和确认重命名
+              title: "确认重命名",
+              type: "rename",
+              content: "重命名物理实体ID：",
+              value: currentModel.value.physicalID,
+              yes: newValue => {currentModel.value.physicalID = newValue;},  // 确认重命名
+              // no为取消关闭
+          });
+        }
+        if(option == "删除自定义模型"){
+          customModels.value = customModels.value.filter(item=>item != currentModel.value);
+          if(!customModels.value.length) customModelGroup.value = [];
+        }
+        if(option == "清空自定义模型"){
+          customModels.value = customModelGroup.value = [];
         }
       },
+      deselect(){  // 点击卡片时取消选择物体
+        global.emit("deselect");
+      },
+      dragModelStart(e, data) {  // 发送要拖动的模型
+        e.dataTransfer.setDragImage(document.createElement("img"), 0, 0); 
+        global.emit("dragModelStart", {type: "model", data: data});
+      },
+      exportCustomModel(){  // 导出自定义模型到JSON文件
+        try{
+          txt = JSON.stringify(customModels.value);
+          fs.writeFileSync("src/temp/customModels.txt", txt);
+          fileOutput.href = "src/temp/customModels.txt";  // 被下载的文件
+          fileOutput.download = "customModels.txt";  // 默认文件名
+          fileOutput.click();  
+        }
+        catch (e) {console.log(e)}
+      },
+      getIMG(item){  // src为预览时的图片根目录，public/assets为打包后对应的图片根目录
+        return new URL(`${
+          "../../assets/icons/" + modelData.model_definition[item.title].icon
+        }`, import.meta.url).href
+      },
+      importCustomModel(e){  // 导入自定义模型
+        try{
+          txt = fs.readFileSync(e.target.files[0].path, "utf-8");
+          customModels.value = JSON.parse(txt);
+        }
+        catch {}
+      },
+      onRightClick(item){  // 在自定义模型上按右键编辑物体名称、物理实体ID或删除物体
+        if(!currentModel.value) while(!currentModel.value) currentModel.value = item;
+        else this.$nextTick(()=>{currentModel.value = item; currentModel.value});
+      },
       saveCustomModel(data){  // 保存自定义模型
-        data.title = data.basename;
+        // 根据title补齐basename，或者根据basename补齐title
+        data = JSON.parse(JSON.stringify(data));  // 复制data，避免ref变量被改变
+        if(!data.title) data.title = data.basename;
+        else if(!data.basename) data.basename = data.title;
+        if(!data.name) data.name = data.basename;
+        if(!data.physicalID) data.physicalID = '0';
         customModels.value.push(data);
-        console.log(data);
+        if(!customModelGroup.value.length) customModelGroup.value = ["自定义模型"];
       },
       search(){  // 搜索栏内容改变时
         if(searchValue.value){
@@ -93,27 +137,24 @@
           item.title.substring(item.title.indexOf(text) + text.length),
         ];
       },
-      writeCustomModel(){  // 储存自定义模型到JSON
-        try{
-          txt = JSON.stringify(customModels.value);
-          fs.writeFileSync("src/config/customModels.txt", txt);
-        }
-        catch {}
-      }
     },
     setup() {return {
       activeKeys1, 
       activeKeys2, 
+      currentModel,
       customModelGroup,
       customModels,
+      modelData,
       model_layout, 
       preservedModel, 
       searchValue, 
       searchResult
     }},
     mounted(){
-      // this.loadCustomModel();
       global.on("saveCustomModel", data => this.saveCustomModel(data));
+      document.addEventListener("contextmenu", ()=>{currentModel.value = null}, true);
+      fileOutput = document.getElementById("fileOutput");
+      modelInput= document.getElementById("modelInput");
     }
   }
 </script>
@@ -152,6 +193,9 @@
 </style>
 
 <template>
+  <input id="modelInput" type="file" accept=".txt" style="display: none;"
+  @change="importCustomModel"/> 
+
   <!--搜索栏-->
   <a-input-search v-model:value="searchValue" placeholder="搜索"
     style="margin-bottom: 8px" @change="search()" @search="()=>{searchValue = ''}">
@@ -172,6 +216,7 @@
               :header="group.title + (group.children.length ? '' : '（无）')" 
               style="text-align: left;">
                 <a-card v-for="item of group.children" class="model-card" draggable="true" hoverable 
+                @contextmenu="onRightClick(item)"
                 @dragstart="e=>dragModelStart(e, item)" @mousedown="deselect">
                   <div class="model-imgBorder">
                     <img :src="getIMG(item)" class="model-img" draggable="false"/>
@@ -187,14 +232,17 @@
           <a-collapse-panel key="自定义模型" 
           :header="'自定义模型' + (Object.keys(customModels).length ? '' : '（无）')" 
           :disabled="!Object.keys(customModels).length">
-            <a-card v-for="item of customModels" class="model-card" draggable="true" hoverable 
-              @dragstart="e=>dragModelStart(e, item)" @mousedown="deselect">
-                <div class="model-imgBorder">
-                  <img :src="getIMG(item)" class="model-img" draggable="false"/>
-                </div>
-                <div class="model-title">{{item.title}}</div>
-                {{item}}
-              </a-card>
+            <a-card v-for="item of customModels" class="model-card" draggable="true" hoverable
+            style="justify-content:space-between;" 
+            @contextmenu="onRightClick(item)"
+            @dragstart="e=>dragModelStart(e, item)" @mousedown="deselect">
+              <div class="model-imgBorder">
+                <img :src="getIMG(item)" class="model-img" draggable="false"/>
+              </div>
+              <div class="model-title">
+                {{item.title + (item.name ? `（${item.name}）` : '')}}
+              </div>
+            </a-card>
           </a-collapse-panel>
         </a-collapse>
       </div>
@@ -212,14 +260,35 @@
             <span>{{ str[2] }} </span>
           </div>
         </a-card>
+        <a-card v-else style="text-align: center;">
+          <div style="margin-top: 10px;">
+            <span>无匹配结果</span>
+          </div>
+        </a-card>
         <a-alert v-else message="无匹配结果" style="width:100%" type="error" />
       </div>
     </div>
     <!--右键菜单-->
     <template #overlay>
-      <a-menu @click="onRightClick">
+      <a-menu @click="action">
         <a-menu-item key="全部展开">全部展开</a-menu-item>
         <a-menu-item key="全部折叠">全部折叠</a-menu-item>
+        <hr class="splitH"/>
+        <a-menu-item v-if="currentModel && ['sensor', 'WIP'].includes(
+          modelData.model_definition[currentModel.title].label
+        )" key="添加到自定义模型">
+          添加到自定义模型
+        </a-menu-item>
+        <a-menu-item key="导入自定义模型">导入自定义模型</a-menu-item>
+        <a-menu-item key="导出自定义模型">导出自定义模型</a-menu-item>
+        <!--编辑自定义模型--> 
+        <div v-if="currentModel && currentModel.name">
+          <hr class="splitH"/>
+          <a-menu-item key="修改模型名称">修改模型名称</a-menu-item>
+          <a-menu-item key="修改物理实体ID">修改物理实体ID</a-menu-item>
+          <a-menu-item key="删除该模型" danger>删除自定义模型</a-menu-item>
+          <a-menu-item key="清空自定义模型" danger>清空自定义模型</a-menu-item>
+        </div>
       </a-menu>
     </template>
   </a-dropdown>

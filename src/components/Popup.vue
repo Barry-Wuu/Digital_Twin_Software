@@ -25,7 +25,8 @@
   var popupMask;
   const popupContent = ref('');
   const popupTitle = ref('');
-  const yesNoContent = ref({content:'', yes:()=>{}, no:()=>{}});
+  const rename = ref('');
+  const yesNoContent = ref({content:'', yes:(e=null)=>{}, no:()=>{}});
 
   export default{
     components:{
@@ -78,18 +79,20 @@
       return {
         addCustomProp, DT, global, customCodeFont, editProp, editValue, 
         helpChange, helpContent, helpTree, newCode, newProp, 
-        popup, popupContent, popupMask, popupTitle, yesNoContent
+        popup, popupContent, popupMask, popupTitle, rename, yesNoContent
       }
     },
     mounted(){
       for(let node of helpTree) node.title = node.key;
       global.on("popup", (data: any)=>{  // 显示弹窗，弹窗类型由obj.type决定
         DT.value = data.DT;
-        yesNoContent.value = data.type == "yes_no" ? data : null;  // 显示“是否确认重命名组件”窗口
+        // 显示“是否确认动作或重命名组件”窗口
+        yesNoContent.value = ["rename", "yes_no"].includes(data.type) ? data : null;
         if(popupContent.value == data.type) this.closePopup();
         else {
           popupContent.value = data.type;
           popupTitle.value = data.title;
+          if(data.value) rename.value = data.value;
           popup.style.display = popupMask.style.display = "block";
           this.$nextTick(()=>{  // 异步更新窗口位置
             let rect = popup.getBoundingClientRect();
@@ -223,7 +226,17 @@
         <a-button class="yes-no-confirm" @click="yesNoContent.yes(); closePopup()">
           是<CheckOutlined/>
         </a-button>
-        <a-button danger @click="yesNoContent.no(); closePopup()">
+        <a-button danger @click="yesNoContent.no ? yesNoContent.no() : null; closePopup()">
+          否<CloseOutlined/>
+        </a-button>
+      </div>
+      <!--重命名窗口-->
+      <div v-if="popupContent=='rename'" class="yes-no-content">
+        <a-input v-model:value="rename" style="width: 97%; margin-bottom:10px"></a-input>
+        <a-button class="yes-no-confirm" @click="yesNoContent.yes(rename); closePopup()">
+          是<CheckOutlined/>
+        </a-button>
+        <a-button danger @click="yesNoContent.no ? yesNoContent.no() : null; closePopup()">
           否<CloseOutlined/>
         </a-button>
       </div>
@@ -335,7 +348,7 @@
       <textarea v-if="popupContent=='code'" class="customCode" id="customCode" placeholder="自定义脚本"
       v-model="newCode"
       v-on="this.$nextTick(()=>{setCustomCodeFont(customCodeFont)})"
-      @keydown="(e)=>{ 
+      @keydown="e=>{ 
         let textarea: any = e.target;
         let insert = '';
         const start = textarea.selectionStart;  
