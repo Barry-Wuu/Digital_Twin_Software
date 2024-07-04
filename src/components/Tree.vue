@@ -95,7 +95,7 @@
             }
             for(let id of temp)choices.value.push(id);
           }
-          if(option == "保存模型"){
+          if(option == "添加到自定义模型"){
             for(let id of choices.value) {
               let DT = this.findDTObjectById(id);
               let data = {basename: DT.basename, name: DT.name, physicalID: DT.physicalID};
@@ -331,17 +331,19 @@
     <template #overlay v-if="!searchValue">
       <a-menu @click="action">
         <a-menu-item v-if="choices.length" key="取消选择">取消选择</a-menu-item>
+        <a-menu-item key="全部展开">全部展开</a-menu-item>
+        <a-menu-item key="全部折叠">全部折叠</a-menu-item>
+        <hr v-if="choices.length" class="splitH"/>
         <a-sub-menu title="创建">
           <a-menu-item key="创建群组">群组</a-menu-item>
           <a-menu-item key="创建平行光">平行光</a-menu-item>
           <a-menu-item key="创建环境光">环境光</a-menu-item>
         </a-sub-menu>
         <a-menu-item v-if="choices.length == 1 && ['sensor', 'WIP'].includes(
-        findDTObjectById(choices[0])?.label)" key="保存模型">
-          保存模型
+        findDTObjectById(choices[0])?.label)" key="添加到自定义模型">
+          添加到自定义模型
         </a-menu-item>
-        <a-menu-item key="全部展开">全部展开</a-menu-item>
-        <a-menu-item key="全部折叠">全部折叠</a-menu-item>
+        <hr v-if="choices.length" class="splitH"/>
         <a-menu-item v-if="choices.length" key="删除" style="color:red">删除</a-menu-item>
       </a-menu>
     </template>

@@ -218,7 +218,7 @@
                     type: "yes_no",
                     content: "确定要重载界面吗？",
                     yes: ()=>{ipc.send("reload")},  // 确认重命名
-                    no: ()=>{},  // 取消重命名
+                    // no为取消关闭
                 });
             },
             saveScene(target=null, DTObjects="src/temp/DTObjects.txt", Scene="src/temp/Scene.txt"){
@@ -332,7 +332,7 @@
                         global.emit("closeWindow");
                         ipc.send("closeWindow");
                     },
-                    no: ()=>{},  // 取消关闭
+                    // no为取消关闭
                 });
             });
             BottomMessage = document.getElementById("BottomMessage");
