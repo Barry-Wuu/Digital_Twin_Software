@@ -192,8 +192,11 @@
             global.emit("hideEdgeGlow");  // 熄灭被选中物体的边缘
             for(let DT of global.SCENE.DT.getDTObjects()){
               let chosen = choices.value.includes(DT.id);
-              if(DT.layers.wireframe.length) 
+              if(DT.layers.wireframe.length){    
+                if(DT.layers.label)
+                  DT.layers.label[0].element.textContent = chosen ? DT.name : '';
                 DT.layers.wireframe[0].visible = chosen;
+              }
               else if(DT.mesh.isLight){  // 更新光源图标的边框与箭头的可见度
                 let arrow = DT.mesh.children.filter(mesh => mesh.type == "ArrowHelper")[0];
                 if(arrow) arrow.visible = chosen && global.layers.includes("lightArrow");

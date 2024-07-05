@@ -269,7 +269,8 @@
           拖动物体时，若滚动滚轮，则可让物体围绕滚轮旋转；<br>  
           拖动物体时，若按下<div class="keyboard">A</div>键，则可将物体的底面吸附到鼠标所指的物体的顶面；<br>
           拖动物体时，若在物体靠近传送带时按下<div class="keyboard">S</div>键，则可将物体吸附到地面；<br>
-          拖动传送带时，若其靠近另一个传送带，按住<div class="keyboard">Space</div>键可将其<div class="inline_R">入口</div>吸附到另一传送带的<div class="inline_G">出口</div>，或将其<div class="inline_G">出口</div>吸附到另一传送带的<div class="inline_R">入口</div>；<br>
+          拖动传送带时，若按下<div class="keyboard">A</div>键，则可将控制器切换到伸缩模式，从而改变直道传送带长度；<br>
+          拖动传送带时，若其靠近另一个传送带，其会自动将<div class="inline_R">入口</div>吸附到另一传送带的<div class="inline_G">出口</div>，或将其<div class="inline_G">出口</div>吸附到另一传送带的<div class="inline_R">入口</div>；<br>
           拖动物体时，若按下<div class="keyboard">Shift</div>键，则可改变物体高度；<br>
           按住<div class="keyboard">Shift</div>键再点击物体可多选或取消多选物体；<br>
           按<div class="keyboard">Delete</div>键将删除所有被选中的物体。<br>

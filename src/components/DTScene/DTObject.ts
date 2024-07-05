@@ -3,6 +3,7 @@ import { ConvexGeometry } from "three/examples/jsm/geometries/ConvexGeometry.js"
 import global from "../../Global"
 import * as THREE from "three"
 
+let position = new THREE.Vector3();
 const zeroVector_Ammo = new Ammo.btVector3();
 
 export default class DTObject {  // 用DTObject类包裹场景中的对象
@@ -22,6 +23,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         attachPoint1: [],  //传送带入口连接点
         attachPoint2: [],  //传送带出口连接点
         indicator: [],  // 传送带指示箭头
+        label: [],  // 物体标签
         lightArrow: [],  // 平行光指示箭头
         rigidHelper: [],  // 可视化碰撞体网格
         rigidShapeWorld: [],  // 为物体创建全局坐标系下的映射体，以便与刚体绑定
@@ -96,7 +98,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             else this[prop] = obj[prop];
         }
     }
-    createRigidBody(target=this.mesh) {  // 添加刚体
+    createRigidBody(target=this.mesh, scale=1) {  // 添加刚体
         if(!this.rigidShape) return;
         let mass = this.mass;
         let P = this.mesh.position;
@@ -113,7 +115,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             shape = new Ammo.btBoxShape(new Ammo.btVector3( box.x/2, box.y/2, box.z/2 ));      
         }
         else if(this.rigidShape === "convex"){  // 将自定义几何体的凸集作为刚体形状
-            shape = this.createRigidShape(this.geometry); 
+            shape = this.createRigidShape(this.geometry, scale); 
         }
         else if(typeof this.rigidShape == "string"){  // 根据THREE的简单几何体生成Ammo刚体
             this.createRigidHelper(); 
@@ -193,25 +195,22 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         this.mesh.add(rigidHelper);
         this.layers.rigidHelper = [rigidHelper];
     }
-    createRigidShape(geom){  // 从几何形状建立刚体形状
+    createRigidShape(geom, scale=1){  // 从几何形状建立刚体形状
         // points里每三个连续的点定义了一个三角形面
         let ammoMesh = new Ammo.btTriangleMesh();
         let threeVertices = [];
         let points = geom.attributes.position.array;
         for (let i=0; i < points.length; i+=9) {
-            let p0 = new Ammo.btVector3(points[i], points[i+1], points[i+2]);
-            let p1 = new Ammo.btVector3(points[i+3], points[i+4], points[i+5]);
-            let p2 = new Ammo.btVector3(points[i+6], points[i+7], points[i+8]);
-            p0.op_mul(this.scale)
-            p1.op_mul(this.scale)
-            p2.op_mul(this.scale)
+            let p0 = new Ammo.btVector3(points[i]*scale, points[i+1], points[i+2]);
+            let p1 = new Ammo.btVector3(points[i+3]*scale, points[i+4], points[i+5]);
+            let p2 = new Ammo.btVector3(points[i+6]*scale, points[i+7], points[i+8]);
+            p0.op_mul(this.scale);
+            p1.op_mul(this.scale);
+            p2.op_mul(this.scale);
             ammoMesh.addTriangle(p0, p1, p2);  
             p0 = new THREE.Vector3(points[i], points[i+1], points[i+2]);
             p1 = new THREE.Vector3(points[i+3], points[i+4], points[i+5]);
             p2 = new THREE.Vector3(points[i+6], points[i+7], points[i+8]);
-            //p0.multiplyScalar(scale);
-            //p1.multiplyScalar(scale);
-            //p2.multiplyScalar(scale);
             threeVertices.push(p0, p1, p2);
         } 
         if(this.rigidShape == "convex"){  // 凸刚体形状
@@ -286,7 +285,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             global.physicsWorld.removeRigidBody(rb);
         }
     }
-    setProp(prop=null, newValue=null) {  // 改变物体及其刚体的属性
+    setProp(prop=null, newValue=null) {  // 修改物体属性，同时更新刚体中相应的属性
         if(prop){
             let node = this, split = prop.split('.');
             let last = split.splice(-1);
@@ -436,13 +435,21 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             global.physicalIDMap[DT.physicalID] = DT;
         }
     }
+    updateConveyorRigidbody(){  // 更新传送带刚体的长度
+        this.removeRigidBody();  // 移除刚体
+        let L = new THREE.Vector3(), l = this.mesh.scale.x;
+        this.mesh.getWorldScale(L);
+        L = L.x / this.scale;  // 获取传送带直道的长度缩放比
+        this.createRigidBody(this.mesh, L);  // 重建刚体
+        this.updateRigidbodyTransform();
+    }
     updateRigidbodyTransform(mesh=this.mesh, force=false){  // 强制更新刚体位姿
         // 将物体的速度和角速度清零
         if(!mesh.DT?.rb && !force) return;
         this.rb.setLinearVelocity(zeroVector_Ammo);
         this.rb.setAngularVelocity(zeroVector_Ammo);
 
-        if(this.rigidShape = "box") {
+        if(this.rigidShape == "box") {
             mesh = this.layers.rigidHelper[0];
         }
 

@@ -535,17 +535,27 @@ export default class SceneBuilder{
     }
     createAttachPoint2(x, y) {  // 传送带出口连接点(横坐标，纵坐标)
         const geom = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-        const material = new THREE.MeshBasicMaterial({ color: "lime" });
+        const material = new THREE.MeshBasicMaterial({color: "lime"});
         const point = new THREE.Mesh(geom, material);
         point.position.x = x;
         point.position.y = y
         point.name = "ap2";
         return point;
     }
+    createLabel(mesh){  // 创建名牌
+        let labelDOM = document.createElement("div");
+        const label = new CSS2DObject(labelDOM); 
+        mesh.add(label);
+        mesh.DT.layers.label = [label];
+        const mesh0 = mesh.clone();
+        mesh0.position.setScalar(0);
+        const delta = new THREE.Vector3(0, 0, 3); 
+        label.position.copy(mesh0.worldToLocal(delta));
+    }
     createLight(type, x=0, y=0, z=24) {  // 创建光源
-        let arrow, light, lightDOM = document.createElement('img');
+        let arrow, light, lightDOM = document.createElement("img");
         // 光源物体
-        const iconMesh = new CSS2DObject( lightDOM );
+        const iconMesh = new CSS2DObject(lightDOM);
         iconMesh.userData.dom = lightDOM;
         if(type == "DirectionalLight"){  // 平行光
             light = new THREE.DirectionalLight("white", 3);
@@ -707,7 +717,8 @@ export default class SceneBuilder{
         }
         mesh.castShadow = mesh.receiveShadow = true;
         mesh.position.copy(position);
-        if(DT.scale != 1){ mesh.scale.setScalar(DT.scale); }
+        if(DT.scale != 1) mesh.scale.setScalar(DT.scale);
+        this.createLabel(mesh);
         global.SCENE.add(mesh);
         return mesh;
     }  
@@ -860,7 +871,7 @@ export default class SceneBuilder{
             let DT = mesh.DT;
             let rigidShapeWorld = mesh.layers.rigidShapeWorld;
             if(!DT.rb || DT.mass != 0) return;
-            if(rigidShapeWorld.length) rigidShapeWorld[0].removeFromParent();
+            if(rigidShapeWorld?.length) rigidShapeWorld[0].removeFromParent();
             let clone = new THREE.Mesh();
             clone.position.copy(mesh.position);
             clone.quaternion.copy(mesh.quaternion);

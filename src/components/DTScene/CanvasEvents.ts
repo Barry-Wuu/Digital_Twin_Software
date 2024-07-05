@@ -518,7 +518,10 @@ export default defineComponent({
       }
       if (isDrag) this.onDragover(e);
     },
-    onMouseup(e) {
+    onMouseup(e) {if(transformControls && this.scene.controller.mode) {  // 改变传送带直道尺寸
+        let conveyor = this.scene.controller.object;
+        conveyor.DT.updateConveyorRigidbody();
+      }
       mouseType[e.button] = false;
       transformControls = false;
       if (isDrag) {
