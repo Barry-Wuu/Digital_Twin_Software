@@ -8,25 +8,47 @@ const attachObjects = JSON.parse(storedattachObjects);
 // console.log(attachObjects);
 var app;
 var canvas;
+var collection = []; // 存放框选模型的id
 const conveyorRay = new THREE.Ray();
 const delta = new THREE.Vector3();
 const delta_angle = 15;  // 滚轮旋转物体的角度
 const cos_theta = Math.cos(delta_angle * Math.PI / 180);
 const sin_theta = Math.sin(delta_angle * Math.PI / 180);
+var downLeft = new THREE.Vector3(); // 视锥体近截面下方点
+var downRight = new THREE.Vector3();
 var dragFromOutside;  // 是否从外界拖入
 var dragData;
 var dragModel;
+var dragModelByXYZ;
 var dragPoint;  // 拖动开始时的拖动点
 var dragPoint0;  // 新的拖动点
+var endPoint = new THREE.Vector3();
+var farDownLeft = new THREE.Vector3(); // 视锥体远截面
+var farDownRight = new THREE.Vector3();
+var farTopLeft = new THREE.Vector3();
+var farTopRight = new THREE.Vector3();
 var front = new THREE.Vector3();
+var frustum = new THREE.Frustum(); // 视锥体
 var fullscreen = false;
+var helperBottomRight = new THREE.Vector2(); // 框选辅助点
+var helperStartPoint = new THREE.Vector2();
+var helperTopLeft = new THREE.Vector2();
 var isDrag = false;  // 是否在用鼠标移动模型
+var isSelect = false; // 是否在框选
 const keys: any = {};  // 同一时刻按下的按键
 var mouseType = [false, false, false];  // 左、中、右键是否按下
+var near = new THREE.Vector3(); // 构建视锥体时存放相机的位置
 const ray = new THREE.Raycaster();  // 从鼠标发出的射线检测器
 var parent;
+var pointLast_XYZ; 
+var pointNew_XYZ;
 var resizeObserver;
+var selectionHelper = document.createElement( 'div' ); // 框选辅助
+var startPoint = new THREE.Vector3(); 
 var style;
+var temp1 = new THREE.Vector3(); // 构建视锥体所用中间点
+var temp2 = new THREE.Vector3();
+var temp3 = new THREE.Vector3();
 var tempTransform = {  // 在物体吸附到传送带之前临时存储位姿，解除吸附后恢复
   alignMode: false,
   position: new THREE.Vector3(),
@@ -34,6 +56,9 @@ var tempTransform = {  // 在物体吸附到传送带之前临时存储位姿，
 };
 var tempModel;
 var tempOpacity;
+var tmpPoint = new THREE.Vector3(); // 构建视锥体所用中间点
+var topLeft = new THREE.Vector3(); // 视锥体近截面上方点
+var topRight = new THREE.Vector3();
 var transformControls;  // 是否使用控制器移动模型
 
 const box = new THREE.Box3();  // 被拖动物体的包围盒
@@ -161,6 +186,26 @@ export default defineComponent({
       plane.setFromNormalAndCoplanarPoint(front, P);  // 作过点P且法向量朝视野正前方的竖直平面
       ray.ray.intersectPlane(plane, result);  // 返回射线检测器与该平面的交点
       return result;
+    },
+    onDragByXYZ(e){
+      e.preventDefault();
+      if(dragModelByXYZ){
+        const x = (e.offsetX/e.target.clientWidth)*2-1;
+        const y = -(e.offsetY/e.target.clientHeight)*2+1;
+        const stdVector = new THREE.Vector3(x,y,0.5);
+        const woeldVector = stdVector.unproject(this.scene.camera);
+        pointLast_XYZ = pointNew_XYZ;        
+        pointNew_XYZ = woeldVector;        
+        if(!pointLast_XYZ) return;
+        let pointSub = pointNew_XYZ.clone().sub(pointLast_XYZ).multiplyScalar(75);
+        if(keys.KeyX){
+          dragModelByXYZ.position.x += pointSub.x;
+        } else if(keys.KeyY){
+          dragModelByXYZ.position.y += pointSub.y;
+        } else if(keys.KeyZ){
+          dragModelByXYZ.position.z += pointSub.z;
+        }
+      }
     },
     onDragenter(e) {
       let data = e.dataTransfer;
@@ -444,6 +489,7 @@ export default defineComponent({
     onKeydown(k) {
       if (k.code == "Delete") global.emit("deleteChoices");
       else keys[k.code] = true;  // 记录按下的按键
+      pointLast_XYZ = pointNew_XYZ = null;
     },
     onKeyup(k) {
       keys[k.code] = false;  // 删除按下的按键
@@ -468,13 +514,22 @@ export default defineComponent({
               global.emit("clickModel", {id: choice.id, shift: e.shiftKey});
               result.mesh.getWorldPosition(delta);
               delta.sub(result.point);  // Δp = 选中物体的全局坐标 - 物体上点击处的坐标
-              dragModel = choice;
+              dragModel = dragModelByXYZ = choice;
               dragModel.isDrag = true;
               tempModel = dragModel.clone();
               tempOpacity = dragModel.material.opacity;
               isDrag = true;
             } 
-            else if(e.target.localName == "div") global.emit("deselect");  // 避免点击img时取消选择
+            else if(e.target.localName == "div"){
+              global.emit("deselect");  // 避免点击img时取消选择
+              isSelect = true;
+              this.onSelectStart(e);
+              startPoint.set(
+                (e.offsetX/e.target.clientWidth)*2-1, 
+                -(e.offsetY/e.target.clientHeight)*2+1,
+                0.5
+              );
+            } 
           }
           else if(e.target.localName == "img"){  // 拖动灯光
             let id = parseInt(e.target.id);  // 若id为数字字符串则转换为数字
@@ -516,6 +571,29 @@ export default defineComponent({
           LEFT: -1, MIDDLE: -1, RIGHT: ROTATE
         };
       }
+      if(keys.KeyX || keys.KeyY || keys.KeyZ){
+        this.scene.orbitControl.enableRotate = false;
+        this.scene.orbitControl.enabledPan = false;
+        this.onDragByXYZ(e);
+      } else {
+        this.scene.orbitControl.enableRotate = true;
+        this.scene.orbitControl.enabledPan = true;
+      }
+      if(isSelect){
+        this.onSelectMove(e);
+        global.emit("deselect");
+        endPoint.set(
+          (e.offsetX/e.target.clientWidth)*2-1, 
+          -(e.offsetY/e.target.clientHeight)*2+1,
+          0.5
+        );
+        collection = [];
+        this.updateFrustum();
+        this.searchChildInFrustm(frustum, global.SCENE);
+        for(let i = 0; i < collection.length; i++){
+          if(collection[i] != 191) global.emit("clickModel", {id: collection[i], shift: isSelect});
+        }
+      }
       if (isDrag) this.onDragover(e);
     },
     onMouseup(e) {if(transformControls && this.scene.controller.mode) {  // 改变传送带直道尺寸
@@ -529,6 +607,10 @@ export default defineComponent({
         isDrag = false;
       }
       global.emit("updateProp", {action:"mouseup"});
+      if(isSelect){
+        isSelect = false;
+        selectionHelper.parentElement.removeChild(selectionHelper);
+      }
     },
     onPointerdown(e){
       mouseType[e.button] = true;
@@ -537,6 +619,27 @@ export default defineComponent({
           LEFT: -1, MIDDLE: MOVE, RIGHT: -1
         };
       }
+    },
+    onSelectMove(e){
+      selectionHelper.style.display = 'block';
+      helperBottomRight.x = Math.max(helperStartPoint.x, e.clientX);
+      helperBottomRight.y = Math.max(helperStartPoint.y, e.clientY);
+      helperTopLeft.x = Math.min(helperStartPoint.x, e.clientX);
+      helperTopLeft.y = Math.min(helperStartPoint.y, e.clientY);
+      selectionHelper.style.left = helperTopLeft.x + 'px';
+      selectionHelper.style.top = helperTopLeft.y + 'px';
+      selectionHelper.style.width = (helperBottomRight.x - helperTopLeft.x) + 'px';
+      selectionHelper.style.height = (helperBottomRight.y - helperTopLeft.y) + 'px';
+    },
+    onSelectStart(e){
+      selectionHelper.style.display = 'none';
+      this.scene.renderer.domElement.parentElement.appendChild(selectionHelper);
+      selectionHelper.style.left = e.clientX + 'px';
+      selectionHelper.style.top = e.clientY + 'px';
+      selectionHelper.style.width = '0px';
+      selectionHelper.style.height = '0px';
+      helperStartPoint.x = e.clientX;
+      helperStartPoint.y = e.clientY;
     },
     onWheel(e) {  // 滚轮事件
       this.scene.orbitControl.enableZoom = !dragModel;
@@ -587,6 +690,19 @@ export default defineComponent({
       this.scene.cameraPersp.updateProjectionMatrix(); 
       global.emit("updateEdgeGlow", {width: width, height: height});
     },
+    searchChildInFrustm(frustum, object){
+      if(object.DT && object.isMesh) {
+        const meshBox = new THREE.Box3().setFromObject(object);
+        if(frustum.intersectsBox(meshBox)){
+          collection.push(object.DT.id);
+        }
+      }
+      if(object.children.length>0){
+        for(let j=0; j<object.children.length; j++){
+          this.searchChildInFrustm(frustum, object.children[j]);
+        }
+      }
+    },
     setControl(key, action) {  // 设置快捷键（左键、中间、右键：平移、旋转、放缩）
       var map = {
         "NONE": -1,  // 无
@@ -599,6 +715,79 @@ export default defineComponent({
       if (key == "LEFT") button.LEFT = act;  // 左键
       else if (key == "MIDDLE") button.MIDDLE = act;  // 中键
       else if (key == "RIGHT") button.RIGHT = act;  // 右键
+    },
+    updateFrustum(){
+      if(startPoint.x === endPoint.x){
+        endPoint.x += Number.EPSILON;
+      }
+      if(startPoint.y === endPoint.y){
+        endPoint.x += Number.EPSILON;
+      }
+      this.scene.camera.updateProjectionMatrix();
+      this.scene.camera.updateMatrixWorld();
+      if(this.scene.camera.isPerspectiveCamera){
+        tmpPoint.copy(startPoint);
+        tmpPoint.x = Math.min(startPoint.x, endPoint.x);
+        tmpPoint.y = Math.max(startPoint.y, endPoint.y);
+        endPoint.x = Math.max(startPoint.x, endPoint.x);
+        endPoint.y = Math.min(startPoint.y, endPoint.y);     
+        near.setFromMatrixPosition(this.scene.camera.matrixWorld);     
+        topLeft.copy(tmpPoint);
+        topRight.set(endPoint.x, tmpPoint.y, 0);
+        downRight.copy(endPoint);
+        downLeft.set(tmpPoint.x, endPoint.y, 0);
+        topLeft.unproject(this.scene.camera);
+        topRight.unproject(this.scene.camera);
+        downRight.unproject(this.scene.camera);
+        downLeft.unproject(this.scene.camera);
+        temp1.copy(topLeft).sub(near);
+        temp2.copy(topRight).sub(near);
+        temp3.copy(downRight).sub(near);
+        temp1.normalize();
+        temp2.normalize();
+        temp3.normalize();
+        temp1.multiplyScalar(Number.MAX_VALUE);
+        temp2.multiplyScalar(Number.MAX_VALUE);
+        temp3.multiplyScalar(Number.MAX_VALUE);
+        temp1.add(near);
+        temp2.add(near);
+        temp3.add(near);
+        frustum.planes[0].setFromCoplanarPoints(near, topLeft, topRight);
+        frustum.planes[1].setFromCoplanarPoints(near, topRight, downRight);
+        frustum.planes[2].setFromCoplanarPoints(downRight, downLeft, near);
+        frustum.planes[3].setFromCoplanarPoints(downLeft, topLeft, near);
+        frustum.planes[4].setFromCoplanarPoints(topRight, downRight, downLeft);
+        frustum.planes[5].setFromCoplanarPoints(temp3, temp2, temp1);
+        frustum.planes[5].normal.multiplyScalar(-1);
+      } else if(this.scene.camera.isOrthographicCamera){
+        const left = Math.min(startPoint.x, endPoint.x);
+        const top = Math.max(startPoint.y, endPoint.y);
+        const right = Math.max(startPoint.x, endPoint.x);
+        const down = Math.min(startPoint.y, endPoint.y);
+        topLeft.set(left, top, -1);
+        topRight.set(right, top, -1);
+        downRight.set(right, down, -1);
+        downLeft.set(left, down, -1);
+        farTopLeft.set(left, top, 1);
+        farTopRight.set(right, top, 1);
+        farDownRight.set(right, down, 1);
+        farDownLeft.set(left, down, 1);
+        topLeft.unproject( this.scene.camera );
+        topRight.unproject( this.scene.camera );
+        downRight.unproject( this.scene.camera );
+        downLeft.unproject( this.scene.camera );
+        farTopLeft.unproject( this.scene.camera );
+        farTopRight.unproject( this.scene.camera );
+        farDownRight.unproject( this.scene.camera );
+        farDownLeft.unproject( this.scene.camera );
+        frustum.planes[0].setFromCoplanarPoints(topLeft, farTopLeft, farTopRight );
+        frustum.planes[1].setFromCoplanarPoints(topRight, farTopRight, farDownRight );
+        frustum.planes[2].setFromCoplanarPoints(farDownRight, farDownLeft, downLeft );
+        frustum.planes[3].setFromCoplanarPoints(farDownLeft, farTopLeft, topLeft );
+        frustum.planes[4].setFromCoplanarPoints(topRight, downRight, downLeft );
+        frustum.planes[5].setFromCoplanarPoints(farDownRight, farTopRight, farTopLeft );
+        frustum.planes[5].normal.multiplyScalar(-1);
+      };
     }
   },
   mounted() {
@@ -609,6 +798,8 @@ export default defineComponent({
     this.rendered = true;
     this.resizeCanvas();
     resizeObserver.observe(canvas.parentElement.parentElement.parentElement);
+    selectionHelper.classList.add('selectBox');
+    selectionHelper.style.pointerEvents = 'none';
     canvas.addEventListener("keydown", (k) => {  // 全屏模式下按ESC退出
       if (k.code == "Escape" && fullscreen) {
         global.emit("changeFullscreen");
