@@ -201,6 +201,10 @@
         }
         else eval(`${prop} = ${result}`);
 
+        if(this.prop == "mesh.scale.x") {  // 改变传送带直道尺寸
+          DT.value.updateConveyorRigidbody();
+        }
+
         if(this.prop == "name") {DT.value.setTitle(); global.emit("updateTree");}
         this.$emit("change");
         chosenProp.value = null;  // 结束编辑
