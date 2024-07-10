@@ -543,13 +543,13 @@ export default class SceneBuilder{
         return point;
     }
     createLabel(mesh){  // 创建名牌
-        let labelDOM = document.createElement("div");
+        let labelDOM = document.createElement("div"); console.log(mesh)
         const label = new CSS2DObject(labelDOM); 
         mesh.add(label);
         mesh.DT.layers.label = [label];
         const mesh0 = mesh.clone();
         mesh0.position.setScalar(0);
-        const delta = new THREE.Vector3(0, 0, 3); 
+        const delta = new THREE.Vector3(0, 0, 3);  // 标签与包围盒中心之差 
         label.position.copy(mesh0.worldToLocal(delta));
     }
     createLight(type, x=0, y=0, z=24) {  // 创建光源
