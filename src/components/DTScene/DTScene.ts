@@ -543,7 +543,11 @@ export default class SceneBuilder{
         return point;
     }
     createLabel(mesh){  // 创建名牌
-        let labelDOM = document.createElement("div"); console.log(mesh)
+        let labelDOM = document.createElement("div");
+        labelDOM.style.backgroundColor = "rgba(0, 0, 0, 0.5)";  // 加上半透明背景和文字边缘
+        labelDOM.style.color = "white";
+        labelDOM.style.paddingLeft = "3px";
+        labelDOM.style.paddingRight = "3px";
         const label = new CSS2DObject(labelDOM); 
         mesh.add(label);
         mesh.DT.layers.label = [label];
@@ -730,40 +734,6 @@ export default class SceneBuilder{
         skybox.format = THREE.RGBAFormat;
         global.SCENE.background = skybox;
     }
-    preloadModels(){  // 事先载入所有的已有模型
-        const modelPath = "src/assets/models/";
-        function searchFiles(dir) {  // 使用同步操作
-            let files = fs.readdirSync(dir);
-            files.forEach(fileName => {
-                let filePath = modelPath + fileName;
-                let stats = fs.statSync(filePath);
-                if (stats.isFile() && path.extname(filePath) == ".stl") {
-                    customModels[filePath] = ''; // 保存模型文件的路径
-                }
-                if (stats.isDirectory()) {
-                    searchFiles(filePath); // 递归子目录
-                }
-            });
-        }
-        searchFiles(modelPath);  // 然后异步载入相应几何体（THREE.geometry）
-        for(let modelPath in customModels){
-            loader.loadAsync(modelPath).then(geom => {customModels[modelPath] = geom;});   
-        }
-    }
-    removeRigidBody(mesh){  // 移除刚体
-        let rb = mesh.DT.rb;
-        delete global.rb_mesh[rb.ptr].mesh.userData.rb;
-        delete global.rb_mesh[rb.ptr];
-        global.physicsWorld.removeRigidBody(rb);
-        mesh.DT.layers.rigidShapeWorld = [];
-    }
-    render(){  // 渲染
-        this.updatePhysics(clock.getDelta());
-        this.composer.render();
-        this.cssRenderer.render(global.SCENE, this.camera);
-        this.gizmoPersp.render(this.renderer);
-        this.gizmoOrtho.render(this.renderer);
-    } 
     onCollision(){  // 检测物理世界中的物体是否与传送带碰撞，若有则施力
         const dispatcher = global.physicsWorld.getDispatcher();  
         for(var i=0; i<dispatcher.getNumManifolds(); i++){ 
@@ -844,6 +814,40 @@ export default class SceneBuilder{
             }
         }
     }
+    preloadModels(){  // 事先载入所有的已有模型
+        const modelPath = "src/assets/models/";
+        function searchFiles(dir) {  // 使用同步操作
+            let files = fs.readdirSync(dir);
+            files.forEach(fileName => {
+                let filePath = modelPath + fileName;
+                let stats = fs.statSync(filePath);
+                if (stats.isFile() && path.extname(filePath) == ".stl") {
+                    customModels[filePath] = ''; // 保存模型文件的路径
+                }
+                if (stats.isDirectory()) {
+                    searchFiles(filePath); // 递归子目录
+                }
+            });
+        }
+        searchFiles(modelPath);  // 然后异步载入相应几何体（THREE.geometry）
+        for(let modelPath in customModels){
+            loader.loadAsync(modelPath).then(geom => {customModels[modelPath] = geom;});   
+        }
+    }
+    removeRigidBody(mesh){  // 移除刚体
+        let rb = mesh.DT.rb;
+        delete global.rb_mesh[rb.ptr].mesh.userData.rb;
+        delete global.rb_mesh[rb.ptr];
+        global.physicsWorld.removeRigidBody(rb);
+        mesh.DT.layers.rigidShapeWorld = [];
+    }
+    render(){  // 渲染
+        this.updatePhysics(clock.getDelta());
+        this.composer.render();
+        this.cssRenderer.render(global.SCENE, this.camera);
+        this.gizmoPersp.render(this.renderer);
+        this.gizmoOrtho.render(this.renderer);
+    } 
     updateFPSandTime(now, pause, stop){  // 更新帧率和用时
         if(stop){ 
             BottomTimer.textContent = "00:00:00.000"
