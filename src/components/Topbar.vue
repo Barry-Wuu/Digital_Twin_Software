@@ -47,6 +47,7 @@
         "gizmo", 
         "controller",
         "indicator",
+        "label",
         "attachPoint",
         "lightArrow",
     ]);
