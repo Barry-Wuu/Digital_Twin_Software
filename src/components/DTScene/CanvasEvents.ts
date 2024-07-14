@@ -555,11 +555,7 @@ export default defineComponent({
       };
     },
     onMousemove(e) { 
-      if (mouseType[0] && mouseType[2]) {  // 同时按鼠标左右键移动相机
-        this.scene.orbitControl.mouseButtons = {
-          LEFT: MOVE, MIDDLE: -1, RIGHT: MOVE
-        };
-      } else if (mouseType[0]) {
+      if (mouseType[0]) {
         this.scene.orbitControl.mouseButtons = {
           LEFT: global.mode == "edit" ? -1 : ROTATE, MIDDLE: isDrag ? -1 : ZOOM, RIGHT: -1
         };
@@ -621,7 +617,7 @@ export default defineComponent({
         };
       }
     },
-    onSelectMove(e){
+    onSelectMove(e){  // 多选框
       selectionHelper.style.display = 'block';
       helperBottomRight.x = Math.max(helperStartPoint.x, e.clientX);
       helperBottomRight.y = Math.max(helperStartPoint.y, e.clientY);
