@@ -42,7 +42,7 @@
   <!--属性栏默认文字-->
   <a-alert v-if="typeof DT == 'string'" :message="DT" style="width:100%" type="info"/>
   <!--属性栏内容-->
-  <div v-else style="text-align:left;">   
+  <div v-else-if="DT" style="text-align:left;">   
     <a-collapse :default-active-key="[
       '基本属性', '几何属性', '物理属性', '材质属性', '代码属性', '自定义属性', '自定义脚本'
       ]">

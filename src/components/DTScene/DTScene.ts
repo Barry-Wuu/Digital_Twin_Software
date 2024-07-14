@@ -770,6 +770,26 @@ export default class SceneBuilder{
                     F.op_add(v0_real).op_sub(v).normalize();
                     F.op_mul(k*m*g);
                     rb0.applyCentralForce(F);
+                    // 然后施加摩擦力矩，使在制品尽量不旋转
+                    let w0 = 0;  //传送带角速度ω0 
+                    let w = rb0.getAngularVelocity().z();  //货物角速度ω0
+                    let M = new Ammo.btVector3(0, 0, kw*J*(w0 - w));
+                    rb0.applyTorque(M);  // 同理，摩擦力矩 M = kw*J*(ω0-ω)
+                    /*
+                    let theta0 = new THREE.Quaternion();
+                    mesh1.getWorldQuaternion(theta0);
+                    theta0 = new THREE.Euler().setFromQuaternion(theta0);
+                    theta0 = theta0.z;  // 传送带转角theta0
+                    let transform = new Ammo.btTransform();
+                    const motionState = rb0.getMotionState();
+                    motionState.getWorldTransform(transform);
+                    let Q = transform.getRotation(), R = new THREE.Euler();
+                    R.setFromQuaternion(new THREE.Quaternion( Q.w(),Q.x(), Q.y(), Q.z(),));
+                    theta = R.z;  // 货物旋转角theta
+                    console.log(theta, theta0)
+                    let M = new Ammo.btVector3(0, 0, kw*J*(theta0 - theta));
+                    rb0.applyTorque(M);  // 同理，摩擦力矩 M = kw*J*(ω0-ω)
+                    */
                 } else if(DT1.name?.includes("弯道")) {
                     let dir = DT1.name.includes("逆时针弯道") ? -1 : 1;  // 传送带移动方向（顺/逆时针）
                     let r = new THREE.Vector3();
@@ -795,7 +815,7 @@ export default class SceneBuilder{
                         Fn.normalize();
                         Fn.op_mul((ra > R ? -1 : 1)*k*m*g);
                         rb0.applyCentralForce(Fn);
-                        // 然后施加转矩
+                        // 然后施加转矩，使在制品尽量对准中轴线
                         let w0 = -dir * v0_vec.length() / ra;  //传送带角速度ω0 
                         let w = rb0.getAngularVelocity().z();  //货物角速度ω0
                         let M = new Ammo.btVector3(0, 0, kw*J*(w0 - w));

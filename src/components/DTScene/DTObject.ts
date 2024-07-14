@@ -457,7 +457,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         let rb = mesh.DT ? mesh.DT.rb : mesh.parent.DT.rb;
         let transform = new Ammo.btTransform();
         const motionState = rb.getMotionState();
-        motionState.getWorldTransform( transform );
+        motionState.getWorldTransform(transform);
         let P = new THREE.Vector3(), Q = new THREE.Quaternion();  // P为位移，Q为四元数旋转
         mesh.getWorldPosition(P);
         mesh.getWorldQuaternion(Q);
@@ -465,7 +465,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         Q = new Ammo.btQuaternion(Q.x, Q.y, Q.z, Q.w);
         transform.setOrigin(P);
         transform.setRotation(Q);
-        motionState.setWorldTransform( transform );
+        motionState.setWorldTransform(transform);
         rb.setMotionState(motionState);
     }
     updateWireframes(loadingFile = false){  // 更新线框

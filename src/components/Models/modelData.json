@@ -200,10 +200,10 @@
         },
         "护栏": {
             "icon": "护栏.jpg",
-            "geometry": "new THREE.BoxGeometry(0.5, 2, 1)",
-            "material": { "color": "lightgray" },
+            "geometry": "new THREE.BoxGeometry(0.5, 6, 1)",
+            "material": { "color": "gray" },
             "rigid": true, 
-            "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(0.25, 1, 0.5))"        
+            "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(0.25, 3, 0.5))"        
         },
         "光电门": {
             "icon": "光电门.jpg",
