@@ -203,7 +203,7 @@
             "geometry": "new THREE.BoxGeometry(0.5, 6, 1)",
             "material": { "color": "gray" },
             "rigid": true, 
-            "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(0.25, 3, 0.5))"        
+            "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(0.25, 3, 0.5))"
         },
         "光电门": {
             "icon": "光电门.jpg",
@@ -212,6 +212,9 @@
             "rigid": true, 
             "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(0.1, 1.5, 0.4))",
             "material": { "color": "lime", "opacity": 0.5, "transparent": true },
+            "layers": {
+                "indicator": "[this.createArrow(-1, 0, 0)]"
+            },
             "code": "let rb: this.mesh.userData.physicsBody, \n rb.setMassProps(0, new Ammo.btVector3(0, 0, 0))"
         },
 
@@ -226,12 +229,12 @@
         },
         "托盘": {
             "icon": "托盘.jpg",
-            "geometry": "new THREE.BoxGeometry(1.4, 0.4, 1.4)",
+            "geometry": "new THREE.BoxGeometry(2, 0.6, 2)",
             "label": "WIP",
             "mass": 1,
             "material": { "color": "rgb(255, 255, 128)" },
             "rigid": true,
-            "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(0.7, 0.2, 0.7))"
+            "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(1, 0.3, 1))"
         },
         "发生器": {
             "icon": "发生器.jpg",

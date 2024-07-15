@@ -190,18 +190,23 @@
           emitProperty();
           if(wireframe == "包围盒"){  // 更新物体包围盒线框
             global.emit("hideEdgeGlow");  // 熄灭被选中物体的边缘
-            for(let DT of global.SCENE.DT.getDTObjects()){
+            for(let DT of global.SCENE.DT.getDTObjects()){  // 根据标签更新各子物体是否可见
               let chosen = choices.value.includes(DT.id);
               if(DT.layers.wireframe.length){    
                 if(DT.layers.label)
                   DT.layers.label[0].element.textContent = chosen ? DT.name : '';
                 DT.layers.wireframe[0].visible = chosen;
               }
-              else if(DT.mesh.isLight){  // 更新光源图标的边框与箭头的可见度
+              else if(DT.mesh.isLight){
                 let arrow = DT.mesh.children.filter(mesh => mesh.type == "ArrowHelper")[0];
+                if(arrow) arrow.visible = chosen && global.layers.includes("lightArrow");
                 if(arrow) arrow.visible = chosen && global.layers.includes("lightArrow");
                 let icon = DT.mesh.children.filter(mesh => mesh.isCSS2DObject)[0].element;
                 if(icon) icon.style.border = chosen ? "1px solid cyan" : "";
+              }
+              if(DT.label == "sensor"){
+                let sensorArrow = DT.layers.indicator[0];
+                sensorArrow.visible = chosen && global.layers.includes("indicator");
               }
             };
           }
