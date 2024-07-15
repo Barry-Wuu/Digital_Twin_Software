@@ -225,10 +225,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         // 如果子物体中有CSS2DObject，则先删除相应的DOM，以免其残留在屏幕上
         let css2d = this.mesh.children.filter(child => child.isCSS2DObject);
         if(css2d.length){
-            for(let child of css2d) {
-                let dom = child.userData.dom;
-                if(dom) dom.remove();
-            }
+            for(let child of css2d) child.element?.remove();
         }
         global.emit("controlEnd");  // 如果控制器绑定了该物体，则先解绑
         delete global.physicalIDMap[this.physicalID];
@@ -443,7 +440,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         this.createRigidBody(this.mesh, L);  // 重建刚体
         this.updateRigidbodyTransform();
     }
-    updateRigidbodyTransform(mesh=this.mesh, force=false){  // 强制更新刚体位姿
+    updateRigidbodyTransform(mesh=this.mesh, force=false, target=this.mesh){  // 强制更新刚体位姿
         // 将物体的速度和角速度清零
         if(!mesh.DT?.rb && !force) return;
         this.rb.setLinearVelocity(zeroVector_Ammo);
@@ -459,8 +456,8 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         const motionState = rb.getMotionState();
         motionState.getWorldTransform(transform);
         let P = new THREE.Vector3(), Q = new THREE.Quaternion();  // P为位移，Q为四元数旋转
-        mesh.getWorldPosition(P);
-        mesh.getWorldQuaternion(Q);
+        target.getWorldPosition(P);
+        target.getWorldQuaternion(Q);
         P = new Ammo.btVector3(P.x, P.y, P.z);
         Q = new Ammo.btQuaternion(Q.x, Q.y, Q.z, Q.w);
         transform.setOrigin(P);

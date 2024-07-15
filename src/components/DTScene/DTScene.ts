@@ -369,22 +369,27 @@ export default class SceneBuilder{
 
         // 更新托盘位置
         global.on("updateTrayPosition", (data: {deviceID, RFID}) => {
-            let sensor = global.physicalIDMap[data.deviceID];
+            let sensorDT = global.physicalIDMap[data.deviceID];
             let trayDT = global.physicalIDMap[data.RFID];
             if(trayDT && !trayDT.sensorPass){  // 修改托盘的碰撞掩码，使之可通过光电门
-                trayDT.sensorPass = true;
-                global.physicsWorld.removeRigidBody(trayDT.rb);
-                global.physicsWorld.addRigidBody(trayDT.rb, 1, 1);
-                if(!trayDT.touchSensor) {  // 若同步位置时实物比在制品先到光电门
-                    trayDT.mesh.position.copy(sensor.mesh.position);  // 将在制品瞬移到光电门处
-                    trayDT.updateRigidbodyTransform();  // 强制更新刚体位姿
+                // 若同步位置时实物比在制品先到光电门
+                if(!trayDT.touchSensor || trayDT.touchSensor != sensorDT) {
+                    trayDT.mesh.position.copy(sensorDT.mesh.position);  // 将在制品瞬移到光电门处
+                    trayDT.updateRigidbodyTransform(
+                        trayDT.mesh, false, sensorDT.layers.indicator[0]
+                    );  // 强制更新刚体位姿
                 }
-                setTimeout(() => {  // 一坤秒后修改托盘的碰撞掩码，禁止其物体通过光电门
+                setTimeout(() => {  // 五秒后修改托盘的碰撞掩码，允许其通过光电门
+                    trayDT.sensorPass = true;
                     global.physicsWorld.removeRigidBody(trayDT.rb);
-                    global.physicsWorld.addRigidBody(trayDT.rb, 1, 3);
-                    trayDT.sensorPass = false;
-                    trayDT.touchSensor = null;
-                }, 2500);
+                    global.physicsWorld.addRigidBody(trayDT.rb, 1, 1);
+                    setTimeout(() => {  // 一坤秒后修改托盘的碰撞掩码，禁止其通过光电门
+                        global.physicsWorld.removeRigidBody(trayDT.rb);
+                        global.physicsWorld.addRigidBody(trayDT.rb, 1, 3);
+                        trayDT.sensorPass = false;
+                        trayDT.touchSensor = null;
+                    }, 2500);
+                }, 5000);
             }
             else if (trayDT.sensorPass){
                 console.log("光电门冷却中");
@@ -704,18 +709,18 @@ export default class SceneBuilder{
             let result = DT.layers[layer];
             if(typeof result == "string") DT.layers[layer] = eval(result); 
         }
-        for(let item of DT.layers.indicator){  // 指示箭头
+        if(DT.layers.indicator) for(let item of DT.layers.indicator){  // 指示箭头
             item.scale.setScalar(1 / DT.scale);
             item.userData.indicator = true; 
             item.visible = global.layers.includes("indicator");
             mesh.add(item);
             item.position.z += 0.01;  // 将箭头稍微上调，以免和物体重叠
         }
-        for (let item of DT.layers.attachPoint1) {  // 传送带入口连接点
+        if(DT.layers.attachPoint1) for (let item of DT.layers.attachPoint1) {  // 传送带入口连接点
             item.scale.setScalar(1 / DT.scale);
             mesh.add(item);
         }
-        for (let item of DT.layers.attachPoint2) {  // 传送带出口连接点
+        if(DT.layers.attachPoint2) for (let item of DT.layers.attachPoint2) {  // 传送带出口连接点
             item.scale.setScalar(1 / DT.scale);
             mesh.add(item);
         }
