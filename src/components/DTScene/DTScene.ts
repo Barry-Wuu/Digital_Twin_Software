@@ -41,6 +41,7 @@ var loading = false;
 const minCameraFocusDistance = 5;  // 双击拉近时相机到物体的最小距离
 const model_definition = modelData.model_definition;
 var origin = new THREE.Vector3(0, 0, 0);
+const RIGHT = new THREE.Vector3(1, 0, 0);  // x轴朝右
 var speed = 1;
 var temp = false;
 var UP = new THREE.Vector3(0, 0, 1);  // z轴朝上
@@ -371,13 +372,24 @@ export default class SceneBuilder{
         global.on("updateTrayPosition", (data: {deviceID, RFID}) => {
             let sensorDT = global.physicalIDMap[data.deviceID];
             let trayDT = global.physicalIDMap[data.RFID];
+            if(!sensorDT || !trayDT) return;  // 若传感器或托盘不存在，则不执行后续操作
             if(trayDT && !trayDT.sensorPass){  // 修改托盘的碰撞掩码，使之可通过光电门
                 // 若同步位置时实物比在制品先到光电门
                 if(!trayDT.touchSensor || trayDT.touchSensor != sensorDT) {
-                    trayDT.mesh.position.copy(sensorDT.mesh.position);  // 将在制品瞬移到光电门处
-                    trayDT.updateRigidbodyTransform(
-                        trayDT.mesh, false, sensorDT.layers.indicator[0]
-                    );  // 强制更新刚体位姿
+                    // 让在制品瞬移到光电门处
+                    let target = sensorDT.mesh.position.clone();
+                    let delta = RIGHT.clone();
+                    let Q = new THREE.Quaternion();
+                    sensorDT.mesh.getWorldQuaternion(Q);
+                    delta.applyQuaternion(Q);
+                    target.sub(delta);
+                    target.z -= 0.1;  // 托盘高0.6，光电门高0.8，两者中心的高差0.1
+                    trayDT.mesh.position.copy(target);
+                    // 调整在制品的旋转角
+                    trayDT.mesh.rotation.set(Math.PI/2, 0, 0);
+                    let R = new THREE.Euler().setFromQuaternion(Q);
+                    trayDT.mesh.rotateOnWorldAxis(UP, R.z);
+                    trayDT.updateRigidbodyTransform();  // 强制更新刚体位姿
                 }
                 setTimeout(() => {  // 五秒后修改托盘的碰撞掩码，允许其通过光电门
                     trayDT.sensorPass = true;

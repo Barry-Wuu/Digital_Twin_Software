@@ -213,7 +213,7 @@
             "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(0.1, 1.5, 0.4))",
             "material": { "color": "lime", "opacity": 0.5, "transparent": true },
             "layers": {
-                "indicator": "[this.createArrow(-1, 0, 0)]"
+                "indicator": "[this.createArrow(0.5, 0, 0)]"
             },
             "code": "let rb: this.mesh.userData.physicsBody, \n rb.setMassProps(0, new Ammo.btVector3(0, 0, 0))"
         },
