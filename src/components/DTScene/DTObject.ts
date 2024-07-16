@@ -8,6 +8,9 @@ const zeroVector_Ammo = new Ammo.btVector3();
 
 export default class DTObject {  // 用DTObject类包裹场景中的对象
     basename: string  // 模型在模型库中的名称
+    btQuaternion = new Ammo.btQuaternion()  // 用于避免重复创建对象导致的内存不足，下同
+    btTransform: Ammo.btTransform
+    btVector3 = new Ammo.btVector3()
     children = []  // 子物体（自动计算）
     code = ''  // 自定义脚本
     custom = {}  // 自定义属性
@@ -41,6 +44,8 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     scale = 1  // 尺寸
     sensorPass = null  // 光电门是否在冷却
     skybox: object  // 天空盒
+    threeQuaternion = new THREE.Quaternion()  // 用于避免重复创建对象导致的内存不足，下同
+    threeVector3 = new THREE.Vector3()
     timer = performance.now()  // 定时器（自动计算）
     timeInterval: number  // 定时器触发时间
     title: string  // 标题 = 物体类型 + 名称 + 序号（自动计算）
@@ -452,16 +457,18 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
 
         // 根据物体位姿强制设置其刚体位姿
         let rb = mesh.DT ? mesh.DT.rb : mesh.parent.DT.rb;
-        let transform = new Ammo.btTransform();
+        let transform;  // 下两行用于改善内存泄漏
+        if(this.btTransform) transform = this.btTransform;
+        else this.btTransform = transform = new Ammo.btTransform();
         const motionState = rb.getMotionState();
         motionState.getWorldTransform(transform);
-        let P = new THREE.Vector3(), Q = new THREE.Quaternion();  // P为位移，Q为四元数旋转
+        let P = this.threeVector3, Q = this.threeQuaternion;  // P为位移，Q为四元数旋转
         target.getWorldPosition(P);
         target.getWorldQuaternion(Q);
-        P = new Ammo.btVector3(P.x, P.y, P.z);
-        Q = new Ammo.btQuaternion(Q.x, Q.y, Q.z, Q.w);
-        transform.setOrigin(P);
-        transform.setRotation(Q);
+        this.btVector3.setValue(P.x, P.y, P.z);
+        this.btQuaternion.setValue(Q.x, Q.y, Q.z, Q.w);
+        transform.setOrigin(this.btVector3);
+        transform.setRotation(this.btQuaternion);
         motionState.setWorldTransform(transform);
         rb.setMotionState(motionState);
     }

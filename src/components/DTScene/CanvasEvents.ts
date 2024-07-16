@@ -124,7 +124,7 @@ export default defineComponent({
           tempModel.position.add(closestPoint);  // 物体位移 = 垂足 + 1.4||鼠标-垂足||
         } else {
           conveyorRay.closestPointToPoint(dragPoint, tempModel.position);  // 物体位移=垂足
-          tempModel.rotateOnWorldAxis(UP, Math.atan(result.y / result.x));  // 设置物体旋转
+          tempModel.quaternion.copy(Q);  // 设置物体旋转
         }
       }
       else if(conveyor.DT.name.includes("弯道")){
@@ -139,7 +139,8 @@ export default defineComponent({
           result.multiplyScalar(outer ? 6.4 : 3.6);
         } else {
           tempModel.rotateOnWorldAxis(
-            UP, Math.atan(result.y / result.x) + Math.PI / 2
+            UP, Math.atan2(result.y, result.x) + 
+            (conveyor.DT.name.includes("顺时针") ? -1 : 1) * Math.PI / 2
           );
           result.multiplyScalar(5);
         }
