@@ -56,6 +56,7 @@ var moveToId = 0;
 var targetObject, p_start, p_end;  // 相机移动的目标物体，起点和终点
 var renderPass;  // 边缘高亮滤镜
 var T0;  // 开始仿真的时间
+var temp_btTransform = new Ammo.btTransform();  // 减少新建bt对象以提升性能
 var time = performance.now();
 var timeUpdateFPS = performance.now();
 
@@ -466,7 +467,7 @@ export default class SceneBuilder{
         global.SCENE.DT.setSkyboxByColor();
         global.on("updateSkybox", ()=>{global.SCENE.DT.setSkyboxByColor()});
         // 远处雾化
-        global.SCENE.fog = new THREE.Fog(this.ground.material.color, 5, 200);
+        global.SCENE.fog = new THREE.Fog(this.ground.material.color, 5, 300);
         global.on("changeFogColor", (isGround)=>{  // 更改地面颜色时同时更改雾的颜色
             if(isGround) global.SCENE.fog.color.copy(this.ground.material.color);
         });
@@ -726,7 +727,7 @@ export default class SceneBuilder{
             item.userData.indicator = true; 
             item.visible = global.layers.includes("indicator");
             mesh.add(item);
-            item.position.z += 0.01;  // 将箭头稍微上调，以免和物体重叠
+            item.position.z += 0.01 / DT.scale;  // 将箭头稍微上调，以免和物体重叠
         }
         if(DT.layers.attachPoint1) for (let item of DT.layers.attachPoint1) {  // 传送带入口连接点
             item.scale.setScalar(1 / DT.scale);
@@ -966,10 +967,9 @@ export default class SceneBuilder{
                         DT.updateRigidbodyTransform();
                     }
                     else{  // 运行时将网格位姿更新为刚体位姿
-                        let transform = new Ammo.btTransform();
-                        motionState.getWorldTransform( transform );
-                        const P = transform.getOrigin();
-                        const Q = transform.getRotation();
+                        motionState.getWorldTransform(temp_btTransform);
+                        const P = temp_btTransform.getOrigin();
+                        const Q = temp_btTransform.getRotation();
                         mesh.position.set( P.x(), P.y(), P.z() );  // 将网格位移设为刚体位移
                         mesh.quaternion.set( Q.x(), Q.y(), Q.z(), Q.w() );  // 将网格旋转设为刚体旋转
                     }
