@@ -39,6 +39,7 @@
     computed: {  // 计算属性
       computedProp: {
         get() {
+          if(this.propActive) return this.format(this.propActive);  // 拖动物体时强制更新属性值
           if(chosenProp.value == this.prop) return input_value.value;  // 编辑中
           let result = eval("DT.value." + this.prop);
           if(this.type == "inputString") return result;  // 显示字符串
@@ -150,6 +151,7 @@
           tube: "点此可使用吸管吸取颜色",
         },
         input_value, 
+        propActive: null,
         propX: null,
         propY: null,
         propZ: null,
@@ -185,25 +187,39 @@
         let prop = "DT.value." + this.prop + (item ? '.' + item : '');  // 结束编辑时更改属性值
         if(eval(prop).isColor) eval(prop).setStyle(result);
         else if(this.type == "inputString") {
-            if(this.prop == "physicalID"){
-              let targetDT = global.physicalIDMap[result]
-              if(targetDT && targetDT != DT.value){
-                  input_value.value = DT.value.physicalID;
-                  chosenProp.value = null;  // 结束编辑
-                  e.target.blur();  // 修改属性之后让元素自动失焦；
-                  alert("该物理实体ID已被占用，请重新输入");
-                  return;
-              }
-              eval(`${prop} = "${result}"`);
-              DT.value.updatePhysicalIDMap();  // 更新物理实体ID到物体的映射关系
+          if(this.prop == "physicalID"){
+            let targetDT = global.physicalIDMap[result]
+            if(targetDT && targetDT != DT.value){
+                input_value.value = DT.value.physicalID;
+                chosenProp.value = null;  // 结束编辑
+                e.target.blur();  // 修改属性之后让元素自动失焦；
+                alert("该物理实体ID已被占用，请重新输入");
+                return;
             }
-            else eval(`${prop} = "${result}"`);
+            eval(`${prop} = "${result}"`);
+            DT.value.updatePhysicalIDMap();  // 更新物理实体ID到物体的映射关系
+          }
+          else eval(`${prop} = "${result}"`);
+        }
+        else if(this.prop == "mesh.scale.x") {  // 改变传送带直道尺寸
+          if(JSON.parse(e.target.value) > 100){
+            global.emit("popup", {  // 弹窗确认修改传送带长度
+              title: "确认修改传送带长度",
+              type: "yes_no",
+              content: "传送带过长可能会导致其无法正常工作，是否确认修改？",
+              yes: () => {  // 确认修改
+                DT.value.updateConveyorRigidbody();
+                eval(`${prop} = ${result}`);
+              },
+              no: () => {}  // no为取消
+            });
+          }
+          else {
+            DT.value.updateConveyorRigidbody();
+            eval(`${prop} = ${result}`);
+          }
         }
         else eval(`${prop} = ${result}`);
-
-        if(this.prop == "mesh.scale.x") {  // 改变传送带直道尺寸
-          DT.value.updateConveyorRigidbody();
-        }
 
         if(this.prop == "name") {DT.value.setTitle(); global.emit("updateTree");}
         this.$emit("change");
@@ -335,7 +351,8 @@
         else DT.value = data;
       });
       global.on("updateProp", (data: any) => {  // 拖动物体时在属性栏实时更新其位移和旋转属性
-        if(data.action == "mouseup") this.propX = this.propY = this.propZ = null;
+        if(data.action == "mouseup") 
+          this.propActive = this.propX = this.propY = this.propZ = null;
         else if(this.prop == "mesh.position") {  // 更新位移
           this.propX = data.mesh.position.x;
           this.propY = data.mesh.position.y;
@@ -345,6 +362,9 @@
           this.propX = data.mesh.rotation.x;
           this.propY = data.mesh.rotation.y;
           this.propZ = data.mesh.rotation.z;
+        }
+        else if(data.action == "mousemove" && this.prop == "mesh.scale.x"){  // 更新直道传送带长度
+          this.propActive = data.mesh.scale.x;
         }
       });
     },
