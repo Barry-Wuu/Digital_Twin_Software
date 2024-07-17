@@ -124,7 +124,9 @@ export default defineComponent({
           tempModel.position.add(closestPoint);  // 物体位移 = 垂足 + 1.4||鼠标-垂足||
         } else {
           conveyorRay.closestPointToPoint(dragPoint, tempModel.position);  // 物体位移=垂足
-          tempModel.quaternion.copy(Q);  // 设置物体旋转
+          let R = new THREE.Euler();
+          R.setFromQuaternion(Q);
+          tempModel.rotateOnWorldAxis(UP, R.z);  // 设置物体旋转
         }
       }
       else if(conveyor.DT.name.includes("弯道")){
@@ -362,6 +364,7 @@ export default defineComponent({
                 }
                 parent.attach(dragModel);  // 将被旋转物体加回原来的父物体
                 dragModel.position.add(offset);
+                global.emit("updateProp", {action: "dragover", mesh: dragModel});  // 更新属性栏
                 global.emit("controlStart", dragModel.id);
                 return;  // 后一行未起作用
                 // this.scene.updateMatrixWorld(true); 确保场景中所有变换都是最新的
@@ -561,7 +564,12 @@ export default defineComponent({
           LEFT: global.mode == "edit" ? -1 : ROTATE, MIDDLE: isDrag ? -1 : ZOOM, RIGHT: -1
         };
         if(transformControls){
-          global.emit("updateProp", {action:"mousemove", mesh: this.scene.controller.object});
+          let mesh = this.scene.controller.object;
+          if(mesh.DT.name.includes("直道")){  // 不准传送带长度小于0.1
+            let length = mesh.scale.x / mesh.DT.scale * 7.5;
+            if(length < 0.1) mesh.scale.x = 0.1 * mesh.DT.scale / 7.5;
+          }
+          global.emit("updateProp", {action:"mousemove", mesh: mesh});
         }
       } else if (mouseType[2]) {
         this.scene.orbitControl.mouseButtons = {

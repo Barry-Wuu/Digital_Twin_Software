@@ -30,6 +30,7 @@ const cameraFrontRay = new THREE.Ray();
 let customModels = {};
 let attachObjects = new THREE.Group();
 var emulateMode = "stop";  // 仿真模式
+var fps = 60;  // 帧率
 var frameCounter = 0;  // 帧计数器，计满60帧近似看做1秒
 var frames = 0;  // 帧率计算
 let front = new THREE.Vector3(); 
@@ -411,6 +412,7 @@ export default class SceneBuilder{
                 console.log("光电门不存在");
             }
         })
+        global.on("demoScene", ()=>{this.demoScene()});
 
         // 控制器快捷键设置
         this.canvas.addEventListener("keydown", e => {
@@ -693,7 +695,12 @@ export default class SceneBuilder{
         global.SCENE.add(mesh0);
         return mesh0;
     }   
-    createMeshFromModels(data, position: Object){  // 定义拖入的物体属性
+    createMeshFromModels(
+        data, 
+        position: THREE.Vector3, 
+        rotation: THREE.Euler=null,
+        DToptions={}
+    ){  // 定义拖入的物体属性
         let mesh = new THREE.Mesh();
         let DT = new DTObject(mesh);
         let title = data.title;
@@ -713,8 +720,8 @@ export default class SceneBuilder{
         DT.updateWireframes();
 
         if(DT.label == "conveyor"){
-            attachObjects.add(DT.mesh);
-            localStorage.setItem('attachObjects', JSON.stringify(attachObjects));
+            attachObjects.add(mesh);
+            // localStorage.setItem('attachObjects', JSON.stringify(attachObjects));
         }
         if(DT.label == "WIP") mesh.rotateX(Math.PI/2);
 
@@ -739,7 +746,11 @@ export default class SceneBuilder{
         }
         mesh.castShadow = mesh.receiveShadow = true;
         mesh.position.copy(position);
+        if(rotation) mesh.rotation.copy(rotation);
         if(DT.scale != 1) mesh.scale.setScalar(DT.scale);
+        for(let option of Object.keys(DToptions)){
+            DT[option] = DToptions[option];
+        }
         this.createLabel(mesh);
         global.SCENE.add(mesh);
         return mesh;
@@ -768,7 +779,7 @@ export default class SceneBuilder{
             }
 
             if(DT1.label == "conveyor"){  // 让在制品遇到货物时受摩擦力作用
-                let J = 5;  // 转动惯量J
+                let J = 10;  // 转动惯量J
                 let k = Math.min(DT0.friction, DT1.friction);  // 滑动摩擦系数k
                 let kw = k;  // 转动摩擦系数kw
                 let m = DT0.mass;  // 质量m
@@ -777,7 +788,7 @@ export default class SceneBuilder{
                 mesh1.getWorldQuaternion(Q);
                 R.setFromQuaternion(Q);
                 let v;  // 货物速度v
-                let v0 = DT1.v0;  // 传送带中轴线速度v0
+                let v0 = DT1.v0 * 60 / fps;  // 传送带中轴线速度v0，运行时根据帧率进行调整
                 let theta = R.z;  //传送带旋转角θ 
                 R = 5;  // 传送带中轴线半径R
                 if(DT1.name?.includes("直道")){  // 摩擦力 F = kmg(v0-v)/||v0-v||，v和v0为向量
@@ -831,7 +842,7 @@ export default class SceneBuilder{
                         Fn.setX(mesh0.position.x - P.x);
                         Fn.setY(mesh0.position.y - P.y);
                         Fn.normalize();
-                        Fn.op_mul((ra > R ? -1 : 1)*k*m*g);
+                        Fn.op_mul((ra > R ? -1 : 1)*60/fps*k*m*g);
                         rb0.applyCentralForce(Fn);
                         // 然后施加转矩，使在制品尽量对准中轴线
                         let w0 = -dir * v0_vec.length() / ra;  //传送带角速度ω0 
@@ -902,7 +913,7 @@ export default class SceneBuilder{
             time = now;
         }
         else{  // 到一秒时更新帧率显示          
-            BottomFPS.textContent = frames;
+            BottomFPS.textContent = fps = frames;
             frames = 0;
             timeUpdateFPS = time;
         }
@@ -978,5 +989,87 @@ export default class SceneBuilder{
         }
         this.onCollision();
         if(emulateMode == "step") emulateMode = "pause";  // 步进模式下，每仿真完一步就停止
+    }
+    // 演示场景，用global.emit("demoScene")启动，用DT().traverse(dt=>dt.v0=2)改变所有以传送带速度
+    // 用global.emit("updateTrayPosition", {deviceID:'A', RFID:'a'})向托盘发送消息
+    demoScene(){
+        let mesh;  // 传送带
+        mesh = this.createMeshFromModels({title: "平行传送带-直道"}, 
+            new THREE.Vector3(99.6, 1.4, 0.3),
+            new THREE.Euler(0, 0, Math.PI),
+        );
+        mesh.scale.x = 93.2 / 7.5 * mesh.DT.scale;
+        mesh.DT.updateConveyorRigidbody();
+        this.createMeshFromModels({title: "平行传送带-顺时针弯道"}, 
+            new THREE.Vector3(6.4, 6.4, 0.3),
+            new THREE.Euler(0, 0, Math.PI/2),
+        );
+        mesh.DT.updateRigidbodyTransform(); global.SCENE.DT.updatePhysicalIDMap();
+        mesh = this.createMeshFromModels({title: "平行传送带-直道"}, 
+            new THREE.Vector3(1.4, 6.4, 0.3),
+            new THREE.Euler(0, 0, Math.PI/2),
+        );
+        mesh.scale.x = 30.2 / 7.5 * mesh.DT.scale;
+        mesh.DT.updateConveyorRigidbody();
+        this.createMeshFromModels({title: "平行传送带-顺时针弯道"}, 
+            new THREE.Vector3(6.4, 36.6, 0.3),
+        );
+        mesh = this.createMeshFromModels({title: "平行传送带-直道"}, 
+            new THREE.Vector3(6.4, 41.6, 0.3),
+        );
+        mesh.scale.x = 93.2 / 7.5 * mesh.DT.scale;
+        mesh.DT.updateConveyorRigidbody();
+        mesh = this.createMeshFromModels({title: "平行传送带-直道"}, 
+            new THREE.Vector3(90.2, 38.6, 0.3),
+        );
+        mesh.scale.x = 98.2 / 7.5 * mesh.DT.scale;
+        mesh.DT.updateConveyorRigidbody();
+        this.createMeshFromModels({title: "平行传送带-顺时针弯道"}, 
+            new THREE.Vector3(188.4, 33.6, 0.3),
+            new THREE.Euler(0, 0, -Math.PI/2),
+        );
+        mesh = this.createMeshFromModels({title: "平行传送带-直道"}, 
+            new THREE.Vector3(193.4, 33.6, 0.3),
+            new THREE.Euler(0, 0, -Math.PI/2),
+        );
+        mesh.scale.x = 30.2 / 7.5 * mesh.DT.scale;
+        mesh.DT.updateConveyorRigidbody();
+        this.createMeshFromModels({title: "平行传送带-顺时针弯道"}, 
+            new THREE.Vector3(188.4, 3.4, 0.3),
+            new THREE.Euler(0, 0, Math.PI),
+        );
+        mesh = this.createMeshFromModels({title: "平行传送带-直道"}, 
+            new THREE.Vector3(188.4, -1.6, 0.3),
+            new THREE.Euler(0, 0, Math.PI),
+        );
+        mesh.scale.x = 98.2 / 7.5 * mesh.DT.scale;
+        mesh.DT.updateConveyorRigidbody();
+        // 光电门和护栏
+        mesh = this.createMeshFromModels({title: "光电门"}, 
+            new THREE.Vector3(80.35, 41.6, 1),
+        );
+        mesh = this.createMeshFromModels({title: "光电门"}, 
+            new THREE.Vector3(106.95, 38.6, 1),
+        );
+        mesh = this.createMeshFromModels({title: "光电门"}, 
+            new THREE.Vector3(125.5, -1.6, 1),
+            new THREE.Euler(0, 0, Math.PI),
+        );
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(94, 42.5, 1.1),
+            new THREE.Euler(0, 0, 75*Math.PI/180),
+        );
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(97, 41.24, 1.1),
+            new THREE.Euler(0, 0, 64.3*Math.PI/180),
+        );
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(95.5, -2.4, 1.1),
+            new THREE.Euler(0, 0, 75*Math.PI/180),
+        );
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(92.26, -1.3, 1.1),
+            new THREE.Euler(0, 0, 64.3*Math.PI/180),
+        );
     }
 }

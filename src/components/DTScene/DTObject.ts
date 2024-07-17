@@ -439,7 +439,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     }
     updateConveyorRigidbody(){  // 更新传送带刚体的长度
         this.removeRigidBody();  // 移除刚体
-        let L = new THREE.Vector3(), l = this.mesh.scale.x;
+        let L = new THREE.Vector3();
         this.mesh.getWorldScale(L);
         L = L.x / this.scale;  // 获取传送带直道的长度缩放比
         this.createRigidBody(this.mesh, L);  // 重建刚体
