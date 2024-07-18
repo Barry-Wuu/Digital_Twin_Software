@@ -565,9 +565,10 @@ export default defineComponent({
         };
         if(transformControls){
           let mesh = this.scene.controller.object;
-          if(mesh.DT.name.includes("直道")){  // 不准传送带长度小于0.1
+          if(mesh?.DT.name.includes("直道")){  // 不准传送带长度小于0.1
             let length = mesh.scale.x / mesh.DT.scale * 7.5;
             if(length < 0.1) mesh.scale.x = 0.1 * mesh.DT.scale / 7.5;
+            mesh.DT.updateConveyorArrow();
           }
           global.emit("updateProp", {action:"mousemove", mesh: mesh});
         }
@@ -604,7 +605,7 @@ export default defineComponent({
     onMouseup(e) {
       if(transformControls && this.scene.controller.mode) {  // 改变传送带直道尺寸
         let conveyor = this.scene.controller.object;
-        conveyor.DT.updateConveyorRigidbody();
+        conveyor?.DT.updateConveyorRigidbody();
       }
       mouseType[e.button] = false;
       transformControls = false;
@@ -679,7 +680,7 @@ export default defineComponent({
       let width = window.innerWidth, height = window.innerHeight;
       if (!fullscreen) {  // 直接预览
         let tab = canvas;
-        for (let i = 0; i < 4; i++) { tab = tab.parentElement; }
+        for (let i = 0; i < 4; i++) { tab = tab?.parentElement; }
         width = canvas.clientWidth;
         height = tab.clientHeight - tab.children[0].clientHeight - 4;
       }  // 否则全屏预览

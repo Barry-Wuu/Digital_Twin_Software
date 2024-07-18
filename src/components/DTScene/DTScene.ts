@@ -1056,20 +1056,36 @@ export default class SceneBuilder{
             new THREE.Euler(0, 0, Math.PI),
         );
         mesh = this.createMeshFromModels({title: "护栏"}, 
-            new THREE.Vector3(94, 42.5, 1.1),
-            new THREE.Euler(0, 0, 75*Math.PI/180),
-        );
-        mesh = this.createMeshFromModels({title: "护栏"}, 
-            new THREE.Vector3(97, 41.24, 1.1),
+            new THREE.Vector3(96.92, 41.24, 1.1),
             new THREE.Euler(0, 0, 64.3*Math.PI/180),
         );
         mesh = this.createMeshFromModels({title: "护栏"}, 
-            new THREE.Vector3(95.5, -2.4, 1.1),
-            new THREE.Euler(0, 0, 75*Math.PI/180),
+            new THREE.Vector3(96.1, 38.88, 1.1),
+            new THREE.Euler(0, 0, 64.3*Math.PI/180),
         );
         mesh = this.createMeshFromModels({title: "护栏"}, 
-            new THREE.Vector3(92.26, -1.3, 1.1),
+            new THREE.Vector3(103.77, 39.89, 1.1),
+            new THREE.Euler(0, 0, Math.PI/2),
+        );
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(102.44, 37.23, 1.1),
+            new THREE.Euler(0, 0, Math.PI/2),
+        );
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(93.91, 1.16, 1.1),
             new THREE.Euler(0, 0, 64.3*Math.PI/180),
+        );
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(92.96, -1.67, 1.1),
+            new THREE.Euler(0, 0, 64.3*Math.PI/180),
+        );
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(86.95, 2.77, 1.1),
+            new THREE.Euler(0, 0, Math.PI/2),
+        );
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(86.20, 0, 1.1),
+            new THREE.Euler(0, 0, Math.PI/2),
         );
     }
 }
