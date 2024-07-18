@@ -1046,7 +1046,7 @@ export default class SceneBuilder{
         mesh.DT.updateConveyorRigidbody();
         // 光电门和护栏
         mesh = this.createMeshFromModels({title: "光电门"}, 
-            new THREE.Vector3(80.35, 41.6, 1),
+            new THREE.Vector3(13.9, 41.6, 1),
         );
         mesh = this.createMeshFromModels({title: "光电门"}, 
             new THREE.Vector3(106.95, 38.6, 1),
