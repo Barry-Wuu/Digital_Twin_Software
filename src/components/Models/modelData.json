@@ -199,7 +199,7 @@
             }
         },
         "护栏": {
-            "icon": "护栏.jpg",
+            "icon": "护栏.png",
             "geometry": "new THREE.BoxGeometry(0.5, 6, 1)",
             "material": { "color": "gray" },
             "rigid": true, 

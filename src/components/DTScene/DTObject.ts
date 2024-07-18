@@ -2,6 +2,7 @@ import * as Ammo from "ammo.js"
 import { ConvexGeometry } from "three/examples/jsm/geometries/ConvexGeometry.js"
 import global from "../../Global"
 import * as THREE from "three"
+import { ObjectDirective } from "vue";
 
 let position = new THREE.Vector3();
 const zeroVector_Ammo = new Ammo.btVector3();
@@ -437,13 +438,32 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             global.physicalIDMap[DT.physicalID] = DT;
         }
     }
-    updateConveyorRigidbody(){  // 更新传送带刚体的长度
+    updateConveyorRigidbody(value: number = null){  // 更新传送带刚体的长度
+        if(this.layers.attachPoint1[0]) 
+            this.layers.attachPoint1[0].scale.x = 
+                value ? 7.5 / value / this.scale : 1/this.mesh.scale.x;
+        if(this.layers.attachPoint1[0]) 
+            this.layers.attachPoint2[0].scale.x = 
+                value ? 7.5 / value / this.scale : 1/this.mesh.scale.x;
+        this.updateConveyorArrow(value);
         this.removeRigidBody();  // 移除刚体
         let L = new THREE.Vector3();
         this.mesh.getWorldScale(L);
         L = L.x / this.scale;  // 获取传送带直道的长度缩放比
         this.createRigidBody(this.mesh, L);  // 重建刚体
         this.updateRigidbodyTransform();
+    }
+    updateConveyorArrow(value: number|THREE.Vector3 = null){  // 实时
+        if(!value){
+            value = new THREE.Vector3();
+            this.mesh.getWorldScale(value);
+            value = value.x / this.scale * 7.5;  // 获取传送带直道的长度缩放比
+        }
+        try{
+            if(value >= 3) this.layers.indicator[0].scale.x = 7.5 / value / this.scale;
+            else this.layers.indicator[0].scale.x =  2.5 / this.scale;
+        }
+        catch {}
     }
     updateRigidbodyTransform(mesh=this.mesh, force=false, target=this.mesh){  // 强制更新刚体位姿
         // 将物体的速度和角速度清零

@@ -208,14 +208,14 @@
               type: "yes_no",
               content: "传送带过长可能会导致其无法正常工作，是否确认修改？",
               yes: () => {  // 确认修改
-                DT.value.updateConveyorRigidbody();
+                DT.value.updateConveyorRigidbody(JSON.parse(e.target.value));
                 eval(`${prop} = ${result}`);
               },
               no: () => {}  // no为取消
             });
           }
           else {
-            DT.value.updateConveyorRigidbody();
+            DT.value.updateConveyorRigidbody(JSON.parse(e.target.value));
             eval(`${prop} = ${result}`);
           }
         }
