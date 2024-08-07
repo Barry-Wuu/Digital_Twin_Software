@@ -478,8 +478,6 @@ export default class SceneBuilder{
         loading = false;
         if(!animate){
             animate = () => {
-                try{ requestAnimationFrame(animate) }
-                catch{ return }
                 if(moveToId > 0){  // 开始移动相机到双击的物体
                     global.emit("controlStart", moveToId);  // 防止相机移动时控制器消失
                     targetObject = global.SCENE.getObjectById(moveToId);  
@@ -527,6 +525,8 @@ export default class SceneBuilder{
                 }
                 this.render();
                 this.orbitControl.update();
+                try{ requestAnimationFrame(animate) }
+                catch{ return }
             };
             animate();
         }
@@ -1004,7 +1004,7 @@ export default class SceneBuilder{
             new THREE.Vector3(6.4, 6.4, 0.3),
             new THREE.Euler(0, 0, Math.PI/2),
         );
-        mesh.DT.updateRigidbodyTransform(); global.SCENE.DT.updatePhysicalIDMap();
+        mesh.DT.createRigidBody();
         mesh = this.createMeshFromModels({title: "平行传送带-直道"}, 
             new THREE.Vector3(1.4, 6.4, 0.3),
             new THREE.Euler(0, 0, Math.PI/2),
@@ -1014,6 +1014,7 @@ export default class SceneBuilder{
         this.createMeshFromModels({title: "平行传送带-顺时针弯道"}, 
             new THREE.Vector3(6.4, 36.6, 0.3),
         );
+        mesh.DT.createRigidBody();
         mesh = this.createMeshFromModels({title: "平行传送带-直道"}, 
             new THREE.Vector3(6.4, 41.6, 0.3),
         );
@@ -1028,6 +1029,7 @@ export default class SceneBuilder{
             new THREE.Vector3(188.4, 33.6, 0.3),
             new THREE.Euler(0, 0, -Math.PI/2),
         );
+        mesh.DT.createRigidBody();
         mesh = this.createMeshFromModels({title: "平行传送带-直道"}, 
             new THREE.Vector3(193.4, 33.6, 0.3),
             new THREE.Euler(0, 0, -Math.PI/2),
@@ -1038,6 +1040,7 @@ export default class SceneBuilder{
             new THREE.Vector3(188.4, 3.4, 0.3),
             new THREE.Euler(0, 0, Math.PI),
         );
+        mesh.DT.createRigidBody();
         mesh = this.createMeshFromModels({title: "平行传送带-直道"}, 
             new THREE.Vector3(188.4, -1.6, 0.3),
             new THREE.Euler(0, 0, Math.PI),
@@ -1048,44 +1051,55 @@ export default class SceneBuilder{
         mesh = this.createMeshFromModels({title: "光电门"}, 
             new THREE.Vector3(13.9, 41.6, 1),
         );
+        mesh.DT.createRigidBody();
         mesh = this.createMeshFromModels({title: "光电门"}, 
             new THREE.Vector3(106.95, 38.6, 1),
         );
+        mesh.DT.createRigidBody();
         mesh = this.createMeshFromModels({title: "光电门"}, 
             new THREE.Vector3(125.5, -1.6, 1),
             new THREE.Euler(0, 0, Math.PI),
         );
+        mesh.DT.createRigidBody();
         mesh = this.createMeshFromModels({title: "护栏"}, 
-            new THREE.Vector3(96.92, 41.24, 1.1),
+            new THREE.Vector3(96.95, 41.52, 1.1),
             new THREE.Euler(0, 0, 64.3*Math.PI/180),
         );
+        mesh.DT.createRigidBody();
         mesh = this.createMeshFromModels({title: "护栏"}, 
-            new THREE.Vector3(96.1, 38.88, 1.1),
+            new THREE.Vector3(96.1, 38.71, 1.1),
             new THREE.Euler(0, 0, 64.3*Math.PI/180),
         );
+        mesh.DT.createRigidBody();
         mesh = this.createMeshFromModels({title: "护栏"}, 
             new THREE.Vector3(103.77, 39.89, 1.1),
             new THREE.Euler(0, 0, Math.PI/2),
         );
+        mesh.DT.createRigidBody();
         mesh = this.createMeshFromModels({title: "护栏"}, 
             new THREE.Vector3(102.44, 37.23, 1.1),
             new THREE.Euler(0, 0, Math.PI/2),
         );
+        mesh.DT.createRigidBody();
         mesh = this.createMeshFromModels({title: "护栏"}, 
             new THREE.Vector3(93.91, 1.16, 1.1),
             new THREE.Euler(0, 0, 64.3*Math.PI/180),
         );
+        mesh.DT.createRigidBody();
         mesh = this.createMeshFromModels({title: "护栏"}, 
             new THREE.Vector3(92.96, -1.67, 1.1),
             new THREE.Euler(0, 0, 64.3*Math.PI/180),
         );
+        mesh.DT.createRigidBody();
         mesh = this.createMeshFromModels({title: "护栏"}, 
             new THREE.Vector3(86.95, 2.77, 1.1),
             new THREE.Euler(0, 0, Math.PI/2),
         );
+        mesh.DT.createRigidBody();
         mesh = this.createMeshFromModels({title: "护栏"}, 
             new THREE.Vector3(86.20, 0, 1.1),
             new THREE.Euler(0, 0, Math.PI/2),
         );
+        mesh.DT.createRigidBody();
     }
 }

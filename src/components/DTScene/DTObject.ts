@@ -17,7 +17,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     custom = {}  // 自定义属性
     expanded: boolean  // 是否在层级树中展开
     friction0 = 0.5  // 静摩擦力
-    friction = 0.8  // 滑动摩擦力
+    friction = 1  // 滑动摩擦力
     geometry: THREE.object  // 模型几何体
     icon: HTMLElement  // 物体图标
     id: number  // 序号
