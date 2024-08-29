@@ -49,6 +49,10 @@ var UP = new THREE.Vector3(0, 0, 1);  // z轴朝上
 
 // 物理量
 var animate;
+var btVector3_Force = new Ammo.btVector3(0, 0, 0);
+var btVector3_Fn = new Ammo.btVector3(0, 0, 0);
+var btVector3_M = new Ammo.btVector3(0, 0, 0);
+var btVector3_v0_vec = new Ammo.btVector3(0, 0, 0);
 const clock = new THREE.Clock();
 const g = 9.8;
 const G = new Ammo.btVector3( 0, 0, -g );
@@ -792,17 +796,20 @@ export default class SceneBuilder{
                 let theta = R.z;  //传送带旋转角θ 
                 R = 5;  // 传送带中轴线半径R
                 if(DT1.name?.includes("直道")){  // 摩擦力 F = kmg(v0-v)/||v0-v||，v和v0为向量
-                    // 将v0从标量转换为货物处的速度矢量v0_real
-                    let v0_real = new Ammo.btVector3(v0*Math.cos(theta), v0*Math.sin(theta), 0);
+                    let v0_vec = btVector3_v0_vec;  // 将v0从标量转换为货物处的速度矢量v0_vec
+                    v0_vec.setValue(v0*Math.cos(theta), v0*Math.sin(theta), 0);
                     v = rb0.getLinearVelocity();
-                    let F = new Ammo.btVector3();
-                    F.op_add(v0_real).op_sub(v).normalize();
+                    let F = btVector3_Force; 
+                    F.setValue(0, 0, 0);
+                    F.op_add(v0_vec).op_sub(v).normalize();
                     F.op_mul(k*m*g);
                     rb0.applyCentralForce(F);
                     // 然后施加摩擦力矩，使在制品尽量不旋转
                     let w0 = 0;  //传送带角速度ω0 
                     let w = rb0.getAngularVelocity().z();  //货物角速度ω0
-                    let M = new Ammo.btVector3(0, 0, kw*J*(w0 - w));
+                    let M = btVector3_M;
+                    M.setValue(0, 0, 0);
+                    M.setZ(kw*J*(w0 - w));
                     rb0.applyTorque(M);  // 同理，摩擦力矩 M = kw*J*(ω0-ω)
                     /*
                     let theta0 = new THREE.Quaternion();
@@ -827,27 +834,29 @@ export default class SceneBuilder{
                     let ra = r.length();  // 周向矢量r=v0-v，模ra=||v0-v||
                     if(ra>=3.2 && ra<=6.4){  // 当货物到弯道的半径为3.2≤ra≤6.4时向其质心施力
                         // 将v0从标量转换为货物处的速度矢量v0_vec
-                        let v0_vec = new Ammo.btVector3(r.y, -r.x, 0);  // 旋转v0
+                        let v0_vec = btVector3_v0_vec;
+                        v0_vec.setValue(r.y, -r.x, 0);  // 旋转v0
                         v0_vec.normalize();
                         v0_vec.op_mul(dir * v0 * ra / R);  // 将传送带上r=R处的速度转换为r=ra处的速度
                         v = rb0.getLinearVelocity();
-                        let F = new Ammo.btVector3();  // 周向摩擦力F = μmg(v0-v)/||v0-v||，v和v0为向量
+                        let F = btVector3_Force;  // 周向摩擦力F = μmg(v0-v)/||v0-v||，v和v0为向量
+                        F.setValue(0, 0, 0);
                         F.op_add(v0_vec);
                         F.op_sub(v);
                         F.normalize();
                         F.op_mul(k*m*g);
                         rb0.applyCentralForce(F);
                         // 施加径向摩擦力，使在制品运动时尽量恢复到中轴线
-                        let Fn = new Ammo.btVector3();
-                        Fn.setX(mesh0.position.x - P.x);
-                        Fn.setY(mesh0.position.y - P.y);
+                        let Fn = btVector3_Fn;
+                        Fn.setValue(mesh0.position.x - P.x, mesh0.position.y - P.y, 0);
                         Fn.normalize();
                         Fn.op_mul((ra > R ? -1 : 1)*60/fps*k*m*g);
                         rb0.applyCentralForce(Fn);
                         // 然后施加转矩，使在制品尽量对准中轴线
                         let w0 = -dir * v0_vec.length() / ra;  //传送带角速度ω0 
                         let w = rb0.getAngularVelocity().z();  //货物角速度ω0
-                        let M = new Ammo.btVector3(0, 0, kw*J*(w0 - w));
+                        let M = btVector3_M;
+                        M.setValue(0, 0, kw*J*(w0 - w));
                         rb0.applyTorque(M);  // 同理，摩擦力矩 M = kw*J*(ω0-ω)
                     }  
                 }

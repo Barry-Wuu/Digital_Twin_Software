@@ -10,28 +10,7 @@ import global from "../../Global"
     }
 */
 export default class HttpClient{
-    getData = () => {  // 使用阻塞的方式连接并接收消息，全局超时时间为this.TIMEOUT=500s
-        if(!this.connect) return;
-        if(this.thread_num >= this.max_thread_num) return;
-        this.thread_num++; 
-        console.log("线程数：", this.thread_num)
-        axios.get(
-            `http://${this.SITE}:${this.PORT}/${this.PATH}`, 
-            {timeout: this.TIMEOUT}
-        ).then(
-            result => {
-                let data = result.data;
-                if(data.RFID && data.deviceID) global.emit("updateTrayPosition", data);
-                this.thread_num--;
-                this.getData();
-            }
-        ).catch(error => {
-            console.error(error.message, error);
-            this.thread_num--;
-            this.getData();
-        });
-    };
-     
+    getData;  // 回调函数
     connect = true;  // 允许连接
     max_thread_num = 10;  // 最大线程数
     polling;  // 连接定时器
@@ -42,17 +21,18 @@ export default class HttpClient{
     SITE: string;  // 连接地址
     TIMEOUT: number;  // 连接超时时间（毫秒）
 
-    constructor({interval, path, port, site="localhost", timeout}){  // 在控制台输入global.emit("sendMessage", {a:1})用于发送消息
+    constructor({interval, path, port, site="localhost", timeout, callback}){  // 在控制台输入global.emit("sendMessage", {a:1})用于发送消息
         this.INTERVAL = interval;
         this.PATH = path;
         this.PORT = port;
         this.SITE = site;
         this.TIMEOUT = timeout;
+        this.getData = callback;
         global.on("sendMessage", data => this.postData(data));
     }
     startConnect() {  // 连接启动
         this.connect = true;
-        this.getData();
+        this.getData(axios, this);
         // this.polling = setInterval(this.getData, 100);
         // setTimeout(this.fetchData, 500000).then(()=>this.startPolling());
     }

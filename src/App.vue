@@ -103,16 +103,36 @@
       path: "positionfeedback/frontclient",
       interval: 100,  // ms
       timeout: 500000,  // ms
+      callback: async function (axios, obj) {  // 使用阻塞的方式连接并接收消息，全局超时时间为this.TIMEOUT=500s
+        try{
+          if(!obj.connect) return;
+          if(obj.thread_num >= obj.max_thread_num) return;
+          obj.thread_num++; 
+          console.log("线程数：", obj.thread_num)
+          let result = await axios.get(
+              `http://${obj.SITE}:${obj.PORT}/${obj.PATH}`, 
+              {timeout: obj.TIMEOUT}
+          );
+          let data = result.data;
+          if(data.RFID && data.deviceID) global.emit("updateTrayPosition", data);
+          obj.thread_num--;
+          obj.getData(axios, obj);
+        } catch(error) {
+            console.error(error.message, error);
+            obj.thread_num--;
+            obj.getData(axios, obj);
+        };
+      }
     });
-    // httpProcess.startConnect();  // 连接启动
+    httpProcess.startConnect();  // 连接启动
     global.on("beforeunload", () => {  // 退出时清理临时文件（src/temp文件夹）
       httpProcess.kill();
     })
-    window.addEventListener("drop", ()=>{
+    window.addEventListener("drop", () => {
       document.body.style.userSelect = '';  // 恢复文本选择功能
       draggedSpliter = null;
     });
-    window.addEventListener("mouseup", ()=>{
+    window.addEventListener("mouseup", () => {
       document.body.style.userSelect = '';  // 恢复文本选择功能
       draggedSpliter = null;
     });
