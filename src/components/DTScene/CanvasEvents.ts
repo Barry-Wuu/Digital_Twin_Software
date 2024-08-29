@@ -807,7 +807,7 @@ export default defineComponent({
     resizeObserver.observe(canvas.parentElement.parentElement.parentElement);
     selectionHelper.classList.add('selectBox');
     selectionHelper.style.pointerEvents = 'none';
-    canvas.addEventListener("keydown", (k) => {  // 全屏模式下按ESC退出
+    canvas.addEventListener("keydown", k => {  // 全屏模式下按ESC退出
       if (k.code == "Escape" && fullscreen) {
         global.emit("changeFullscreen");
       }
