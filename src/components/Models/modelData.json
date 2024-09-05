@@ -222,7 +222,7 @@
             "icon": "货物.jpg",
             "geometry": "new THREE.BoxGeometry(1, 1, 1)",
             "label": "WIP",
-            "mass": 1,
+            "mass": 5,
             "material": { "color": "blue" },
             "rigid": true,
             "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(0.5, 0.5, 0.5))"

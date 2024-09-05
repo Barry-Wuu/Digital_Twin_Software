@@ -376,6 +376,10 @@ export default class SceneBuilder{
 
         // 更新托盘位置
         global.on("updateTrayPosition", (data: {deviceID, RFID}) => {
+            if(emulateMode != "play") return;  // 暂停时不更新
+            if(data.RFID = "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
+                data.RFID = "822fbee2-1fe0-45c8-b403-8b5cdb31cb25";  // 
+            console.log("传送：", data)
             let sensorDT = global.physicalIDMap[data.deviceID];
             let trayDT = global.physicalIDMap[data.RFID];
             if(!sensorDT || !trayDT) return;  // 若传感器或托盘不存在，则不执行后续操作
@@ -397,6 +401,8 @@ export default class SceneBuilder{
                     trayDT.mesh.rotateOnWorldAxis(UP, R.z);
                     trayDT.updateRigidbodyTransform();  // 强制更新刚体位姿
                 }
+                // 光电门1延时20s，其它光电门延时5s
+                let timeout = data.deviceID == "a5197017-c560-4713-aacd-01f097dda18f" ? 5000 : 5000;
                 setTimeout(() => {  // 五秒后修改托盘的碰撞掩码，允许其通过光电门
                     trayDT.sensorPass = true;
                     global.physicsWorld.removeRigidBody(trayDT.rb);
@@ -406,8 +412,8 @@ export default class SceneBuilder{
                         global.physicsWorld.addRigidBody(trayDT.rb, 1, 3);
                         trayDT.sensorPass = false;
                         trayDT.touchSensor = null;
-                    }, 2500);
-                }, 5000);
+                    }, 5000);
+                }, timeout);
             }
             else if (trayDT.sensorPass){
                 console.log("光电门冷却中");
@@ -420,7 +426,15 @@ export default class SceneBuilder{
 
         // 控制器快捷键设置
         this.canvas.addEventListener("keydown", e => {
+            console.log(e.code)
             if(global.mode == "edit"){  // 在编辑模式下
+                // 光电门1：a5197017-c560-4713-aacd-01f097dda18f
+                // 光电门3：75292a01-6d17-4d50-bb75-d42718f75fe8
+                // 光电门5：7f698a28-d9d4-456a-9814-19d6c9b2f1a1
+                // 调试发送虚拟光电门信号
+                if(e.code == "Digit1") global.emit("updateTrayPosition", {deviceID: "a5197017-c560-4713-aacd-01f097dda18f", RFID: "822fbee2-1fe0-45c8-b403-8b5cdb31cb25"});
+                if(e.code == "Digit3") global.emit("updateTrayPosition", {deviceID: "75292a01-6d17-4d50-bb75-d42718f75fe8", RFID: "822fbee2-1fe0-45c8-b403-8b5cdb31cb25"});
+                if(e.code == "Digit5") global.emit("updateTrayPosition", {deviceID: "7f698a28-d9d4-456a-9814-19d6c9b2f1a1", RFID: "822fbee2-1fe0-45c8-b403-8b5cdb31cb25"}); 
                 if(e.code == "KeyQ") this.controller.setMode("translate");  // 按Q平移
                 else if(e.code == "KeyW") this.controller.setMode("rotate");  // 按W旋转
                 else if(e.code == "KeyE") {  // 按R切换全局坐标系和局部坐标系
@@ -482,6 +496,7 @@ export default class SceneBuilder{
         loading = false;
         if(!animate){
             animate = () => {
+                requestAnimationFrame(animate);
                 if(moveToId > 0){  // 开始移动相机到双击的物体
                     global.emit("controlStart", moveToId);  // 防止相机移动时控制器消失
                     targetObject = global.SCENE.getObjectById(moveToId);  
@@ -528,9 +543,6 @@ export default class SceneBuilder{
                     }
                 }
                 this.render();
-                this.orbitControl.update();
-                try{ requestAnimationFrame(animate) }
-                catch{ return }
             };
             animate();
         }
@@ -792,7 +804,7 @@ export default class SceneBuilder{
                 mesh1.getWorldQuaternion(Q);
                 R.setFromQuaternion(Q);
                 let v;  // 货物速度v
-                let v0 = DT1.v0 * 60 / fps;  // 传送带中轴线速度v0，运行时根据帧率进行调整
+                let v0 = DT1.v0 * 2 * 60 / fps;  // 传送带中轴线速度v0，运行时根据帧率进行调整
                 let theta = R.z;  //传送带旋转角θ 
                 R = 5;  // 传送带中轴线半径R
                 if(DT1.name?.includes("直道")){  // 摩擦力 F = kmg(v0-v)/||v0-v||，v和v0为向量
@@ -844,14 +856,8 @@ export default class SceneBuilder{
                         F.op_add(v0_vec);
                         F.op_sub(v);
                         F.normalize();
-                        F.op_mul(k*m*g);
+                        F.op_mul(0.6*k*m*g);
                         rb0.applyCentralForce(F);
-                        // 施加径向摩擦力，使在制品运动时尽量恢复到中轴线
-                        let Fn = btVector3_Fn;
-                        Fn.setValue(mesh0.position.x - P.x, mesh0.position.y - P.y, 0);
-                        Fn.normalize();
-                        Fn.op_mul((ra > R ? -1 : 1)*60/fps*k*m*g);
-                        rb0.applyCentralForce(Fn);
                         // 然后施加转矩，使在制品尽量对准中轴线
                         let w0 = -dir * v0_vec.length() / ra;  //传送带角速度ω0 
                         let w = rb0.getAngularVelocity().z();  //货物角速度ω0
@@ -999,8 +1005,12 @@ export default class SceneBuilder{
         this.onCollision();
         if(emulateMode == "step") emulateMode = "pause";  // 步进模式下，每仿真完一步就停止
     }
-    // 演示场景，用global.emit("demoScene")启动，用DT().traverse(dt=>dt.v0=2)改变所有以传送带速度
+    // 演示场景，用global.emit("demoScene")启动，用DT().traverse(dt=>dt.v0=2)改变所有传送带速度
     // 用global.emit("updateTrayPosition", {deviceID:'A', RFID:'a'})向托盘发送消息
+    // 光电门1：a5197017-c560-4713-aacd-01f097dda18f
+    // 光电门3：75292a01-6d17-4d50-bb75-d42718f75fe8
+    // 光电门5：7f698a28-d9d4-456a-9814-19d6c9b2f1a1
+    // 托盘16：822fbee2-1fe0-45c8-b403-8b5cdb31cb25
     demoScene(){
         let mesh;  // 传送带
         mesh = this.createMeshFromModels({title: "平行传送带-直道"}, 
@@ -1061,15 +1071,25 @@ export default class SceneBuilder{
             new THREE.Vector3(13.9, 41.6, 1),
         );
         mesh.DT.createRigidBody();
+        mesh.DT.name = "光电门1";
+        mesh.DT.physicalID = "a5197017-c560-4713-aacd-01f097dda18f";
+
         mesh = this.createMeshFromModels({title: "光电门"}, 
             new THREE.Vector3(106.95, 38.6, 1),
         );
         mesh.DT.createRigidBody();
+        mesh.DT.name = "光电门3";
+        mesh.DT.physicalID = "75292a01-6d17-4d50-bb75-d42718f75fe8";
+
         mesh = this.createMeshFromModels({title: "光电门"}, 
             new THREE.Vector3(125.5, -1.6, 1),
             new THREE.Euler(0, 0, Math.PI),
         );
         mesh.DT.createRigidBody();
+        mesh.DT.name = "光电门5";
+        mesh.DT.physicalID = "7f698a28-d9d4-456a-9814-19d6c9b2f1a1";
+
+        // 接缝处护栏
         mesh = this.createMeshFromModels({title: "护栏"}, 
             new THREE.Vector3(96.95, 41.52, 1.1),
             new THREE.Euler(0, 0, 64.3*Math.PI/180),
@@ -1110,5 +1130,94 @@ export default class SceneBuilder{
             new THREE.Euler(0, 0, Math.PI/2),
         );
         mesh.DT.createRigidBody();
+
+        // 转弯处护栏
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(0.79, 39.67, 1.1),
+            new THREE.Euler(0, 0, 331.31*Math.PI/180),
+        );
+        mesh.DT.createRigidBody();
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(3.86, 42.47, 1.1),
+            new THREE.Euler(0, 0, 293.43*Math.PI/180),
+        );
+        mesh.DT.createRigidBody();
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(7.65, 43, 1.1),
+            new THREE.Euler(0, 0, Math.PI/2),
+        );
+        mesh.DT.createRigidBody();
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(10.12, 40.2, 1.1),
+            new THREE.Euler(0, 0, Math.PI/2),
+        );
+        mesh.DT.createRigidBody();
+
+        // 转弯处护栏
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(188.53, 40, 1.1),
+            new THREE.Euler(0, 0, 88.81*Math.PI/180),
+        );
+        mesh.DT.createRigidBody();
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(192.02, 38.88, 1.1),
+            new THREE.Euler(0, 0, 55.51*Math.PI/180),
+        );
+        mesh.DT.createRigidBody();
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(194.23, 36.24, 1.1),
+            new THREE.Euler(0, 0, 20*Math.PI/180),
+        );
+        mesh.DT.createRigidBody();
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(194.86, 31.46, 1.1),
+        );
+        mesh.DT.createRigidBody();
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(191.86, 28.37, 1.1),
+        );
+        mesh.DT.createRigidBody();
+
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(194.3, 0.93, 1.1),
+            new THREE.Euler(0, 0, 337.28*Math.PI/180),
+        );
+        mesh.DT.createRigidBody();
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(191.86, -1.98, 1.1),
+            new THREE.Euler(0, 0, 302.78*Math.PI/180),
+        );
+        mesh.DT.createRigidBody();
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(187.58, -3, 1.1),
+            new THREE.Euler(0, 0, Math.PI/2),
+        );
+        mesh.DT.createRigidBody();
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(185.2, -0.2, 1.1),
+            new THREE.Euler(0, 0, Math.PI/2),
+        );
+        mesh.DT.createRigidBody();
+
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(3.57, 0.66, 1.1),
+            new THREE.Euler(0, 0, 63.81*Math.PI/180),
+        );
+        mesh.DT.createRigidBody();
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(0.83, 3.25, 1.1),
+            new THREE.Euler(0, 0, 29.44*Math.PI/180),
+        );
+        mesh.DT.createRigidBody();
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(0, 7.95, 1.1),
+        );
+        mesh.DT.createRigidBody();
+        mesh = this.createMeshFromModels({title: "护栏"}, 
+            new THREE.Vector3(2.8, 12, 1.1),
+        );
+        mesh.DT.createRigidBody();
+
+        mesh.DT.updatePhysicalIDMap();
     }
 }
