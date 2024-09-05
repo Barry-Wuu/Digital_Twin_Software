@@ -124,7 +124,7 @@
         };
       }
     });
-    httpProcess.startConnect();  // 连接启动
+    httpProcess.startConnect();  // 启动连接
     global.on("beforeunload", () => {  // 退出时清理临时文件（src/temp文件夹）
       httpProcess.kill();
     })
