@@ -1081,7 +1081,6 @@ export default class SceneBuilder{
         );
         mesh.DT.createRigidBody();
 
-        // 转弯处护栏
         mesh = this.createMeshFromModels({title: "护栏"}, 
             new THREE.Vector3(0.79, 39.67, 1.1),
             new THREE.Euler(0, 0, 331.31*Math.PI/180),
@@ -1169,5 +1168,4 @@ export default class SceneBuilder{
         mesh.DT.createRigidBody();
 
         mesh.DT.updatePhysicalIDMap();
-    }
-}
+    }       }
