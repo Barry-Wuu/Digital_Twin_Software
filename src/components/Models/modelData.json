@@ -203,19 +203,19 @@
             "geometry": "new THREE.BoxGeometry(0.5, 6, 1)",
             "material": { "color": "gray" },
             "rigid": true, 
-            "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(0.25, 3, 0.5))"
+            "rigidShape": "RAPIER.ColliderDesc.cuboid(0.25, 3, 0.5)"
         },
         "光电门": {
             "icon": "光电门.jpg",
             "geometry": "new THREE.BoxGeometry(0.2, 3, 0.8)",
             "label": "sensor",
             "rigid": true, 
-            "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(0.1, 1.5, 0.4))",
+            "rigidShape": "RAPIER.ColliderDesc.cuboid(0.1, 1.5, 0.4)",
             "material": { "color": "lime", "opacity": 0.5, "transparent": true },
             "layers": {
                 "indicator": "[this.createArrow(0.5, 0, 0)]"
             },
-            "code": "let rb: this.mesh.userData.physicsBody, \n rb.setMassProps(0, new Ammo.btVector3(0, 0, 0))"
+            "code": "let rb: this.mesh.userData.physicsBody, \n rb.setMassProps(0, new CANNON.Vec3())"
         },
 
         "货物": {
@@ -225,7 +225,7 @@
             "mass": 5,
             "material": { "color": "blue" },
             "rigid": true,
-            "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(0.5, 0.5, 0.5))"
+            "rigidShape": "RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5)"
         },
         "托盘": {
             "icon": "托盘.jpg",
@@ -234,7 +234,7 @@
             "mass": 1,
             "material": { "color": "rgb(255, 255, 128)" },
             "rigid": true,
-            "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(1, 0.3, 1))"
+            "rigidShape": "RAPIER.ColliderDesc.cuboid(1, 0.3, 1)"
         },
         "发生器": {
             "icon": "发生器.jpg",
@@ -249,7 +249,7 @@
             "label": "special",
             "material": { "color": "red", "opacity": 0.5, "transparent": true },
             "rigid": true,
-            "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(0.5, 0.5, 0.5))"
+            "rigidShape": "RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5)"
         },
         
         "正方体": {
@@ -259,7 +259,7 @@
             "material": { "color": "lime" },
             "mass": 1,
             "rigid": true,
-            "rigidShape": "new Ammo.btBoxShape(new Ammo.btVector3(0.5, 0.5, 0.5))"
+            "rigidShape": "RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5)"
         },
         "球": {
             "icon": "sphere.jpg",
@@ -268,7 +268,7 @@
             "material": { "color": "red" },
             "mass": 1,
             "rigid": true,
-            "rigidShape": "new Ammo.btSphereShape(0.5)"
+            "rigidShape": "RAPIER.ColliderDesc.ball(0.5)"
         },      
         "圆柱": {
             "icon": "cylinder.jpg",
@@ -277,7 +277,7 @@
             "material": { "color": "blue" },
             "mass": 1,
             "rigid": true,
-            "rigidShape": "new Ammo.btCylinderShape(new Ammo.btVector3(0.5, 1, 0.5))"
+            "rigidShape": "RAPIER.ColliderDesc.cylinder(0.5, 0.5)"
         },
         "锥体": {
             "icon": "cone.jpg",
@@ -286,7 +286,7 @@
             "material": { "color": "yellow" },
             "mass": 1,
             "rigid": true,
-            "rigidShape": "new Ammo.btConeShape(0.5, 1, 12)"
+            "rigidShape": "RAPIER.ColliderDesc.cone(0.5, 0.5)"
         }
     }
 }
