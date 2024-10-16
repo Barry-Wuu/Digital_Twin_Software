@@ -822,7 +822,7 @@ export default class SceneBuilder{
                             // 然后施加转矩，使在制品尽量对准中轴线
                             let w0 = -dir * v0_vec.length() / ra;  //传送带角速度ω0 
                             let w = rb0.angvel().z;  //货物角速度ω0
-                            let M = new RAPIER.Vector3(0, 0, kw*J*(w0 - w));
+                            let M = new RAPIER.Vector3(0, 0, 1.5*kw*J*(w0 - w));
                             rb0.addTorque(M);  // 同理，摩擦力矩 M = kw*J*(ω0-ω)
                         }  
                     }
