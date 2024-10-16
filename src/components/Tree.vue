@@ -119,7 +119,7 @@
         },
         deleteChoices(){
           for(let id of choices.value){
-            let DTObject = this.findDTObjectById(id);
+            let DTObject = this.findDTObjectById(id); console.log(id, DTObject)
             if(DTObject) DTObject.destroy();
           }
           global.emit("hideProperty");  // 清空属性栏

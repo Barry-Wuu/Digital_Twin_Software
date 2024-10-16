@@ -9,14 +9,11 @@ export default {  // 导出所有数据
     camera: null,
     DTObjects: ref([]),
     layers: [],  // 当前场景的图层
+    mesh2rb: new Map(),  // mesh2rb为网格到刚体的映射表，用于防止mesh和rb之间循环引用
     mode: "edit",  // 编辑模式（edit）或浏览模式（view）
     physicalIDMap: {},  // 物理实体ID到物体的映射关系
     physicsWorld: null,
-    rb_mesh: {},
-    /* 
-        rb_mesh为碰撞体到刚体和网格的映射表
-        因为碰撞检测时碰撞体和刚体不同，而两者ptr相同，所以需要用ptr在此表中查找刚体和网格
-    */
+    rb2mesh: new Map(),  // rb2mesh为刚体到网格的映射表，用于防止mesh和rb之间循环引用
     SCENE: new THREE.Scene(),
     // MITT库的方法，其中emit为发送消息，on为接收消息
     emit: MITT.emit,

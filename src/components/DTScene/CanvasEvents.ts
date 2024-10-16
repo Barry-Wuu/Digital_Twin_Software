@@ -462,11 +462,11 @@ export default defineComponent({
           tempOpacity = null;
         }
 
-        let rb = dragModel.DT.rb;
+        let rb = dragModel.DT.rb();
         if (!rb && dragModel.DT.rigidShape) {  // 让网格跟随刚体
           dragModel.DT.createRigidBody();
+          global.DTObjects.value.push(dragModel.DT);
         }
-        global.DTObjects.value.push(dragModel.DT);
         dragModel.DT.updateRigidbodyTransform();  // 强制更新刚体位姿
         if (tempModel) {
           tempModel.clear();
@@ -558,7 +558,7 @@ export default defineComponent({
         let pos = this.scene.camera.position;
       };
     },
-    onMousemove(e) { 
+    onMousemove(e) {
       if (mouseType[0]) {
         this.scene.orbitControl.mouseButtons = {
           LEFT: global.mode == "edit" ? -1 : ROTATE, MIDDLE: isDrag ? -1 : ZOOM, RIGHT: -1
@@ -603,9 +603,10 @@ export default defineComponent({
       if (isDrag) this.onDragover(e);
     },
     onMouseup(e) {
-      if(transformControls && this.scene.controller.mode) {  // 改变传送带直道尺寸
-        let conveyor = this.scene.controller.object;
-        conveyor?.DT.updateConveyorRigidbody();
+      if(this.scene.controller?.object?.DT?.label == "conveyor" 
+        && transformControls && this.scene.controller.mode) {
+        console.log(this.scene.controller.object?.DT)
+        this.scene.controller.object?.DT.updateConveyorRigidbody();  // 改变传送带直道尺寸
       }
       mouseType[e.button] = false;
       transformControls = false;

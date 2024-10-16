@@ -1,10 +1,10 @@
-import * as Ammo from "ammo.js"
 import bulb from "../../assets/svg/bulb.svg";
 import DTObject from "./DTObject";
 import * as fs from "fs";
-import global from "../../Global"
+import global from "../../Global";
 import modelData from "../Models/modelData.json";
 const path = require("path");
+import RAPIER from "@dimforge/rapier3d";
 import sun from "../../assets/svg/sun.svg";
 import * as THREE from "three"
 import { computed, ref, watch } from "vue"
@@ -49,31 +49,19 @@ var UP = new THREE.Vector3(0, 0, 1);  // z轴朝上
 
 // 物理量
 var animate;
-var btVector3_Force = new Ammo.btVector3(0, 0, 0);
-var btVector3_Fn = new Ammo.btVector3(0, 0, 0);
-var btVector3_M = new Ammo.btVector3(0, 0, 0);
-var btVector3_v0_vec = new Ammo.btVector3(0, 0, 0);
 const clock = new THREE.Clock();
 const g = 9.8;
-const G = new Ammo.btVector3( 0, 0, -g );
 const margin = 1e-5;  // rigidShape需要此间隙
 var moveToId = 0;
 var targetObject, p_start, p_end;  // 相机移动的目标物体，起点和终点
 var renderPass;  // 边缘高亮滤镜
 var T0;  // 开始仿真的时间
-var temp_btTransform = new Ammo.btTransform();  // 减少新建bt对象以提升性能
 var time = performance.now();
 var timeUpdateFPS = performance.now();
 
 // 物理解算器
-const broadphase = new Ammo.btDbvtBroadphase();
-const collisionConfiguration = new Ammo.btDefaultCollisionConfiguration(); 
-const dispatcher = new Ammo.btCollisionDispatcher( collisionConfiguration );
-const solver = new Ammo.btSequentialImpulseConstraintSolver();
-global.physicsWorld = new Ammo.btDiscreteDynamicsWorld(
-    dispatcher, broadphase, solver, collisionConfiguration
-);
-global.physicsWorld.setGravity( G );
+const gravity = new RAPIER.Vector3(0.0, 0.0, -9.81)
+global.physicsWorld = new RAPIER.World(gravity);
 
 global.on("changeEmulateMode", (mode: string)=>{emulateMode = mode});
 global.on("changeSpeed", (k: string)=>{speed = parseInt(k.slice(0, k.length-1))});
@@ -280,12 +268,10 @@ export default class SceneBuilder{
         this.ground.userData.ground = true;
         this.ground.DT.label = "protected";
         this.ground.DT.mass = 0 // 不可动
-        this.ground.DT.rigidShape = `new Ammo.btBoxShape(
-            new Ammo.btVector3(${groundSize}, ${groundSize}, ${margin})
-        )`;
+        this.ground.DT.rigidShape = `RAPIER.ColliderDesc.cuboid(${groundSize}, ${groundSize}, ${margin})`;
         this.ground.DT.createRigidBody();
-        DTGround.setTitle("地面");
         global.SCENE.add(this.ground);
+        DTGround.setTitle("地面"); 
 
         // 网格
         const gridHelper = new THREE.GridHelper(500, 100, groundColor, "#AAAAAA");
@@ -404,12 +390,13 @@ export default class SceneBuilder{
                 // 光电门1延时20s，其它光电门延时5s
                 let timeout = data.deviceID == "a5197017-c560-4713-aacd-01f097dda18f" ? 5000 : 5000;
                 setTimeout(() => {  // 五秒后修改托盘的碰撞掩码，允许其通过光电门
+                    let rb = trayDT.mesh.rb();
                     trayDT.sensorPass = true;
-                    global.physicsWorld.removeRigidBody(trayDT.rb);
-                    global.physicsWorld.addRigidBody(trayDT.rb, 1, 1);
+                    global.physicsWorld.removeBody(rb);
+                    global.physicsWorld.addBody(rb);
                     setTimeout(() => {  // 一坤秒后修改托盘的碰撞掩码，禁止其通过光电门
-                        global.physicsWorld.removeRigidBody(trayDT.rb);
-                        global.physicsWorld.addRigidBody(trayDT.rb, 1, 3);
+                        global.physicsWorld.removeBody(rb);
+                        global.physicsWorld.addBody(rb, 1, 3);
                         trayDT.sensorPass = false;
                         trayDT.touchSensor = null;
                     }, 5000);
@@ -426,7 +413,6 @@ export default class SceneBuilder{
 
         // 控制器快捷键设置
         this.canvas.addEventListener("keydown", e => {
-            console.log(e.code)
             if(global.mode == "edit"){  // 在编辑模式下
                 // 光电门1：a5197017-c560-4713-aacd-01f097dda18f
                 // 光电门3：75292a01-6d17-4d50-bb75-d42718f75fe8
@@ -482,7 +468,7 @@ export default class SceneBuilder{
         this.preloadModels();
         global.on("init", ()=>this.init());
     }
-    init(){  // 场景更新时的操作
+    async init(){  // 场景更新时的操作
         // 天空
         global.SCENE.DT.setSkyboxByColor();
         global.on("updateSkybox", ()=>{global.SCENE.DT.setSkyboxByColor()});
@@ -494,6 +480,8 @@ export default class SceneBuilder{
         global.SCENE.DT.updatePhysicalIDMap();
         emulateMode = "stop";
         loading = false;
+            
+
         if(!animate){
             animate = () => {
                 requestAnimationFrame(animate);
@@ -780,104 +768,77 @@ export default class SceneBuilder{
         global.SCENE.background = skybox;
     }
     onCollision(){  // 检测物理世界中的物体是否与传送带碰撞，若有则施力
-        const dispatcher = global.physicsWorld.getDispatcher();  
-        for(var i=0; i<dispatcher.getNumManifolds(); i++){ 
-            let collision = dispatcher.getManifoldByIndexInternal(i);
-            // 通过查表，用碰撞体的ptr寻找对应的刚体和网格
-            let ptr0 = collision.getBody0().ptr, ptr1 = collision.getBody1().ptr;
-            let rb0 = global.rb_mesh[ptr0].rb, rb1 = global.rb_mesh[ptr1].rb;
-            let mesh0 = global.rb_mesh[ptr0].mesh, mesh1 = global.rb_mesh[ptr1].mesh;
-            let DT0 = mesh0.DT, DT1 = mesh1.DT;
-            if(DT1.label == "WIP"){// 让在制品排在前面，即等于mesh0
-                [rb0, rb1] = [rb1, rb0];
-                [mesh0, mesh1] = [mesh1, mesh0];
-                [DT0, DT1] = [DT1, DT0];
-            }
-
-            if(DT1.label == "conveyor"){  // 让在制品遇到货物时受摩擦力作用
-                let J = 10;  // 转动惯量J
-                let k = Math.min(DT0.friction, DT1.friction);  // 滑动摩擦系数k
-                let kw = k;  // 转动摩擦系数kw
-                let m = DT0.mass;  // 质量m
-                let P = new THREE.Vector3(), Q = new THREE.Quaternion(), R = new THREE.Euler();
-                mesh1.getWorldPosition(P);
-                mesh1.getWorldQuaternion(Q);
-                R.setFromQuaternion(Q);
-                let v;  // 货物速度v
-                let v0 = DT1.v0 * 2 * 60 / fps;  // 传送带中轴线速度v0，运行时根据帧率进行调整
-                let theta = R.z;  //传送带旋转角θ 
-                R = 5;  // 传送带中轴线半径R
-                if(DT1.name?.includes("直道")){  // 摩擦力 F = kmg(v0-v)/||v0-v||，v和v0为向量
-                    let v0_vec = btVector3_v0_vec;  // 将v0从标量转换为货物处的速度矢量v0_vec
-                    v0_vec.setValue(v0*Math.cos(theta), v0*Math.sin(theta), 0);
-                    v = rb0.getLinearVelocity();
-                    let F = btVector3_Force; 
-                    F.setValue(0, 0, 0);
-                    F.op_add(v0_vec).op_sub(v).normalize();
-                    F.op_mul(k*m*g);
-                    rb0.applyCentralForce(F);
-                    // 然后施加摩擦力矩，使在制品尽量不旋转
-                    let w0 = 0;  //传送带角速度ω0 
-                    let w = rb0.getAngularVelocity().z();  //货物角速度ω0
-                    let M = btVector3_M;
-                    M.setValue(0, 0, 0);
-                    M.setZ(kw*J*(w0 - w));
-                    rb0.applyTorque(M);  // 同理，摩擦力矩 M = kw*J*(ω0-ω)
-                    /*
-                    let theta0 = new THREE.Quaternion();
-                    mesh1.getWorldQuaternion(theta0);
-                    theta0 = new THREE.Euler().setFromQuaternion(theta0);
-                    theta0 = theta0.z;  // 传送带转角theta0
-                    let transform = new Ammo.btTransform();
-                    const motionState = rb0.getMotionState();
-                    motionState.getWorldTransform(transform);
-                    let Q = transform.getRotation(), R = new THREE.Euler();
-                    R.setFromQuaternion(new THREE.Quaternion( Q.w(),Q.x(), Q.y(), Q.z(),));
-                    theta = R.z;  // 货物旋转角theta
-                    console.log(theta, theta0)
-                    let M = new Ammo.btVector3(0, 0, kw*J*(theta0 - theta));
-                    rb0.applyTorque(M);  // 同理，摩擦力矩 M = kw*J*(ω0-ω)
-                    */
-                } else if(DT1.name?.includes("弯道")) {
-                    let dir = DT1.name.includes("逆时针弯道") ? -1 : 1;  // 传送带移动方向（顺/逆时针）
-                    let r = new THREE.Vector3();
-                    r.add(mesh0.position).sub(P);
-                    r.setZ(0);
-                    let ra = r.length();  // 周向矢量r=v0-v，模ra=||v0-v||
-                    if(ra>=3.2 && ra<=6.4){  // 当货物到弯道的半径为3.2≤ra≤6.4时向其质心施力
-                        // 将v0从标量转换为货物处的速度矢量v0_vec
-                        let v0_vec = btVector3_v0_vec;
-                        v0_vec.setValue(r.y, -r.x, 0);  // 旋转v0
-                        v0_vec.normalize();
-                        v0_vec.op_mul(dir * v0 * ra / R);  // 将传送带上r=R处的速度转换为r=ra处的速度
-                        v = rb0.getLinearVelocity();
-                        let F = btVector3_Force;  // 周向摩擦力F = μmg(v0-v)/||v0-v||，v和v0为向量
-                        F.setValue(0, 0, 0);
-                        F.op_add(v0_vec);
-                        F.op_sub(v);
+        global.physicsWorld.forEachCollider(collider0 => {
+            global.physicsWorld.contactPairsWith(collider0, collider1 => {
+                // 寻找对应的刚体和网格
+                let rb0 = collider0._parent, rb1 = collider1._parent;
+                let mesh0 = global.rb2mesh.get(rb0), mesh1 = global.rb2mesh.get(rb1);
+                let DT0 = mesh0.DT, DT1 = mesh1.DT;
+                if(DT0.label != "WIP"){// 让在制品排在前面，即等于mesh0
+                    return;
+                }
+                
+                rb0.resetForces();
+                rb0.resetTorques();
+                if(DT1.label == "conveyor"){  // 让在制品遇到货物时受摩擦力作用
+                    let J = 10;  // 转动惯量J
+                    let k = Math.min(DT0.friction, DT1.friction);  // 滑动摩擦系数k
+                    let kw = k;  // 转动摩擦系数kw
+                    let m = DT0.mass;  // 质量m
+                    let P = new THREE.Vector3(), Q = new THREE.Quaternion(), R = new THREE.Euler();
+                    mesh1.getWorldPosition(P);
+                    mesh1.getWorldQuaternion(Q);
+                    R.setFromQuaternion(Q);
+                    let v;  // 货物速度v
+                    let v0 = DT1.v0 * 2 * 60 / fps;  // 传送带中轴线速度v0，运行时根据帧率进行调整
+                    let theta = R.z;  //传送带旋转角θ 
+                    R = 5;  // 传送带中轴线半径R
+                    if(DT1.name?.includes("直道")){  // 摩擦力 F = kmg(v0-v)/||v0-v||，v和v0为向量
+                        let v0_vec = new THREE.Vector3(v0*Math.cos(theta), v0*Math.sin(theta), 0);  // 将v0从标量转换为货物处的速度矢量v0_vec
+                        v = rb0.linvel();
+                        v = new THREE.Vector3(v.x, v.y, v.z);
+                        let F = v0_vec.clone();
+                        F.sub(v);
                         F.normalize();
-                        F.op_mul(0.6*k*m*g);
-                        rb0.applyCentralForce(F);
-                        // 然后施加转矩，使在制品尽量对准中轴线
-                        let w0 = -dir * v0_vec.length() / ra;  //传送带角速度ω0 
-                        let w = rb0.getAngularVelocity().z();  //货物角速度ω0
-                        let M = btVector3_M;
-                        M.setValue(0, 0, kw*J*(w0 - w));
-                        rb0.applyTorque(M);  // 同理，摩擦力矩 M = kw*J*(ω0-ω)
-                    }  
+                        F.multiplyScalar(2*k*m*g);
+                        rb0.addForce(new RAPIER.Vector3(F.x, F.y, F.z));
+                    } else if(DT1.name?.includes("弯道")) {
+                        let dir = DT1.name.includes("逆时针弯道") ? -1 : 1;  // 传送带移动方向（顺/逆时针）
+                        let r = new THREE.Vector3();
+                        r.add(mesh0.position).sub(P);
+                        r.setZ(0);
+                        let ra = r.length();  // 周向矢量r=v0-v，模ra=||v0-v||
+                        if(ra>=3.2 && ra<=6.4){  // 当货物到弯道的半径为3.2≤ra≤6.4时向其质心施力
+                            // 将v0从标量转换为货物处的速度矢量v0_vec
+                            let v0_vec = new THREE.Vector3(r.y, -r.x, 0);  // 旋转v0
+                            v0_vec.normalize();
+                            v0_vec.multiplyScalar(dir*v0*ra/R, v0_vec);  // 将传送带上r=R处的速度转换为r=ra处的速度
+                            v = rb0.linvel();
+                            let F = v0_vec.clone();  // 周向摩擦力F = μmg(v0-v)/||v0-v||，v和v0为向量
+                            F.sub(v, F);
+                            F.normalize();
+                            F.multiplyScalar(2*k*m*g, F);
+                            rb0.addForce(new RAPIER.Vector3(F.x, F.y, F.z));
+                            // 然后施加转矩，使在制品尽量对准中轴线
+                            let w0 = -dir * v0_vec.length() / ra;  //传送带角速度ω0 
+                            let w = rb0.angvel().z;  //货物角速度ω0
+                            let M = new RAPIER.Vector3(0, 0, kw*J*(w0 - w));
+                            rb0.addTorque(M);  // 同理，摩擦力矩 M = kw*J*(ω0-ω)
+                        }  
+                    }
                 }
-            }
-            else if (DT1.label == "sensor"){
-                DT0.touchSensor = DT1;
-            }
-            else if (DT1.label == "special"){
-                if (DT1.name == "回收器"){
-                    DT0.destroy();
-                    global.emit("print", `【${DT0.name}${mesh0.id}】被【${DT1.name}${DT1.id}】回收`);
+                else if (DT1.label == "sensor"){
+                    DT0.touchSensor = DT1;
                 }
-            }
-        }
-    }
+                else if (DT1.label == "special"){
+                    if (DT1.name == "回收器"){
+                        DT0.destroy();
+                        global.emit("print", `【${DT0.name}${mesh0.id}】被【${DT1.name}${DT1.id}】回收`);
+                    }
+                }
+                }); 
+        })
+    } 
     preloadModels(){  // 事先载入所有的已有模型
         const modelPath = "src/assets/models/";
         function searchFiles(dir) {  // 使用同步操作
@@ -899,18 +860,16 @@ export default class SceneBuilder{
         }
     }
     removeRigidBody(mesh){  // 移除刚体
-        let rb = mesh.DT.rb;
-        delete global.rb_mesh[rb.ptr].mesh.userData.rb;
-        delete global.rb_mesh[rb.ptr];
-        global.physicsWorld.removeRigidBody(rb);
+        let rb = mesh.DT.rb();
+        global.physicsWorld.removeBody(rb);
         mesh.DT.layers.rigidShapeWorld = [];
     }
     render(){  // 渲染
-        this.updatePhysics(clock.getDelta());
+        this.updatePhysics();
         this.composer.render();
         this.cssRenderer.render(global.SCENE, this.camera);
-        this.gizmoPersp.render(this.renderer);
-        this.gizmoOrtho.render(this.renderer);
+        if(this.camera == this.cameraPersp) this.gizmoPersp.render(this.renderer);
+        if(this.camera == this.cameraOrtho) this.gizmoOrtho.render(this.renderer);
     } 
     updateFPSandTime(now, pause, stop){  // 更新帧率和用时
         if(stop){ 
@@ -934,11 +893,10 @@ export default class SceneBuilder{
         }
     }
     updateRigidBodies(){  // 改变物体的父子关系后，将刚体位置更新为物体的全局坐标
-        for(let ptr in global.rb_mesh){
-            let mesh = global.rb_mesh[ptr].mesh;
+        global.rb2mesh.forEach(mesh => {
             let DT = mesh.DT;
             let rigidShapeWorld = mesh.layers.rigidShapeWorld;
-            if(!DT.rb || DT.mass != 0) return;
+            if(DT.mass != 0) return;
             if(rigidShapeWorld?.length) rigidShapeWorld[0].removeFromParent();
             let clone = new THREE.Mesh();
             clone.position.copy(mesh.position);
@@ -947,61 +905,53 @@ export default class SceneBuilder{
             mesh.getWorldPosition(clone.position);
             mesh.getWorldQuaternion(clone.quaternion);
             DT.layers.rigidShapeWorld = [clone];
-            global.rb_mesh[DT.rb.ptr] = {mesh:DT.mesh, rb:DT.rb};
         }
-    }
-    updatePhysics(deltaTime){  // 步进 
+    )}
+    updatePhysics(){  // 步进 
         let now = performance.now();     
         let pause = emulateMode == "pause", stop = emulateMode == "stop";  // 是否暂停或停止
         this.updateFPSandTime(now, pause, stop);
-        if(stop){T0 = performance.now();}  // 暂停后停止计时
-        if(pause || stop)return;  // 未暂停时更新刚体
-        if(emulateMode == "step") global.physicsWorld.stepSimulation( deltaTime );
+        if(stop) {T0 = performance.now();}  // 暂停后停止计时
+        if(pause || stop) return;  // 未暂停时更新刚体
+        if(emulateMode == "step") global.physicsWorld.step();  // 单步更新;
         else{
-            for(let i=0; i<speed; i++) global.physicsWorld.stepSimulation( deltaTime );
+            for(let i=0; i<speed; i++) global.physicsWorld.step();
         }
-        for(let DT of global.DTObjects.value){  // 让网格位置等于刚体位置
-            const mesh = DT.mesh, rb = DT.rb;
+        global.mesh2rb.forEach((rb, mesh) => {  // 让网格位置等于刚体位置
+            const DT = mesh.DT;
             try{ if(DT.code) eval(DT.code) }  // 若物体有自定义脚本则执行 
             catch(e) {}
-            if(!DT.rb){
-                if(!stop && DT.name == "发生器"){  // 未暂停时制造货物
-                    if(now - DT.timer >= DT.timeInterval){  // 秒变毫秒
-                        let mesh0 = this.createMeshFromModels({title:"货物"}, mesh.position);                 
-                        mesh0.rotation.copy(mesh.rotation);
-                        global.DTObjects.value.push(mesh0.DT);
-                        global.SCENE.DT.children.push(mesh0.DT);
-                        mesh0.DT.createRigidBody();
-                        global.emit("print", `【${DT.name}${DT.id}】创建了【${mesh0.DT.name}${mesh0.id}】`);
-                        DT.timer = now;
-                    }
+            if(!stop && DT.name == "发生器"){  // 未暂停时制造货物
+                if(now - DT.timer >= DT.timeInterval){  // 秒变毫秒
+                    let mesh0 = this.createMeshFromModels({title:"货物"}, mesh.position);                 
+                    mesh0.rotation.copy(mesh.rotation);
+                    global.DTObjects.value.push(mesh0.DT);
+                    global.SCENE.DT.children.push(mesh0.DT);
+                    mesh0.DT.createRigidBody();
+                    global.emit("print", `【${DT.name}${DT.id}】创建了【${mesh0.DT.name}${mesh0.id}】`);
+                    DT.timer = now;
                 }
-                continue;
-            };
-            if(!mesh.isDrag){  // 刚体未被拖动时才计算
+            }
+            else if(true || !mesh.isDrag){  // 刚体未被拖动时才计算
                 if (  // 物体太远或位置变为NaN时则清除
                     mesh.position.manhattanDistanceTo(origin) > 10000 || 
                     Number.isNaN(mesh.position.x) ||
                     Number.isNaN(mesh.position.y) ||
                     Number.isNaN(mesh.position.z)
                 ){
+                    console.log(mesh)
                     mesh.DT.destroy();
                 }
-                const motionState = rb.getMotionState();
-                if (motionState) {
-                    if(DT.mass == 0 || DT.rigidFollow){  // 强制让刚体位姿等于网格位姿
-                        DT.updateRigidbodyTransform();
-                    }
-                    else{  // 运行时将网格位姿更新为刚体位姿
-                        motionState.getWorldTransform(temp_btTransform);
-                        const P = temp_btTransform.getOrigin();
-                        const Q = temp_btTransform.getRotation();
-                        mesh.position.set( P.x(), P.y(), P.z() );  // 将网格位移设为刚体位移
-                        mesh.quaternion.set( Q.x(), Q.y(), Q.z(), Q.w() );  // 将网格旋转设为刚体旋转
-                    }
+                if(DT.rigidFollow){  // 强制让刚体位姿等于网格位姿
+                    DT.updateRigidbodyTransform();
+                }
+                else{  // 运行时将网格位姿更新为刚体位姿
+                    let P = rb.translation(), Q = rb.rotation();
+                    mesh.position.set(P.x, P.y, P.z);  // 将网格位移设为刚体位移
+                    mesh.quaternion.set(Q.x, Q.y, Q.z, Q.w);  // 将网格旋转设为刚体旋转
                 }
             }
-        }
+        });
         this.onCollision();
         if(emulateMode == "step") emulateMode = "pause";  // 步进模式下，每仿真完一步就停止
     }

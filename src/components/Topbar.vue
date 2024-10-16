@@ -62,10 +62,7 @@
         "attachPoint": "传送带吸附点",
         "lightArrow": "光照方向",
     });
-    const marks = {0:'1x', 25: '2x', 50: '4x', 
-        75: {style: {color: 'lightgrey', textDecoration: "line-through"}, label: '8x'}, 
-        100: {style: {color: 'lightgrey', textDecoration: "line-through"}, label: '10x'}
-    };
+    const marks = {0:'1x', 25: '2x', 50: '4x', 75: '8x', 100: '10x'};
     var menu = [
         ["文件", [
             "新建场景", "载入场景", "保存场景", "最近打开",
@@ -155,7 +152,6 @@
             },
             changeSpeed(value){  // 更改速度，value为滑动条百分比，marks[value]为实际速度倍率
                 if(value.key) value = value.key;
-                if(value>=75) value = 50;
                 emulateMode.value = value==0 ? "play" : "fast";
                 this.message(value==0 ? "仿真开始" : "仿真快进"); 
                 speed.value = value;
@@ -516,10 +512,10 @@
                                 <a-menu-item key="50">
                                     4x&nbsp;&nbsp;<CheckOutlined v-if="fast==50"/>
                                 </a-menu-item>
-                                <a-menu-item key="75" :disabled="true">
+                                <a-menu-item key="75">
                                     8x&nbsp;&nbsp;<CheckOutlined v-if="fast==75"/>
                                 </a-menu-item>
-                                <a-menu-item key="100" :disabled="true">
+                                <a-menu-item key="100">
                                     10x&nbsp;&nbsp;<CheckOutlined v-if="fast==100"/>
                                 </a-menu-item>
                             </a-menu>

@@ -98,7 +98,7 @@
         <Prop prop="rb.constructor.name" title="刚体类型"/>
         <Prop prop="rigidFollow" title="运动位姿跟随" type="follow"/>
         <Prop prop="mass" title="质量" type="inputNumber"
-        :options="{delta:0.1, min:0.1, max:5}"/>
+        :options="{delta:0.1, min:0.1, max:20}"/>
         <Prop prop="friction0" title="静摩擦系数" type="inputNumber"
         :options="{delta:0.1, min:0, max:1}"/>
         <Prop prop="friction" title="滑动摩擦系数" type="inputNumber"
