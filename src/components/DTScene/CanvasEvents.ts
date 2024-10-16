@@ -655,7 +655,7 @@ export default defineComponent({
           if(mesh?.DT.name.includes("直道")){  // 不准传送带长度小于0.1
             let length = mesh.scale.x / mesh.DT.scale * 7.5;
             if(length < 0.1) mesh.scale.x = 0.1 * mesh.DT.scale / 7.5;
-            mesh.DT.updateConveyorArrow();
+            mesh.DT.updateConveyorRigidbody();
           }
           global.emit("updateProp", {action:"mousemove", mesh: mesh});
         }

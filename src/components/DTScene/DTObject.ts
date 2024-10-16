@@ -97,7 +97,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             else this[prop] = obj[prop];
         }
     }
-    createRigidBody(target=this.mesh, scale=1) {  // 添加刚体
+    createRigidBody(target=this.mesh, scaleX=1) {  // 添加刚体
         if(!this.rigidShape) return;
         let mass = this.mass;
         let P = this.mesh.position;
@@ -115,7 +115,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             shape = RAPIER.ColliderDesc.cuboid(box.x/2, box.y/2, box.z/2);
         }
         else if(this.rigidShape === "convex"){  // 将自定义几何体的凸集作为刚体形状
-            shape = this.createRigidShape(this.geometry); 
+            shape = this.createRigidShape(this.geometry, scaleX); 
         }
         else if(typeof this.rigidShape == "string"){  // 根据THREE的简单几何体生成CANNON刚体
             this.createRigidHelper(); 
@@ -196,7 +196,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         this.mesh.add(rigidHelper);
         this.layers.rigidHelper = [rigidHelper];
     }
-    createRigidShape(geom){  // 从几何形状建立刚体形状
+    createRigidShape(geom, scaleX = 1){  // 从几何形状建立刚体形状
         // points里每三个连续的点定义了一个三角形面
         let newVertices: any = [], newIndexes: any = [];
         let scale = this.scale;
@@ -204,9 +204,9 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         let points = geom.attributes.position.array;
         for (let i=0; i < points.length; i+=9) {
             newVertices.push(
-                points[i] * scale, points[i+1] * scale, points[i+2] * scale, 
-                points[i+3] * scale, points[i+4] * scale, points[i+5] * scale, 
-                points[i+6] * scale, points[i+7] * scale, points[i+8] * scale
+                points[i]*scale*scaleX, points[i+1]*scale, points[i+2]*scale, 
+                points[i+3]*scale*scaleX, points[i+4]*scale, points[i+5]*scale, 
+                points[i+6]*scale*scaleX, points[i+7]*scale, points[i+8]*scale
             );
             newIndexes.push(i/3, i/3+1, i/3+2);
             threeVertices.push(
@@ -282,9 +282,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     }
     removeRigidBody(){  // 移除刚体
         if(this.rb()){
-            global.physicsWorld.removeCollider(
-                global.physicsWorld.getCollider(this.rb().handle)
-            );
+            global.physicsWorld.removeRigidBody(this.rb());
             global.rb2mesh.delete(this.rb());
             global.mesh2rb.delete(this.mesh);
         }
@@ -413,6 +411,36 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         }
         this.children = newChildren;
     }
+    updateConveyorArrow(value = null){  // 更新传送带刚体的箭头
+        if(!value){
+            value = new THREE.Vector3();
+            this.mesh.getWorldScale(value);
+            value = value.x / this.scale * 7.5;  // 获取传送带直道的长度缩放比
+        }
+        try{
+            if(value >= 3) this.layers.indicator[0].scale.x = 7.5 / value / this.scale;
+            else this.layers.indicator[0].scale.x =  2.5 / this.scale;
+        }
+        catch {}
+    }
+    updateConveyorAttachPoint(value = null){  // 更新传送带刚体的吸附点
+        if(this.layers.attachPoint1[0]) 
+            this.layers.attachPoint1[0].scale.x = 
+                value ? 7.5 / value / this.scale : 1/this.mesh.scale.x;
+        if(this.layers.attachPoint2[0]) 
+            this.layers.attachPoint2[0].scale.x = 
+                value ? 7.5 / value / this.scale : 1/this.mesh.scale.x;
+    }
+    updateConveyorRigidbody(value = null){  // 更新传送带刚体的长度
+        this.updateConveyorArrow(value);      
+        this.updateConveyorAttachPoint(value);
+        this.removeRigidBody();  // 移除刚体
+        let L = new THREE.Vector3();
+        this.mesh.getWorldScale(L);
+        L = L.x / this.scale;  // 获取传送带直道的长度缩放比
+        this.createRigidBody(this.mesh, L);  // 重建刚体 
+        this.updateRigidbodyTransform();
+    }
     updateGroupWireframes(){  // 更新群组的线框
         this.traverse(DT => {
             if(DT.type != "Group") return;
@@ -438,34 +466,6 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         for(let DT of global.DTObjects.value){
             global.physicalIDMap[DT.physicalID] = DT;
         }
-    }
-    updateConveyorRigidbody(value: number = null){  // 更新传送带刚体的长度
-        if(this.layers.attachPoint1[0]) 
-            this.layers.attachPoint1[0].scale.x = 
-                value ? 7.5 / value / this.scale : 1/this.mesh.scale.x;
-        if(this.layers.attachPoint1[0]) 
-            this.layers.attachPoint2[0].scale.x = 
-                value ? 7.5 / value / this.scale : 1/this.mesh.scale.x;        
-        this.updateConveyorArrow(value);
-        this.removeRigidBody();  // 移除刚体
-        let L = new THREE.Vector3();
-        this.mesh.getWorldScale(L);
-        L = L.x / this.scale;  // 获取传送带直道的长度缩放比
-        this.createRigidBody(this.mesh, L);  // 重建刚体
-        console.log(1)
-        this.updateRigidbodyTransform();
-    }
-    updateConveyorArrow(value: number|THREE.Vector3 = null){  // 实时
-        if(!value){
-            value = new THREE.Vector3();
-            this.mesh.getWorldScale(value);
-            value = value.x / this.scale * 7.5;  // 获取传送带直道的长度缩放比
-        }
-        try{
-            if(value >= 3) this.layers.indicator[0].scale.x = 7.5 / value / this.scale;
-            else this.layers.indicator[0].scale.x =  2.5 / this.scale;
-        }
-        catch {}
     }
     updateRigidbodyTransform(){  // 强制更新刚体位姿
         let mesh = this.mesh;
