@@ -363,7 +363,7 @@ export default class SceneBuilder{
         // 更新托盘位置
         global.on("updateTrayPosition", (data: {deviceID, RFID}) => {
             if(emulateMode != "play") return;  // 暂停时不更新
-            if(data.RFID = "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
+            if(data.RFID == "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
                 data.RFID = "822fbee2-1fe0-45c8-b403-8b5cdb31cb25";  // 
             console.log("传送：", data)
             let sensorDT = global.physicalIDMap[data.deviceID];
@@ -374,7 +374,7 @@ export default class SceneBuilder{
                 if(!trayDT.touchSensor || trayDT.touchSensor != sensorDT) {
                     // 让在制品瞬移到光电门处
                     let target = sensorDT.mesh.position.clone();
-                    let delta = RIGHT.clone();
+                    let delta = new THREE.Vector3();
                     let Q = new THREE.Quaternion();
                     sensorDT.mesh.getWorldQuaternion(Q);
                     delta.applyQuaternion(Q);
@@ -390,13 +390,12 @@ export default class SceneBuilder{
                 // 光电门1延时20s，其它光电门延时5s
                 let timeout = data.deviceID == "a5197017-c560-4713-aacd-01f097dda18f" ? 5000 : 5000;
                 setTimeout(() => {  // 五秒后修改托盘的碰撞掩码，允许其通过光电门
-                    let rb = trayDT.mesh.rb();
+                    let sensor_collider = global.physicsWorld.colliders.get(sensorDT.rb().handle);
                     trayDT.sensorPass = true;
-                    global.physicsWorld.removeBody(rb);
-                    global.physicsWorld.addBody(rb);
+                    // 将光电门的collider的enabled属性设为false，使托盘能通过
+                    sensor_collider.setEnabled(false);
                     setTimeout(() => {  // 一坤秒后修改托盘的碰撞掩码，禁止其通过光电门
-                        global.physicsWorld.removeBody(rb);
-                        global.physicsWorld.addBody(rb, 1, 3);
+                        sensor_collider.setEnabled(true);
                         trayDT.sensorPass = false;
                         trayDT.touchSensor = null;
                     }, 5000);
@@ -772,7 +771,7 @@ export default class SceneBuilder{
             global.physicsWorld.contactPairsWith(collider0, collider1 => {
                 // 寻找对应的刚体和网格
                 let rb0 = collider0._parent, rb1 = collider1._parent;
-                let mesh0 = global.rb2mesh.get(rb0), mesh1 = global.rb2mesh.get(rb1);
+                let mesh0 = global.rb2mesh[rb0.handle], mesh1 = global.rb2mesh[rb1.handle];
                 let DT0 = mesh0.DT, DT1 = mesh1.DT;
                 if(DT0.label != "WIP"){// 让在制品排在前面，即等于mesh0
                     return;
@@ -893,7 +892,7 @@ export default class SceneBuilder{
         }
     }
     updateRigidBodies(){  // 改变物体的父子关系后，将刚体位置更新为物体的全局坐标
-        global.rb2mesh.forEach(mesh => {
+        Object.values(global.rb2mesh).forEach((mesh: any) => {
             let DT = mesh.DT;
             let rigidShapeWorld = mesh.layers.rigidShapeWorld;
             if(DT.mass != 0) return;
@@ -917,7 +916,8 @@ export default class SceneBuilder{
         else{
             for(let i=0; i<speed; i++) global.physicsWorld.step();
         }
-        global.mesh2rb.forEach((rb, mesh) => {  // 让网格位置等于刚体位置
+        Object.values(global.rb2mesh).forEach((mesh: any) => {  // 让网格位置等于刚体位置
+            const rb = global.mesh2rb[mesh.uuid];
             const DT = mesh.DT;
             try{ if(DT.code) eval(DT.code) }  // 若物体有自定义脚本则执行 
             catch(e) {}

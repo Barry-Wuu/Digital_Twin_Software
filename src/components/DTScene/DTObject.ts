@@ -137,11 +137,9 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         global.physicsWorld.createCollider(shape, rb);  // 将形状添加到刚体中
 
         if(target == "rigidHelper") target = this.layers.rigidHelper[0];
-        // 将光电门设置为单独的碰撞组，物体mask为1时可通过光电门，3时会碰到光电门
-        rb.collisionFilterMask = 3;
         if(this.label == "sensor") rb.collisionFilterGroup = 2;
-        global.mesh2rb.set(this.mesh, rb);
-        global.rb2mesh.set(rb, this.mesh);
+        global.mesh2rb[this.mesh.uuid] = rb;
+        global.rb2mesh[rb.handle] = this.mesh;
     }
 
     createRigidHelper(geom=null, scale=1){  // 根据刚体形状添加可视化碰撞体网格
@@ -232,8 +230,6 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         }
         global.emit("controlEnd");  // 如果控制器绑定了该物体，则先解绑
         delete global.physicalIDMap[this.physicalID];
-        global.rb2mesh.delete(this.rb());
-        global.mesh2rb.delete(this.mesh);
         this.removeRigidBody();
         try {this.mesh.removeFromParent()} catch {}
         let index = global.DTObjects.value.indexOf(this);
@@ -272,7 +268,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         global.emit("init");
     }
     rb(){
-        return global.mesh2rb.get(this.mesh);
+        return global.mesh2rb[this.mesh.uuid];
     }
     resizeRigidBody(){  // 改变物体尺寸的同时改变刚体尺寸 
         this.traverse(()=>{  // 对该物体及其所有子物体
@@ -281,10 +277,11 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         });
     }
     removeRigidBody(){  // 移除刚体
+        console.log(global.mesh2rb, this.mesh.uuid, this.rb())
         if(this.rb()){
             global.physicsWorld.removeRigidBody(this.rb());
-            global.rb2mesh.delete(this.rb());
-            global.mesh2rb.delete(this.mesh);
+            delete global.rb2mesh[this.rb().handle];
+            delete global.mesh2rb[this.mesh.uuid];
         }
     }
     setProp(prop=null, newValue=null) {  // 修改物体属性，同时更新刚体中相应的属性
@@ -469,7 +466,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     }
     updateRigidbodyTransform(){  // 强制更新刚体位姿
         let mesh = this.mesh;
-        let rb = global.mesh2rb.get(mesh.DT ? mesh : mesh.parent);
+        let rb = global.mesh2rb[mesh.DT ? mesh.uuid : mesh.parent.uuid];
         if(!rb) return;
         // 将物体的速度和角速度清零
         rb.setLinvel(new RAPIER.Vector3(0, 0, 0));
