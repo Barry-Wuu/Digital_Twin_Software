@@ -709,7 +709,7 @@ export default class SceneBuilder{
         let title = data.title;
         let path = modelData.model_definition[title].modelPath;
         if(path){
-            path = "src/assets/models/" + path;
+            path = `src/assets/models/${path}`;
             DT.geometry = customModels[path];  
         }
         // 先复制JSON中的模型定义再使用，以免相应的模型定义在使用时被自动修改
@@ -839,21 +839,20 @@ export default class SceneBuilder{
         })
     } 
     preloadModels(){  // 事先载入所有的已有模型
-        const modelPath = "src/assets/models/";
+        const modelPath = "src/assets/models";
         function searchFiles(dir) {  // 使用同步操作
-            let files = fs.readdirSync(dir);
-            files.forEach(fileName => {
-                let filePath = modelPath + fileName;
+            fs.readdirSync(modelPath + dir).forEach(fileName => {
+                let filePath = modelPath + dir + '/' + fileName;
                 let stats = fs.statSync(filePath);
-                if (stats.isFile() && path.extname(filePath) == ".stl") {
-                    customModels[filePath] = ''; // 保存模型文件的路径
+                if (stats.isDirectory()) {  // 如果是文件夹
+                    searchFiles(dir + '/' + fileName);  // 递归子目录
                 }
-                if (stats.isDirectory()) {
-                    searchFiles(filePath); // 递归子目录
+                else if (path.extname(filePath) == ".stl") {  // 如果是stl文件
+                    customModels[filePath] = true; // 保存模型文件的路径
                 }
             });
         }
-        searchFiles(modelPath);  // 然后异步载入相应几何体（THREE.geometry）
+        searchFiles('');  // 然后异步载入相应几何体（THREE.geometry）
         for(let modelPath in customModels){
             loader.loadAsync(modelPath).then(geom => {customModels[modelPath] = geom;});   
         }
