@@ -114,8 +114,11 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             };
             shape = RAPIER.ColliderDesc.cuboid(box.x/2, box.y/2, box.z/2);
         }
-        else if(this.rigidShape === "convex"){  // 将自定义几何体的凸集作为刚体形状
+        else if(this.rigidShape == "convex"){  // 将自定义几何体的凸集作为刚体形状
             shape = this.createRigidShape(this.geometry, scaleX); 
+        }
+        else if(this.rigidShape == "mesh"){  // 根据网格形状直接生成刚体形状
+            shape = this.createRigidShape(this.geometry);   
         }
         else if(typeof this.rigidShape == "string"){  // 根据THREE的简单几何体生成CANNON刚体
             this.createRigidHelper(); 
@@ -277,7 +280,6 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         });
     }
     removeRigidBody(){  // 移除刚体
-        console.log(global.mesh2rb, this.mesh.uuid, this.rb())
         if(this.rb()){
             global.physicsWorld.removeRigidBody(this.rb());
             delete global.rb2mesh[this.rb().handle];
