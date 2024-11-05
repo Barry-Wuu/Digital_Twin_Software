@@ -365,7 +365,6 @@ export default class SceneBuilder{
             if(emulateMode != "play") return;  // 暂停时不更新
             if(data.RFID == "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
                 data.RFID = "822fbee2-1fe0-45c8-b403-8b5cdb31cb25";  // 
-            console.log("传送：", data)
             let sensorDT = global.physicalIDMap[data.deviceID];
             let trayDT = global.physicalIDMap[data.RFID];
             if(!sensorDT || !trayDT) return;  // 若传感器或托盘不存在，则不执行后续操作
@@ -523,7 +522,7 @@ export default class SceneBuilder{
                     this.cameraMovable.position.lerpVectors(p_start, p_end, frameCounter/60);
                     this.camera.position.copy(this.cameraMovable.position);
                     cameraFrontRay.set(this.cameraMovable.position, front);
-                    cameraFrontRay.intersectPlane(Ground, this.orbitControl.target);  console.log(this.orbitControl.target)
+                    cameraFrontRay.intersectPlane(Ground, this.orbitControl.target);
                     if (frameCounter >= 60){  // 移动结束
                         this.orbitControl.enableRotate = true;
                         frameCounter = moveToId = 0;
@@ -715,7 +714,10 @@ export default class SceneBuilder{
         // 先复制JSON中的模型定义再使用，以免相应的模型定义在使用时被自动修改
         let obj = JSON.parse(JSON.stringify(model_definition[data.title]));
         for(let key in obj) DT[key] = obj[key];
-        if(typeof DT.geometry == "string") DT.geometry = eval(DT.geometry);
+        if(DT.geometry instanceof Array){  // 如果模型的json定义为写成多行的回调函数，则合并为一行并调用
+            DT.geometry = eval(DT.geometry.join(''))();
+        }
+        else if(typeof DT.geometry == "string") DT.geometry = eval(DT.geometry);
         mesh.material = new THREE.MeshPhongMaterial(DT.material);
         DT.basename = DT.name = data.title;
         mesh.geometry = DT.geometry;
@@ -816,7 +818,7 @@ export default class SceneBuilder{
                             let F = v0_vec.clone();  // 周向摩擦力F = μmg(v0-v)/||v0-v||，v和v0为向量
                             F.sub(v, F);
                             F.normalize();
-                            F.multiplyScalar(2*k*m*g, F);
+                            F.multiplyScalar(2*k*m*g, F); console.log(F)
                             rb0.addForce(new RAPIER.Vector3(F.x, F.y, F.z));
                             // 然后施加转矩，使在制品尽量对准中轴线
                             let w0 = -dir * v0_vec.length() / ra;  //传送带角速度ω0 
@@ -954,6 +956,7 @@ export default class SceneBuilder{
         this.onCollision();
         if(emulateMode == "step") emulateMode = "pause";  // 步进模式下，每仿真完一步就停止
     }
+
     // 演示场景，用global.emit("demoScene")启动，用DT().traverse(dt=>dt.v0=2)改变所有传送带速度
     // 用global.emit("updateTrayPosition", {deviceID:'A', RFID:'a'})向托盘发送消息
     // 光电门1：a5197017-c560-4713-aacd-01f097dda18f

@@ -110,7 +110,11 @@ export default defineComponent({
       let Q = new THREE.Quaternion();
       conveyor.getWorldPosition(P);
       conveyor.getWorldQuaternion(Q);
-      if (conveyor.DT.name.includes("直道")) {
+      if(dragModel.DT.name == "弯道护栏"){  // 将弯道护栏与弯道对齐
+        tempModel.position.copy(P);
+        tempModel.rotation.copy(Q);
+      }
+      else if (conveyor.DT.name.includes("直道")) {
         let result = RIGHT.clone();
         conveyorRay.set(P, result.applyQuaternion(Q));  // 求鼠标到传送带中轴线最近的一点
         if (dragModel.DT.name == "护栏") {
@@ -130,7 +134,7 @@ export default defineComponent({
           tempModel.rotateOnWorldAxis(UP, R.z);  // 设置物体旋转
         }
       }
-      else if (conveyor.DT.name.includes("弯道")) {
+      else if(conveyor.DT.name.includes("弯道")) {
         let outer;  // 物体在弯道内侧还是外侧
         let result = dragPoint.clone();  // 求鼠标到弯道圆心的位移之差
         result.sub(P);
@@ -151,7 +155,10 @@ export default defineComponent({
         tempModel.position.copy(result);  // 设置物体位姿
       }
       dragModel.rotation.copy(tempModel.rotation);
-      tempModel.position.z = 0.6 + (box.max.z - box.min.z) / 2;  // 传送带高为0.6
+      if(dragModel.DT.name == "弯道护栏") {}
+      else{
+        tempModel.position.z = 0.6 + (box.max.z - box.min.z) / 2;  // 传送带高为0.6
+      }
       return tempModel.position.clone();
     },
     castRay(e) {  // 射线检测
@@ -504,7 +511,7 @@ export default defineComponent({
             result = dragPoint0.clone();
             result.add(delta);  // 更新模型的全局坐标
           }
-          if (keys.KeyS) {  // 拖动物体时，按S键将其z坐标吸附到地面
+          if (keys.KeyS) {  // 拖动物体时，按S键将物体z坐标吸附到地面
             box.setFromObject(dragModel);
             if (!tempTransform.alignMode) tempTransform.position.copy(delta);  // 拖动之前储存delta
             tempTransform.alignMode = true;

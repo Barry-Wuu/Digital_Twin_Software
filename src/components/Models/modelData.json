@@ -7,8 +7,11 @@
             {"title": "滚轮传送带-直道"},
             {"title": "滚轮传送带-顺时针弯道"},
             {"title": "滚轮传送带-逆时针弯道"},
-            {"title": "护栏"},
             {"title": "光电门"}
+        ]},
+        {"title": "护栏", "children": [
+            {"title": "护栏"},
+            {"title": "弯道护栏"}
         ]},
         {"title": "在制品", "children": [
             {"title": "货物"},
@@ -172,7 +175,7 @@
                     "return new THREE.ExtrudeGeometry(shape, {",  
                         "bevelEnabled: false,",  
                         "curveSegments: 5,",  
-                        "depth: -12,",  
+                        "depth: -0.6/DT.scale,",  
                         "steps: 1,",  
                     "})",
                 "}"
@@ -198,6 +201,7 @@
                 "attachPoint2": "[this.createAttachPoint2(0, 100)]"
             }
         },
+
         "护栏": {
             "icon": "护栏.png",
             "geometry": "new THREE.BoxGeometry(0.5, 6, 1)",
@@ -205,6 +209,30 @@
             "rigid": true, 
             "rigidShape": "RAPIER.ColliderDesc.cuboid(0.25, 3, 0.5)"
         },
+        "弯道护栏": {
+            "icon": "弯道护栏.png",
+            "geometry": [
+                "()=>{",
+                    "const PI = Math.PI;",
+                    "let r = 6.4/DT.scale - 0.25, R = 6.4/DT.scale + 0.25, shape = new THREE.Shape();",
+                    "shape.moveTo(0, R);",
+                    "shape.absarc(0, 0, R, PI/2, PI, false);",
+                    "shape.lineTo(-r, 0);",
+                    "shape.absarc(0, 0, r, PI, PI/2, true);",
+                    "shape.closePath();", 
+                    "return new THREE.ExtrudeGeometry(shape, {",  
+                        "bevelEnabled: false,",  
+                        "curveSegments: 5,",  
+                        "depth: 1/DT.scale,",  
+                        "steps: 1,",  
+                    "})",
+                "}"
+            ],
+            "material": { "color": "gray" },
+            "rigid": true, 
+            "rigidShape": "mesh"
+        },
+
         "光电门": {
             "icon": "光电门.jpg",
             "geometry": "new THREE.BoxGeometry(0.2, 3, 0.8)",
