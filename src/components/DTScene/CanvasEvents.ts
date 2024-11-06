@@ -110,24 +110,28 @@ export default defineComponent({
       let Q = new THREE.Quaternion();
       conveyor.getWorldPosition(P);
       conveyor.getWorldQuaternion(Q);
-      if(dragModel.DT.name == "弯道护栏"){  // 将弯道护栏与弯道对齐
-        tempModel.position.copy(P);
-        tempModel.rotation.copy(Q);
-      }
-      else if (conveyor.DT.name.includes("直道")) {
+      if(conveyor.DT.name.includes("直道")) {
         let result = RIGHT.clone();
         conveyorRay.set(P, result.applyQuaternion(Q));  // 求鼠标到传送带中轴线最近的一点
-        if (dragModel.DT.name == "护栏") {
-          tempModel.rotateOnWorldAxis(  // 设置物体旋转
-            UP, Math.atan(result.y / result.x) + Math.PI / 2
-          );
+        if(dragModel.DT.name.includes("护栏")){
+          let [x, y] = [tempModel.position.x, tempModel.position.y];
+          if(dragModel.DT.name == "直护栏") {  // 仅旋转直护栏
+            tempModel.rotateOnWorldAxis(  // 设置物体旋转
+              UP, Math.atan(result.y / result.x) + Math.PI / 2
+            );
+          }
           conveyorRay.closestPointToPoint(dragPoint, closestPoint);  // 求出垂足
           tempModel.position.copy(dragPoint).sub(closestPoint);
           tempModel.position.z = 0;
           tempModel.position.normalize();
           tempModel.position.multiplyScalar(1.4);
           tempModel.position.add(closestPoint);  // 物体位移 = 垂足 + 1.4||鼠标-垂足||
-        } else {
+          if(dragModel.DT.name != "直护栏") {  // 只改变直护栏的x和y坐标
+            tempModel.position.x = x;
+            tempModel.position.y = y;
+          }
+        }
+        else if(dragModel.DT.label == "WIP") {  // 将在制品吸附到传送带中轴线上
           conveyorRay.closestPointToPoint(dragPoint, tempModel.position);  // 物体位移=垂足
           let R = new THREE.Euler();
           R.setFromQuaternion(Q);
@@ -141,22 +145,35 @@ export default defineComponent({
         result.z = 0;
         outer = result.length() > 5;
         result.normalize();
-        if (dragModel.DT.name == "护栏") {  // 设置物体旋转
+        if (dragModel.DT.name == "直护栏") {  // 将直护栏贴在弯道护栏的边缘
           tempModel.rotateOnWorldAxis(UP, Math.atan(result.y / result.x));
           result.multiplyScalar(outer ? 6.4 : 3.6);
-        } else {
-          tempModel.rotateOnWorldAxis(
-            UP, Math.atan2(result.y, result.x) + 
-            (conveyor.DT.name.includes("顺时针") ? -1 : 1) * Math.PI / 2
-          );
-          result.multiplyScalar(5);
+          result.add(P);
+          tempModel.position.copy(result);  // 设置物体位姿
+        } 
+        else if(dragModel.DT.name == "弯道护栏") {  // 将弯道护栏与弯道对齐
+          tempModel.position.copy(P);
+          tempModel.rotation.copy(Q);
         }
-        result.add(P);
-        tempModel.position.copy(result);  // 设置物体位姿
+        else {  // 将其它护栏和物体直接放在弯道上
+          let [x, y] = [tempModel.position.x, tempModel.position.y];
+          if(dragModel.DT.label == "WIP") {  // 在制品放在弯道中轴线上
+            tempModel.rotateOnWorldAxis(
+              UP, Math.atan2(result.y, result.x) + 
+              (conveyor.DT.name.includes("顺时针") ? -1 : 1) * Math.PI / 2
+            );
+          }
+          result.multiplyScalar(5);
+          result.add(P);
+          tempModel.position.copy(result);
+          if(dragModel.DT.label != "WIP") {  // 其它物体直接放在弯道上
+            tempModel.position.x = x;
+            tempModel.position.y = y;
+          }
+        }
       }
       dragModel.rotation.copy(tempModel.rotation);
-      if(dragModel.DT.name == "弯道护栏") {}
-      else{
+      if(dragModel.DT.label == "WIP" || dragModel.DT.name == "直护栏") {
         tempModel.position.z = 0.6 + (box.max.z - box.min.z) / 2;  // 传送带高为0.6
       }
       return tempModel.position.clone();
@@ -663,6 +680,11 @@ export default defineComponent({
             let length = mesh.scale.x / mesh.DT.scale * 7.5;
             if(length < 0.1) mesh.scale.x = 0.1 * mesh.DT.scale / 7.5;
             mesh.DT.updateConveyorRigidbody();
+          }
+          else if(mesh?.DT.name == "直护栏"){  // 不准传送带长度小于0.1
+            let length = mesh.scale.y / mesh.DT.scale * 7.5;
+            if(length < 0.1) mesh.scale.y = 0.1 * mesh.DT.scale / 7.5;
+            mesh.DT.updateGuardRail();
           }
           global.emit("updateProp", {action:"mousemove", mesh: mesh});
         }
