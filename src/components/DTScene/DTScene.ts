@@ -427,7 +427,7 @@ export default class SceneBuilder{
                 }
                 else if(e.code == "KeyA") {  // 按A拉伸直道传送带
                     let target = this.controller.object;
-                    if(target.DT.label == "conveyor"){
+                    if(target.DT.name.includes("直道") || target.DT.name == "直护栏"){
                         this.controller.setMode("scale");
                     }
                 }
@@ -818,7 +818,7 @@ export default class SceneBuilder{
                             let F = v0_vec.clone();  // 周向摩擦力F = μmg(v0-v)/||v0-v||，v和v0为向量
                             F.sub(v, F);
                             F.normalize();
-                            F.multiplyScalar(2*k*m*g, F); console.log(F)
+                            F.multiplyScalar(2*k*m*g, F);
                             rb0.addForce(new RAPIER.Vector3(F.x, F.y, F.z));
                             // 然后施加转矩，使在制品尽量对准中轴线
                             let w0 = -dir * v0_vec.length() / ra;  //传送带角速度ω0 
@@ -966,54 +966,54 @@ export default class SceneBuilder{
     demoScene(){
         let mesh;  // 传送带
         mesh = this.createMeshFromModels({title: "平行传送带-直道"}, 
-            new THREE.Vector3(99.6, 1.4, 0.3),
+            new THREE.Vector3(99.6, 1.4, 0.6),
             new THREE.Euler(0, 0, Math.PI),
         );
         mesh.scale.x = 93.2 / 7.5 * mesh.DT.scale;
         mesh.DT.updateConveyorRigidbody();
         this.createMeshFromModels({title: "平行传送带-顺时针弯道"}, 
-            new THREE.Vector3(6.4, 6.4, 0.3),
+            new THREE.Vector3(6.4, 6.4, 0.6),
             new THREE.Euler(0, 0, Math.PI/2),
         );
         mesh.DT.createRigidBody();
         mesh = this.createMeshFromModels({title: "平行传送带-直道"}, 
-            new THREE.Vector3(1.4, 6.4, 0.3),
+            new THREE.Vector3(1.4, 6.4, 0.6),
             new THREE.Euler(0, 0, Math.PI/2),
         );
         mesh.scale.x = 30.2 / 7.5 * mesh.DT.scale;
         mesh.DT.updateConveyorRigidbody();
         this.createMeshFromModels({title: "平行传送带-顺时针弯道"}, 
-            new THREE.Vector3(6.4, 36.6, 0.3),
+            new THREE.Vector3(6.4, 36.6, 0.6),
         );
         mesh.DT.createRigidBody();
         mesh = this.createMeshFromModels({title: "平行传送带-直道"}, 
-            new THREE.Vector3(6.4, 41.6, 0.3),
+            new THREE.Vector3(6.4, 41.6, 0.6),
         );
         mesh.scale.x = 93.2 / 7.5 * mesh.DT.scale;
         mesh.DT.updateConveyorRigidbody();
         mesh = this.createMeshFromModels({title: "平行传送带-直道"}, 
-            new THREE.Vector3(90.2, 38.6, 0.3),
+            new THREE.Vector3(90.2, 38.6, 0.6),
         );
         mesh.scale.x = 98.2 / 7.5 * mesh.DT.scale;
         mesh.DT.updateConveyorRigidbody();
         this.createMeshFromModels({title: "平行传送带-顺时针弯道"}, 
-            new THREE.Vector3(188.4, 33.6, 0.3),
+            new THREE.Vector3(188.4, 33.6, 0.6),
             new THREE.Euler(0, 0, -Math.PI/2),
         );
         mesh.DT.createRigidBody();
         mesh = this.createMeshFromModels({title: "平行传送带-直道"}, 
-            new THREE.Vector3(193.4, 33.6, 0.3),
+            new THREE.Vector3(193.4, 33.6, 0.6),
             new THREE.Euler(0, 0, -Math.PI/2),
         );
         mesh.scale.x = 30.2 / 7.5 * mesh.DT.scale;
         mesh.DT.updateConveyorRigidbody();
         this.createMeshFromModels({title: "平行传送带-顺时针弯道"}, 
-            new THREE.Vector3(188.4, 3.4, 0.3),
+            new THREE.Vector3(188.4, 3.4, 0.6),
             new THREE.Euler(0, 0, Math.PI),
         );
         mesh.DT.createRigidBody();
         mesh = this.createMeshFromModels({title: "平行传送带-直道"}, 
-            new THREE.Vector3(188.4, -1.6, 0.3),
+            new THREE.Vector3(188.4, -1.6, 0.6),
             new THREE.Euler(0, 0, Math.PI),
         );
         mesh.scale.x = 98.2 / 7.5 * mesh.DT.scale;

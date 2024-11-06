@@ -97,7 +97,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             else this[prop] = obj[prop];
         }
     }
-    createRigidBody(target=this.mesh, scaleX=1) {  // 添加刚体
+    createRigidBody(target=this.mesh, scaleX=1, scaleY=1) {  // 添加刚体
         if(!this.rigidShape) return;
         let mass = this.mass;
         let P = this.mesh.position;
@@ -115,7 +115,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             shape = RAPIER.ColliderDesc.cuboid(box.x/2, box.y/2, box.z/2);
         }
         else if(this.rigidShape == "convex"){  // 将自定义几何体的凸集作为刚体形状
-            shape = this.createRigidShape(this.geometry, scaleX); 
+            shape = this.createRigidShape(this.geometry, scaleX, scaleY); 
         }
         else if(this.rigidShape == "mesh"){  // 根据网格形状直接生成刚体形状
             shape = this.createRigidShape(this.geometry);   
@@ -197,7 +197,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         this.mesh.add(rigidHelper);
         this.layers.rigidHelper = [rigidHelper];
     }
-    createRigidShape(geom, scaleX = 1){  // 从几何形状建立刚体形状
+    createRigidShape(geom, scaleX=1, scaleY=1){  // 从几何形状建立刚体形状
         // points里每三个连续的点定义了一个三角形面
         let newVertices: any = [], newIndexes: any = [];
         let scale = this.scale;
@@ -205,9 +205,9 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         let points = geom.attributes.position.array;
         for (let i=0; i < points.length; i+=9) {
             newVertices.push(
-                points[i]*scale*scaleX, points[i+1]*scale, points[i+2]*scale, 
-                points[i+3]*scale*scaleX, points[i+4]*scale, points[i+5]*scale, 
-                points[i+6]*scale*scaleX, points[i+7]*scale, points[i+8]*scale
+                points[i]*scale*scaleX, points[i+1]*scale*scaleY, points[i+2]*scale, 
+                points[i+3]*scale*scaleX, points[i+4]*scale*scaleY, points[i+5]*scale, 
+                points[i+6]*scale*scaleX, points[i+7]*scale*scaleY, points[i+8]*scale
             );
             newIndexes.push(i/3, i/3+1, i/3+2);
             threeVertices.push(
@@ -438,6 +438,14 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         this.mesh.getWorldScale(L);
         L = L.x / this.scale;  // 获取传送带直道的长度缩放比
         this.createRigidBody(this.mesh, L);  // 重建刚体 
+        this.updateRigidbodyTransform();
+    }
+    updateGuardRail(){  // 更新直护栏刚体的长度
+        this.removeRigidBody();  // 移除刚体
+        let L = new THREE.Vector3();
+        this.mesh.getWorldScale(L);
+        L = L.y / this.scale;  // 获取传送带直道的长度缩放比
+        this.createRigidBody(this.mesh, 1, L);  // 重建刚体 
         this.updateRigidbodyTransform();
     }
     updateGroupWireframes(){  // 更新群组的线框
