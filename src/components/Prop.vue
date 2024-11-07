@@ -219,6 +219,24 @@
             eval(`${prop} = ${result}`);
           }
         }
+        else if(this.prop == "mesh.scale.y") {  // 改变直护栏尺寸
+          if(JSON.parse(e.target.value) > 100){
+            global.emit("popup", {  // 弹窗确认修改传送带长度
+              title: "确认修改传送带长度",
+              type: "yes_no",
+              content: "传送带过长可能会导致其无法正常工作，是否确认修改？",
+              yes: () => {  // 确认修改
+                DT.value.updateGuardRail(JSON.parse(e.target.value));
+                eval(`${prop} = ${result}`);
+              },
+              no: () => {}  // no为取消
+            });
+          }
+          else {
+            DT.value.updateGuardRail(JSON.parse(e.target.value));
+            eval(`${prop} = ${result}`);
+          }
+        }
         else eval(`${prop} = ${result}`);
 
         if(this.prop == "name") {DT.value.setTitle(); global.emit("updateTree");}

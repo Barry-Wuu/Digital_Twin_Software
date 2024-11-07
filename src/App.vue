@@ -103,24 +103,46 @@
       path: "positionfeedback/frontclient",
       interval: 100,  // ms
       timeout: 500000,  // ms
-      callback: async function (axios, obj) {  // 使用阻塞的方式连接并接收消息，全局超时时间为this.TIMEOUT=500s
+      callback: async function (axios, client) {  // 使用阻塞的方式连接并接收消息，全局超时时间为this.TIMEOUT=500s
         try{
-          if(!obj.connect) return;
-          if(obj.thread_num >= obj.max_thread_num) return;
-          obj.thread_num++; 
-          console.log("线程数：", obj.thread_num)
+          if(!client.connect) return;
+          if(client.thread_num >= client.max_thread_num) return;
+          client.thread_num++; 
+          console.log("线程数：", client.thread_num)
           let result = await axios.get(
-              `http://${obj.SITE}:${obj.PORT}/${obj.PATH}`, 
-              {timeout: obj.TIMEOUT}
+              `http://${client.SITE}:${client.PORT}/${client.PATH}`, 
+              {timeout: client.TIMEOUT}
           );
           let data = result.data;
-          if(data.RFID && data.deviceID) global.emit("updateTrayPosition", data);
-          obj.thread_num--;
-          obj.getData(axios, obj);
+
+          // 处理读取到的JSON数据
+          if(data.mode == 1){  // 数据读取模式1
+            console.log(data)
+          }
+          if(data.mode == 2){  // 数据读取模式1
+            console.log(data.RFID);  // 托盘ID
+            console.log(data.deviceID);  // 光电门ID
+            console.log(data.sqlip);
+            console.log(data.username);
+            console.log(data.password);
+            console.log(data.alldb);
+            if(!JSON.parse(data.alldb)) console.log(data.databasename);
+            // databasename: {dbnumber: '1', '1':{dbname:..., alltable:...}}
+            console.log(JSON.parse(data.nocreateinfo));
+            console.log(data.wheredata)
+            console.log(data.delaytime)
+            console.log(data.outputfile)
+          }
+
+          if(data.RFID && data.deviceID) {
+            global.emit("updateTrayPosition", data);
+          }
+          client.thread_num--;
+          client.getData(axios, client);
         } catch(error) {
             console.error(error.message, error);
-            obj.thread_num--;
-            obj.getData(axios, obj);
+            client.thread_num--;
+            client.getData(axios, client);
         };
       }
     });

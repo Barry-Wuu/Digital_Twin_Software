@@ -128,7 +128,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             shape = this.createRigidShape(eval(this.rigidShape.join(''))()); 
         }
 
-        shape.setFriction(this.friction0);
+        shape.setFriction(this.label == "guardrail" ? 0 : this.friction0);
         shape.setMass(this.mass);
         // 设置刚体描述符
         const rbDesc = mass == 0 ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
@@ -440,11 +440,15 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         this.createRigidBody(this.mesh, L);  // 重建刚体 
         this.updateRigidbodyTransform();
     }
-    updateGuardRail(){  // 更新直护栏刚体的长度
+    updateGuardRail(length = null){  // 更新直护栏刚体的长度
         this.removeRigidBody();  // 移除刚体
         let L = new THREE.Vector3();
-        this.mesh.getWorldScale(L);
-        L = L.y / this.scale;  // 获取传送带直道的长度缩放比
+        this.mesh.getWorldScale(L); console.log(length)
+        if(length){
+            this.mesh.scale.y = length * this.scale;
+            L = length;
+        }
+        else L = L.y / this.scale;  // 获取传送带直道的长度缩放比
         this.createRigidBody(this.mesh, 1, L);  // 重建刚体 
         this.updateRigidbodyTransform();
     }

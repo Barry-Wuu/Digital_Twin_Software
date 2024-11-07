@@ -75,6 +75,7 @@
         "可视化"
     ]
     const mode = ref("edit");  // 编辑模式（edit）或浏览模式（view）
+    const modeReadData = ref(1);  // 数据读取模式
     const recentOpened = ref([]);  // 最近打开的场景文件
     const speed = ref(0);
     const tab = ref("主要功能");  // 栏目
@@ -316,8 +317,8 @@
             const selectedKey = ref([]);
             return {
                 cameraMode, customViews, global, emulateMode, fast, layersActive, layersAll, 
-                marks, menu, mode, recentOpened, savepath:"", selectedKey, speed, tab, 
-                viewName, wireframe
+                marks, menu, mode, modeReadData, recentOpened, savepath:"", 
+                selectedKey, speed, tab, viewName, wireframe
             };
         },
         mounted(){  
@@ -536,6 +537,13 @@
         <div style="align-items:center; display:inline; height:100%" class="bottom marginLR5">
             <span style="align-items:center; display:flex; 
             height: calc(100% - 35px); justify-content:space-evenly;" class="bottom">
+                <!--数据读取模式-->
+                <div class="logo marginLR10 top16" @click="()=>{modeReadData = 3-modeReadData}"
+                @mousedown.prevent @mouseenter = "lightON" @mouseleave = "lightOFF">
+                    数据读取模式<br>
+                    {{{'1': "自动读取", '2': "返回SQL文件"}[modeReadData]}}
+                </div>
+
                 <!--重新加载-->
                 <div class="logo marginLR10 top16" @click="reload"
                 @mousedown.prevent @mouseenter = "lightON" @mouseleave = "lightOFF">
