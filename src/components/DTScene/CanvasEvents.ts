@@ -151,9 +151,9 @@ export default defineComponent({
           result.add(P);
           tempModel.position.copy(result);  // 设置物体位姿
         } 
-        else if(dragModel.DT.name == "弯道护栏") {  // 将弯道护栏与弯道对齐
-          tempModel.position.copy(P);
-          tempModel.rotation.copy(Q);
+        else if(dragModel.DT.name == "弯道外侧护栏" || dragModel.DT.name == "弯道内侧护栏") {
+          tempModel.position.copy(P);  // 将弯道护栏与弯道对齐
+          tempModel.quaternion.copy(Q);
         }
         else {  // 将其它护栏和物体直接放在弯道上
           let [x, y] = [tempModel.position.x, tempModel.position.y];

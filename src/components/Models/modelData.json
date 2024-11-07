@@ -11,7 +11,8 @@
         ]},
         {"title": "护栏", "children": [
             {"title": "直护栏"},
-            {"title": "弯道护栏"},
+            {"title": "弯道外侧护栏"},
+            {"title": "弯道内侧护栏"},
             {"title": "变道护栏"}
         ]},
         {"title": "在制品", "children": [
@@ -202,12 +203,13 @@
         "直护栏": {
             "icon": "直护栏.png",
             "geometry": "new THREE.BoxGeometry(0.5, 6, 1)",
+            "label": "guardrail",
             "material": { "color": "gray" },
             "rigid": true, 
             "rigidShape": "convex"
         },
-        "弯道护栏": {
-            "icon": "弯道护栏.png",
+        "弯道外侧护栏": {
+            "icon": "弯道外侧护栏.png",
             "geometry": [
                 "()=>{",
                     "const PI = Math.PI;",
@@ -224,6 +226,30 @@
                     "})",
                 "}"
             ],
+            "label": "guardrail",
+            "material": { "color": "gray" },
+            "rigid": true, 
+            "rigidShape": "mesh"
+        },
+        "弯道内侧护栏": {
+            "icon": "弯道内侧护栏.png",
+            "geometry": [
+                "()=>{",
+                    "const PI = Math.PI;",
+                    "let r = 3.6/DT.scale - 0.25, R = 3.6/DT.scale + 0.25, shape = new THREE.Shape();",
+                    "shape.moveTo(0, R);",
+                    "shape.absarc(0, 0, R, PI/2, PI, false);",
+                    "shape.absarc(0, 0, r, PI, PI/2, true);",
+                    "shape.closePath();", 
+                    "return new THREE.ExtrudeGeometry(shape, {",  
+                        "bevelEnabled: false,",  
+                        "curveSegments: 5,",  
+                        "depth: 1/DT.scale,",  
+                        "steps: 1,",  
+                    "})",
+                "}"
+            ],
+            "label": "guardrail",
             "material": { "color": "gray" },
             "rigid": true, 
             "rigidShape": "mesh"
@@ -246,6 +272,7 @@
                     "})",
                 "}"
             ],
+            "label": "guardrail",
             "material": { "color": "gray" },
             "rigid": true, 
             "rigidShape": "mesh"
