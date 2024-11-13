@@ -40,10 +40,9 @@
       return{
         addingDatabase: false,
         allowSend: false,  // 是否正在发送数据
-        databasename: {
-          dbnumber: 0,
+        databases: {
+          cpps_db: {addingTable: false, alltable: false, tables: {orders:true, features: true}}
         },
-        databases: {cpps_db: {addingTable: false, tables: {}}},
         dataSend: {
           mode: 1,  // 数据发送模式
           sqlip: "192.168.137.121",  // 字符串
@@ -51,7 +50,6 @@
           username: "cpps",  // 字符串
           password: "cpps",  // 字符串
           alldb: false,
-          databasename: {},
           nocreateinfo: false,
           wheredata: 'NULL',  // 字符串
           delaytime: 5,  // 数字，不小于3
@@ -59,12 +57,13 @@
         },
         inputDatabase: '',
         inputTable: '',
-        tables: "orders, features",
       }
     },
     methods:{
       addDatabase(input){  // 添加数据库
-        if(!this.databases[input]) this.databases[input] = {addingTable: false, tables: {}};  // 创建数据库
+        if(!this.databases[input]) {
+          this.databases[input] = {addingTable: false, alltable: false, tables: {}};  // 创建数据库
+        }
         this.addingDatabase = false;
         this.inputDatabase = '';
       },
@@ -114,17 +113,33 @@
       },
       sendData(choice){  // 发送数据
         this.allowSend = choice;
-        let data = {databasename: null}, data1 = {}, data2 = {};
-        this.tables.split(',').forEach((item, index)=>{
-          data2[index+1] = item.trim();
-        })
-        Object.assign(data2, this.database);
-        Object.assign(data1, this.databasename);
-        data1[this.databasename.dbnumber] = data2;
-        Object.assign(data, this.dataSend);
-        data.databasename = data1;
-        console.log(data);
-        global.emit("sendMessage", {site: '', data: data});
+        let dataSend0 = {};
+        Object.assign(dataSend0, this.dataSend);
+        if(!this.dataSend.alldb){
+          dataSend0["databasename"] = {};
+          dataSend0["databasename"]["dbnumber"] = Object.keys(this.databases).length;
+          Object.keys(this.databases).forEach((dbname, index)=>{
+            let db = this.databases[dbname];
+            let db0 = {
+              dbname: dbname,
+              alltable: db.alltable + 0,
+            };
+            if(!db.alltable){
+              db0["tablenumber"] = Object.keys(db.tables).length;
+              Object.keys(db.tables).forEach((table, index)=>{
+                db0[index+1] = table;
+              })
+            }
+            dataSend0["databasename"][index+1] = db0;
+          })
+        }
+        console.log(dataSend0, choice);
+        if(choice){
+          global.emit("postRequest", {site: "http://192.168.137.155:/DiaoDuStart", data: dataSend0});
+        }
+        else{
+          global.emit("postRequest", {site: "http://192.168.137.155:/DiaoDuStop", data: dataSend0});
+        }
       },
       setCustomCodeFont(size){  // 更改自定义脚本字体
         let rule = ['xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large'];
@@ -256,16 +271,16 @@
     align-items: center;   
     padding-left:10px
   }  
-  #popup-content .ant-card {
-    height: 20px;
+  #popup-content .ant-collapse-header .anticon-close svg {
+    fill: lightgrey;
   }
-  #popup-content .ant-card-head > *{
-    transform: translateY(-17px);
+  #popup-content .ant-collapse-header .anticon-close svg :hover{
+    fill: red;
   }
   #popup-content .ant-collapse-header {
     height: 20px;
   }
-  #popup-content .ant-collapse-header > *{
+  #popup-content .ant-collapse-header > * {
     transform: translateY(-10px);
   }
   .yes-no-content{
@@ -482,11 +497,11 @@
           端口号：<a-input type="number" step="1" style="width:100px" v-model:value="dataSend.sqlport"/>（整数）<br>
           用户名：<a-input style="width:100px" v-model:value="dataSend.username"/>（字符串）<br>
           密码：<a-input style="width:100px" v-model:value="dataSend.password"/>（字符串）<br>
-          是否导出所有数据库：
+          导出所有数据库：
           <a-checkbox style="width:100px" v-model:checked="dataSend.alldb" @change="alignWindow">
             {{ dataSend.alldb ? '是': '否'}}
           </a-checkbox><br>
-          <strong v-if="!dataSend.alldb">数据库：</strong>
+          <div v-if="!dataSend.alldb">选择要导出的数据库与表：</div>
           <div v-if="!dataSend.alldb" style="
             border: 1px solid black;
             border-radius: 5px;
@@ -495,30 +510,41 @@
             overflow-y: scroll;
             padding: 10px;
           ;">
-            <strong v-if="Object.keys(databases).length==0">无数据库<br></strong>
+            <strong v-if="Object.keys(databases).length">
+              已选择{{Object.keys(databases).length}}个数据库<br>
+            </strong>
+            <strong v-if="Object.keys(databases).length==0">未选择数据库<br></strong>
             <a-collapse v-else accordion>
-              <a-collapse-panel v-for="(item, key) in databases" :header="key" :key="key" >
-                <strong v-if="Object.keys(item.tables).length==0">无表<br></strong>
-                <div v-else>
-                  <strong>表：</strong>
-                  <a-card v-for="(item0, key0) in item.tables" :title="key0">
-                    <template #extra><close-outlined @click="delete item.tables[key0]"/></template>
-                  </a-card>
-                </div>
-                <a-button v-if="!item.addingTable" @click="item.addingTable=true"
-                style="border-color: dodgerblue; color: dodgerblue; margin: 10px 0">
-                  <PlusOutlined/>添加数据库
-                </a-button>
-                <div v-else>
-                  添加表：<a-input style="width: 150px;" placeholder="请输入表名" 
-                  v-model:value="inputTable"/>
-                  <a-button style="border: #0B0 solid 1px; color: #0B0; margin: 0 10px;" 
-                  @click="addTable(item, inputTable)" :disabled="!inputTable">
-                    &nbsp;<CheckOutlined/>
+              <a-collapse-panel v-for="(item, key) in databases" :header="key" :key="key">
+                导出所有表：<a-checkbox style="width:100px" v-model:checked="item.alltable" @change="alignWindow">
+                  {{ item.alltable ? '是': '否'}}
+                </a-checkbox><br>
+                <div v-if="!item.alltable">
+                  <strong v-if="Object.keys(item.tables).length==0">未选择表<br></strong>
+                  <div v-else>
+                    <strong>已选择{{Object.keys(item.tables).length}}个表</strong>
+                    <a-collapse collapsible="icon">
+                      <a-collapse-panel v-for="(item0, key0) in item.tables" 
+                      :header="key0" :key="key0" :show-arrow="false">
+                        <template #extra><close-outlined @click="delete item.tables[key0]"/></template>
+                      </a-collapse-panel>
+                    </a-collapse>
+                  </div>
+                  <a-button v-if="!item.addingTable" @click="item.addingTable=true"
+                  style="border-color: dodgerblue; color: dodgerblue; margin-top: 10px">
+                    <PlusOutlined/>添加表
                   </a-button>
-                  <a-button danger @click="item.addingTable = false; inputTable = ''">
-                    <CloseOutlined/>
-                  </a-button>
+                  <div v-else>
+                    添加表：<a-input style="width: 150px;" placeholder="请输入表名" 
+                    v-model:value="inputTable"/>
+                    <a-button style="border: #0B0 solid 1px; color: #0B0; margin: 0 10px;" 
+                    @click="addTable(item, inputTable)" :disabled="!inputTable">
+                      &nbsp;<CheckOutlined/>
+                    </a-button>
+                    <a-button danger @click="item.addingTable = false; inputTable = ''">
+                      <CloseOutlined/>
+                    </a-button>
+                  </div>
                 </div>
                 <template #extra><close-outlined @click="delete databases[key]"/></template>
               </a-collapse-panel>
@@ -539,11 +565,11 @@
               </a-button>
             </div>
           </div>
-          nocreateinfo：
+          不导出表结构：
           <a-checkbox style="width:100px" v-model:checked="dataSend.nocreateinfo">
             {{ dataSend.nocreateinfo }}
           </a-checkbox><br>
-          wheredata：<a-input style="width:100px" v-model:value="dataSend.wheredata"/>（字符串）<br>
+          数据筛选条件：<a-input style="width:100px" v-model:value="dataSend.wheredata"/>（字符串）<br>
           导出频率：<a-input type="number" min="3" step="1" addon-after="s"
           style="width:100px" v-model:value="dataSend.delaytime"/>（整数）<br>
           导出位置：<a-input style="width:300px" placeholder="选择stl文件路径" v-model:value="dataSend.outputfile"/>

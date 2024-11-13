@@ -1,4 +1,3 @@
-const { exec } = require('child_process');   
 import axios from "axios";
 import global from "../../Global"
 /*
@@ -10,7 +9,7 @@ import global from "../../Global"
     }
 */
 export default class HttpClient{
-    getData;  // 回调函数
+    callback;  // 回调函数
     connect = true;  // 允许连接
     max_thread_num = 10;  // 最大线程数
     polling;  // 连接定时器
@@ -19,29 +18,34 @@ export default class HttpClient{
     PATH: string;  // 连接路径
     PORT: number;  // 连接端口
     SITE: string;  // 连接地址
-    TIMEOUT: number;  // 连接超时时间（毫秒）
-
-    constructor({interval, path, port, site="localhost", timeout, callback}){  // 在控制台输入global.emit("sendMessage", {a:1})用于发送消息
+    TIMEOUT: number;  // 连接超时时间（毫秒）  
+    
+    // 在控制台输入global.emit("postRequest", {a:1})用于发送消息
+    constructor({interval, path, port, site="localhost", timeout, callback}){
         this.INTERVAL = interval;
         this.PATH = path;
         this.PORT = port;
         this.SITE = site;
         this.TIMEOUT = timeout;
-        this.getData = callback;
-        global.on("sendMessage", data => this.postData(data));
+        this.callback = callback;
+        global.on("getRequest", data => this.getRequest(data));
+        global.on("postRequest", data => this.postRequest(data));
     }
     startConnect() {  // 连接启动
         this.connect = true;
-        this.getData(axios, this);
-        // this.polling = setInterval(this.getData, 100);
-        // setTimeout(this.fetchData, 500000).then(()=>this.startPolling());
+        this.callback(axios, this);
     }
     stopConnect() {  // 连接停止
         this.connect = false;
     }
-    postData(data) {  // 发送消息
-        axios.post(data.site, data.data).then( result => {
-            console.log(result);
-        }).catch(err => console.error(err)); 
+    getRequest(site) {  // 发送get请求
+        axios.get(site, {timeout: this.TIMEOUT})
+        .then(res => console.log(res.data))
+        .catch(err => console.log(err));
+    }  
+    postRequest(data) {  // 发送post请求
+        axios.post(data.site, data.data)
+        .then(res => console.log(res))
+        .catch(err => console.error(err)); 
     }  
 }
