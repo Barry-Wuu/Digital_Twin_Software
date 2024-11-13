@@ -3,7 +3,7 @@
   import Prop from "./Prop.vue"
   import { ref } from 'vue'
 
-  const DT:any = ref("未选择物体");
+  const DT: any = ref("未选择物体");
   const tube = new EyeDropper();  // 颜色吸管
 
   export default{

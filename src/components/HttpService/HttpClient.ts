@@ -40,8 +40,8 @@ export default class HttpClient{
         this.connect = false;
     }
     postData(data) {  // 发送消息
-        axios.post(`http://${this.SITE}:${this.PORT}/get`, data).then( result => {
-            console.log("数据发送成功");
-        }).catch(err => console.error("发送数据失败")); 
+        axios.post(data.site, data.data).then( result => {
+            console.log(result);
+        }).catch(err => console.error(err)); 
     }  
 }
