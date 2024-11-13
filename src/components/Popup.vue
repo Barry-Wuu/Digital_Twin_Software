@@ -57,6 +57,8 @@
         },
         inputDatabase: '',
         inputTable: '',
+        startSendSite: "http://192.168.137.155:8888/DiaoDuStart",
+        stopSendSite: "http://192.168.137.155:8888/DiaoDuStop"
       }
     },
     methods:{
@@ -80,8 +82,11 @@
         });
       },
       changeDataMode(mode){  // 切换数据发送模式
-        this.sendData(false);
+        let popup = document.getElementById("popupSendData");
+        this.allowSend = false;
         this.dataSend.mode = mode; 
+        popup.style.height = mode == 1 ? "auto" : "50vw";
+        popup.style.overflowY = mode == 1 ? "auto" : "scroll";
         this.alignWindow();
       },
       closePopup(quit=true){  // 清空并隐藏新增属性输入栏，关闭弹窗
@@ -133,12 +138,11 @@
             dataSend0["databasename"][index+1] = db0;
           })
         }
-        console.log(dataSend0, choice);
         if(choice){
-          global.emit("postRequest", {site: "http://192.168.137.155:/DiaoDuStart", data: dataSend0});
+          global.emit("postRequest", {url: this.startSendSite, data: dataSend0});
         }
         else{
-          global.emit("postRequest", {site: "http://192.168.137.155:/DiaoDuStop", data: dataSend0});
+          global.emit("getRequest", this.stopSendSite);
         }
       },
       setCustomCodeFont(size){  // 更改自定义脚本字体
@@ -486,17 +490,21 @@
         </span>
       </div>
 
-      <!--发送数据-->
-      <div v-if="popupContent=='sendData'" style="text-align: left; margin:10px; width: 450px">
+      <!--数据发送设置-->
+      <div v-if="popupContent=='sendData'" id="popupSendData" style="
+        text-align: left; 
+        margin:10px; 
+        width: 450px;
+      ">
         数据发送模式：
         <a-radio :checked="dataSend.mode==1" @change="changeDataMode(1)">模式1</a-radio>
         <a-radio :checked="dataSend.mode==2" @change="changeDataMode(2)">模式2</a-radio>
         <div v-if="dataSend.mode == 1">自动读取JSON数据</div>
         <div v-else>
-          IP地址：<a-input style="width:100px" v-model:value="dataSend.sqlip"/>（字符串）<br>
-          端口号：<a-input type="number" step="1" style="width:100px" v-model:value="dataSend.sqlport"/>（整数）<br>
-          用户名：<a-input style="width:100px" v-model:value="dataSend.username"/>（字符串）<br>
-          密码：<a-input style="width:100px" v-model:value="dataSend.password"/>（字符串）<br>
+          IP地址：<a-input style="width:200px" v-model:value="dataSend.sqlip"/><br>
+          端口号：<a-input type="number" step="1" style="width:200px" v-model:value="dataSend.sqlport"/><br>
+          用户名：<a-input style="width:200px" v-model:value="dataSend.username"/><br>
+          密码：<a-input style="width:200px" v-model:value="dataSend.password"/><br>
           导出所有数据库：
           <a-checkbox style="width:100px" v-model:checked="dataSend.alldb" @change="alignWindow">
             {{ dataSend.alldb ? '是': '否'}}
@@ -569,10 +577,14 @@
           <a-checkbox style="width:100px" v-model:checked="dataSend.nocreateinfo">
             {{ dataSend.nocreateinfo }}
           </a-checkbox><br>
-          数据筛选条件：<a-input style="width:100px" v-model:value="dataSend.wheredata"/>（字符串）<br>
+          数据筛选条件：<a-input v-model:value="dataSend.wheredata"/><br>
           导出频率：<a-input type="number" min="3" step="1" addon-after="s"
-          style="width:100px" v-model:value="dataSend.delaytime"/>（整数）<br>
-          导出位置：<a-input style="width:300px" placeholder="选择stl文件路径" v-model:value="dataSend.outputfile"/>
+          style="width:100px" v-model:value="dataSend.delaytime"/><br>
+          导出位置：
+          <a-input placeholder="选择stl文件路径" v-model:value="dataSend.outputfile"/>
+          <br>
+          数据开始发送地址：<a-input v-model:value="startSendSite"/><br>
+          数据结束发送地址：<a-input v-model:value="stopSendSite"/>
         </div>
         <div style="margin: 10px 0; text-align: center; user-select:none;">
           <a-button type="primary" :disabled="allowSend" @click="sendData(true)">开始发送</a-button>

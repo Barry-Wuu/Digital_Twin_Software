@@ -123,7 +123,7 @@
         } catch(error) {
             console.error(error.message, error);
             client.thread_num--;
-            client.getData(axios, client);
+            client.callback(axios, client);
         };
       }
     });

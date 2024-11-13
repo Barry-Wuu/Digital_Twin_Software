@@ -28,7 +28,7 @@ export default class HttpClient{
         this.SITE = site;
         this.TIMEOUT = timeout;
         this.callback = callback;
-        global.on("getRequest", data => this.getRequest(data));
+        global.on("getRequest", url => this.getRequest(url));
         global.on("postRequest", data => this.postRequest(data));
     }
     startConnect() {  // 连接启动
@@ -38,13 +38,15 @@ export default class HttpClient{
     stopConnect() {  // 连接停止
         this.connect = false;
     }
-    getRequest(site) {  // 发送get请求
-        axios.get(site, {timeout: this.TIMEOUT})
+    getRequest(url) {  // 发送get请求
+        console.log(url);
+        axios.get(url, {timeout: this.TIMEOUT})
         .then(res => console.log(res.data))
         .catch(err => console.log(err));
     }  
     postRequest(data) {  // 发送post请求
-        axios.post(data.site, data.data)
+        console.log(data);
+        axios.post(data.url, data.data)
         .then(res => console.log(res))
         .catch(err => console.error(err)); 
     }  
