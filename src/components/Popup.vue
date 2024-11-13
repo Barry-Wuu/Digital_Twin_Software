@@ -5,10 +5,11 @@
     CheckCircleOutlined,
     CheckOutlined,
     CloseOutlined,
+    PlusOutlined,
   } from '@ant-design/icons-vue';
 
   const addCustomProp = ref(false);
-  const customCodeFont = ref(3);
+  const customCodeFont = ref(3);    
   const DT = ref();
   const editProp = ref('');
   const editValue = ref();
@@ -30,11 +31,60 @@
 
   export default{
     components:{
-        CheckCircleOutlined, 
-        CheckOutlined, 
-        CloseOutlined
+      CheckCircleOutlined, 
+      CheckOutlined, 
+      CloseOutlined,
+      PlusOutlined,
+    },
+    data(){
+      return{
+        addingDatabase: false,
+        allowSend: false,  // 是否正在发送数据
+        databasename: {
+          dbnumber: 0,
+        },
+        databases: {cpps_db: {addingTable: false, tables: {}}},
+        dataSend: {
+          mode: 1,  // 数据发送模式
+          sqlip: "192.168.137.121",  // 字符串
+          sqlport: 30928,  // 数字
+          username: "cpps",  // 字符串
+          password: "cpps",  // 字符串
+          alldb: false,
+          databasename: {},
+          nocreateinfo: false,
+          wheredata: 'NULL',  // 字符串
+          delaytime: 5,  // 数字，不小于3
+          outputfile: '',  // 字符串，选择文件路径
+        },
+        inputDatabase: '',
+        inputTable: '',
+        tables: "orders, features",
+      }
     },
     methods:{
+      addDatabase(input){  // 添加数据库
+        if(!this.databases[input]) this.databases[input] = {addingTable: false, tables: {}};  // 创建数据库
+        this.addingDatabase = false;
+        this.inputDatabase = '';
+      },
+      addTable(db, input){  // 添加表
+        if(!db.tables[input]) db.tables[input] = true;  // 创建数据库
+        db.addingTable = false;
+        this.inputTable = '';
+      },
+      alignWindow(){  // 将弹窗居中放置在界面中央
+        this.$nextTick(()=>{  // 异步更新窗口位置
+          let rect = popup.getBoundingClientRect();
+          popup.style.top = (main.offsetHeight - rect.height)/2 + "px";
+          popup.style.left = (main.offsetWidth - rect.width)/2 + "px";
+        });
+      },
+      changeDataMode(mode){  // 切换数据发送模式
+        this.sendData(false);
+        this.dataSend.mode = mode; 
+        this.alignWindow();
+      },
       closePopup(quit=true){  // 清空并隐藏新增属性输入栏，关闭弹窗
         if(quit){
           popupContent.value = ''; 
@@ -62,6 +112,20 @@
         let result = lastRow.match(/^\s+/);
         return result ? result['0'] : '';
       },
+      sendData(choice){  // 发送数据
+        this.allowSend = choice;
+        let data = {databasename: null}, data1 = {}, data2 = {};
+        this.tables.split(',').forEach((item, index)=>{
+          data2[index+1] = item.trim();
+        })
+        Object.assign(data2, this.database);
+        Object.assign(data1, this.databasename);
+        data1[this.databasename.dbnumber] = data2;
+        Object.assign(data, this.dataSend);
+        data.databasename = data1;
+        console.log(data);
+        global.emit("sendMessage", {site: '', data: data});
+      },
       setCustomCodeFont(size){  // 更改自定义脚本字体
         let rule = ['xx-small', 'x-small', 'small', 'medium', 'large', 'x-large', 'xx-large'];
         let style = document.getElementById("customCode").style;
@@ -77,9 +141,23 @@
     },
     setup(){
       return {
-        addCustomProp, DT, global, customCodeFont, editProp, editValue, 
-        helpChange, helpContent, helpTree, newCode, newProp, 
-        popup, popupContent, popupMask, popupTitle, rename, yesNoContent
+        addCustomProp, 
+        DT, 
+        global, 
+        customCodeFont, 
+        editProp, 
+        editValue, 
+        helpChange, 
+        helpContent, 
+        helpTree, 
+        newCode, 
+        newProp, 
+        popup, 
+        popupContent, 
+        popupMask, 
+        popupTitle, 
+        rename, 
+        yesNoContent
       }
     },
     mounted(){
@@ -94,14 +172,8 @@
           popupTitle.value = data.title;
           if(data.value) rename.value = data.value;
           popup.style.display = popupMask.style.display = "block";
-          this.$nextTick(()=>{  // 异步更新窗口位置
-            let rect = popup.getBoundingClientRect();
-            popup.style.top = (main.offsetHeight - rect.height)/2 + "px";
-            popup.style.left = (main.offsetWidth - rect.width)/2 + "px";
-            if(data.type == "code"){
-              newCode.value = DT.value.code ? DT.value.code : '';
-            }
-          });
+          if(data.type == "code") newCode.value = DT.value.code ? DT.value.code : '';
+          this.alignWindow();
         }
       });
       main = document.getElementById("main");
@@ -184,6 +256,18 @@
     align-items: center;   
     padding-left:10px
   }  
+  #popup-content .ant-card {
+    height: 20px;
+  }
+  #popup-content .ant-card-head > *{
+    transform: translateY(-17px);
+  }
+  #popup-content .ant-collapse-header {
+    height: 20px;
+  }
+  #popup-content .ant-collapse-header > *{
+    transform: translateY(-10px);
+  }
   .yes-no-content{
     margin-top: 10px; 
     margin-bottom: -12px; 
@@ -194,7 +278,7 @@
     border:#0B0 solid 1px; 
     color:#0B0; 
     margin-right:10px
-    }
+  }
 </style>
 
 <template>
@@ -230,6 +314,7 @@
           否<CloseOutlined/>
         </a-button>
       </div>
+
       <!--重命名窗口-->
       <div v-if="popupContent=='rename'" class="yes-no-content">
         <a-input v-model:value="rename" style="width: 97%; margin-bottom:10px"></a-input>
@@ -242,7 +327,7 @@
       </div>
 
       <!--帮助-->
-      <span v-if="popupContent=='help'" style="display: flex; margin-top: 10px; text-align: left">
+      <div v-if="popupContent=='help'" style="display: flex; margin-top: 10px; text-align: left">
         <a-tree v-model:selectedKeys="helpContent" :tree-data="helpTree"
         @select="e => helpContent = e[0]">
           <template #title="node">
@@ -289,10 +374,10 @@
           （2）<strong>按组件名排序（默认）：</strong>按组件名的拼音顺序自动排序，且文件夹排在其它组件前面；<br>
           （3）<strong>按组件类型排序：</strong>相同类型的组件被自动排在一起，同类型组件按拼音顺序排序。<br>
         </div>
-      </span>
+      </div>
 
       <!--自定义属性工具栏-->  
-      <span v-if="popupContent=='prop'" style="display:flex; margin:10px">
+      <div v-if="popupContent=='prop'" style="display:flex; margin:10px">
         <a-button @click="addCustomProp=true; editProp='';" 
         :disabled="addCustomProp">点此添加属性</a-button>&nbsp;
         <div v-if="addCustomProp">
@@ -307,80 +392,168 @@
           </a-button>&nbsp;
           <a-button danger @click="closePopup(false)"><CloseOutlined/></a-button>
         </div>
-      </span>
+      </div>
 
       <!--自定义属性表--> 
-      <a-table v-if="popupContent=='prop'" bordered :data-source="obj2table(DT.custom)">
-        <a-table-column title="属性" data-index="prop">
-          <template #default="{ value:prop }">
-            <div>{{ prop }}</div>
-          </template>
-        </a-table-column>
-        <a-table-column title="值" data-index="prop">
-          <template #default="{ value:prop }">
-            <a-input v-if="editProp==prop" v-model:value="editValue"
-            size="small" style="width:120px"
-            @keydown="(e)=>{if(e.key=='Enter') setCustomProp(editValue, prop)}">
-            <template #suffix>
-              <CheckCircleOutlined @click="setCustomProp(editValue, prop)"
-            />
+      <div v-if="popupContent=='prop'">
+        <a-table bordered :data-source="obj2table(DT.custom)">
+          <a-table-column title="属性" data-index="prop">
+            <template #default="{ value:prop }">
+              <div>{{ prop }}</div>
             </template>
-            </a-input>
-            <div v-else>{{ DT.custom[prop] }}</div>
-          </template>
-        </a-table-column>
-        <a-table-column title="类型" data-index="value">
-          <template #default="{ value }">
-            <div>{{ typeof value }}</div>
-          </template>
-        </a-table-column>
-        <a-table-column title="操作" data-index="prop" >
-          <template #default="{ value:prop }">
-            <a v-if="editProp!=prop" @click="
-              editProp=prop; editValue=DT.custom[prop];
-            ">编辑</a>
-            <a v-else @click="editProp=null">取消</a>
-            <a @click="delete DT.custom[prop]" style="margin-left:10px">删除</a>
-          </template>
-        </a-table-column>
-      </a-table>
+          </a-table-column>
+          <a-table-column title="值" data-index="prop">
+            <template #default="{ value:prop }">
+              <a-input v-if="editProp==prop" v-model:value="editValue"
+              size="small" style="width:120px"
+              @keydown="(e)=>{if(e.key=='Enter') setCustomProp(editValue, prop)}">
+              <template #suffix>
+                <CheckCircleOutlined @click="setCustomProp(editValue, prop)"
+              />
+              </template>
+              </a-input>
+              <div v-else>{{ DT.custom[prop] }}</div>
+            </template>
+          </a-table-column>
+          <a-table-column title="类型" data-index="value">
+            <template #default="{ value }">
+              <div>{{ typeof value }}</div>
+            </template>
+          </a-table-column>
+          <a-table-column title="操作" data-index="prop" >
+            <template #default="{ value:prop }">
+              <a v-if="editProp!=prop" @click="
+                editProp=prop; editValue=DT.custom[prop];
+              ">编辑</a>
+              <a v-else @click="editProp=null">取消</a>
+              <a @click="delete DT.custom[prop]" style="margin-left:10px">删除</a>
+            </template>
+          </a-table-column>
+        </a-table>
+      </div>
 
       <!--自定义脚本-->
-      <textarea v-if="popupContent=='code'" class="customCode" id="customCode" placeholder="自定义脚本"
-      v-model="newCode"
-      v-on="this.$nextTick(()=>{setCustomCodeFont(customCodeFont)})"
-      @keydown="e=>{ 
-        let textarea: any = e.target;
-        let insert = '';
-        const start = textarea.selectionStart;  
-        const end = textarea.selectionEnd;  
-        const text = textarea.value;  
-        const text0 = text.substring(0, start);  
-        const text1 = text.substring(end, text.length);
-        if (e.key == 'Enter'){  // 换行时继承前一行的空格前缀
-          e.preventDefault(); 
-          insert = '\n' + prefix(text0);
-        } else if (e.key == 'Tab') {  // 按Tab键时在光标处插入制表符 
-          e.preventDefault();
-          insert = '    '; 
-        } 
-        textarea.value = text0 + insert + text1;  
-        textarea.selectionStart = textarea.selectionEnd = start + insert.length;  
-      }"/>
-      <a-button v-if="popupContent=='code'" class="buttonCustomCode"
-      @click="DT.code=newCode; closePopup()" :disabled="newCode==DT.code">
-        保存
-      </a-button>
-      <a-button v-if="popupContent=='code'" class="buttonCustomCode"
-      @click="newCode=''" :disabled="newCode==''">
-        清空
-      </a-button>
-      <span style="display:flex;" class="buttonCustomCode">
-        <div v-if="popupContent=='code'" style="margin-top:4px">字体大小：</div>
-        <a-slider v-if="popupContent=='code'" :min=0 :max=6 :step=1 :tooltipVisible="false" 
-        @change="(e)=>{customCodeFont=e;}" 
-        :value="customCodeFont" style="width: 100px"/>
-      </span>
+      <div v-if="popupContent=='code'">
+        <textarea class="customCode" id="customCode" placeholder="自定义脚本"
+        v-model="newCode"
+        v-on="this.$nextTick(()=>{setCustomCodeFont(customCodeFont)})"
+        @keydown="e=>{ 
+          let textarea: any = e.target;
+          let insert = '';
+          const start = textarea.selectionStart;  
+          const end = textarea.selectionEnd;  
+          const text = textarea.value;  
+          const text0 = text.substring(0, start);  
+          const text1 = text.substring(end, text.length);
+          if (e.key == 'Enter'){  // 换行时继承前一行的空格前缀
+            e.preventDefault(); 
+            insert = '\n' + prefix(text0);
+          } else if (e.key == 'Tab') {  // 按Tab键时在光标处插入制表符 
+            e.preventDefault();
+            insert = '    '; 
+          } 
+          textarea.value = text0 + insert + text1;  
+          textarea.selectionStart = textarea.selectionEnd = start + insert.length;  
+        }"/>
+        <a-button class="buttonCustomCode"
+        @click="DT.code=newCode; closePopup()" :disabled="newCode==DT.code">
+          保存
+        </a-button>
+        <a-button class="buttonCustomCode"
+        @click="newCode=''" :disabled="newCode==''">
+          清空
+        </a-button>
+        <span style="display:flex;" class="buttonCustomCode">
+          <div style="margin-top:4px">字体大小：</div>
+          <a-slider :min=0 :max=6 :step=1 :tooltipVisible="false" 
+          @change="e=>{customCodeFont=e}" 
+          :value="customCodeFont" style="width: 100px"/>
+        </span>
+      </div>
+
+      <!--发送数据-->
+      <div v-if="popupContent=='sendData'" style="text-align: left; margin:10px; width: 450px">
+        数据发送模式：
+        <a-radio :checked="dataSend.mode==1" @change="changeDataMode(1)">模式1</a-radio>
+        <a-radio :checked="dataSend.mode==2" @change="changeDataMode(2)">模式2</a-radio>
+        <div v-if="dataSend.mode == 1">自动读取JSON数据</div>
+        <div v-else>
+          IP地址：<a-input style="width:100px" v-model:value="dataSend.sqlip"/>（字符串）<br>
+          端口号：<a-input type="number" step="1" style="width:100px" v-model:value="dataSend.sqlport"/>（整数）<br>
+          用户名：<a-input style="width:100px" v-model:value="dataSend.username"/>（字符串）<br>
+          密码：<a-input style="width:100px" v-model:value="dataSend.password"/>（字符串）<br>
+          是否导出所有数据库：
+          <a-checkbox style="width:100px" v-model:checked="dataSend.alldb" @change="alignWindow">
+            {{ dataSend.alldb ? '是': '否'}}
+          </a-checkbox><br>
+          <strong v-if="!dataSend.alldb">数据库：</strong>
+          <div v-if="!dataSend.alldb" style="
+            border: 1px solid black;
+            border-radius: 5px;
+            height: 200px; 
+            margin: 10px 0;
+            overflow-y: scroll;
+            padding: 10px;
+          ;">
+            <strong v-if="Object.keys(databases).length==0">无数据库<br></strong>
+            <a-collapse v-else accordion>
+              <a-collapse-panel v-for="(item, key) in databases" :header="key" :key="key" >
+                <strong v-if="Object.keys(item.tables).length==0">无表<br></strong>
+                <div v-else>
+                  <strong>表：</strong>
+                  <a-card v-for="(item0, key0) in item.tables" :title="key0">
+                    <template #extra><close-outlined @click="delete item.tables[key0]"/></template>
+                  </a-card>
+                </div>
+                <a-button v-if="!item.addingTable" @click="item.addingTable=true"
+                style="border-color: dodgerblue; color: dodgerblue; margin: 10px 0">
+                  <PlusOutlined/>添加数据库
+                </a-button>
+                <div v-else>
+                  添加表：<a-input style="width: 150px;" placeholder="请输入表名" 
+                  v-model:value="inputTable"/>
+                  <a-button style="border: #0B0 solid 1px; color: #0B0; margin: 0 10px;" 
+                  @click="addTable(item, inputTable)" :disabled="!inputTable">
+                    &nbsp;<CheckOutlined/>
+                  </a-button>
+                  <a-button danger @click="item.addingTable = false; inputTable = ''">
+                    <CloseOutlined/>
+                  </a-button>
+                </div>
+                <template #extra><close-outlined @click="delete databases[key]"/></template>
+              </a-collapse-panel>
+            </a-collapse>
+            <a-button v-if="!addingDatabase" @click="addingDatabase=true"
+            style="border-color: dodgerblue; color: dodgerblue; margin: 10px 0">
+              <PlusOutlined/>添加数据库
+            </a-button>
+            <div v-else>
+              添加数据库：<a-input style="width: 150px;" placeholder="请输入数据库名" 
+              v-model:value="inputDatabase"/>
+              <a-button style="border: #0B0 solid 1px; color: #0B0; margin: 0 10px;" 
+              @click="addDatabase(inputDatabase)" :disabled="!inputDatabase">
+                &nbsp;<CheckOutlined/>
+              </a-button>
+              <a-button danger @click="addingDatabase = false; inputDatabase = ''">
+                <CloseOutlined/>
+              </a-button>
+            </div>
+          </div>
+          nocreateinfo：
+          <a-checkbox style="width:100px" v-model:checked="dataSend.nocreateinfo">
+            {{ dataSend.nocreateinfo }}
+          </a-checkbox><br>
+          wheredata：<a-input style="width:100px" v-model:value="dataSend.wheredata"/>（字符串）<br>
+          导出频率：<a-input type="number" min="3" step="1" addon-after="s"
+          style="width:100px" v-model:value="dataSend.delaytime"/>（整数）<br>
+          导出位置：<a-input style="width:300px" placeholder="选择stl文件路径" v-model:value="dataSend.outputfile"/>
+        </div>
+        <div style="margin: 10px 0; text-align: center; user-select:none;">
+          <a-button type="primary" :disabled="allowSend" @click="sendData(true)">开始发送</a-button>
+          <span style="opacity: 0; width: 10px">————</span>
+          <a-button :disabled="!allowSend" @click="sendData(false)">关闭发送</a-button>
+        </div>
+      </div>
     </div>  
   </div>  
 

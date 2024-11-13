@@ -26,6 +26,7 @@
         PlusOutlined,
         QuestionCircleOutlined,
         ReloadOutlined,
+        SettingOutlined,
         StepForwardOutlined,
         VideoCameraOutlined,
     } from "@ant-design/icons-vue";
@@ -75,7 +76,6 @@
         "可视化"
     ]
     const mode = ref("edit");  // 编辑模式（edit）或浏览模式（view）
-    const modeReadData = ref(1);  // 数据读取模式
     const recentOpened = ref([]);  // 最近打开的场景文件
     const speed = ref(0);
     const tab = ref("主要功能");  // 栏目
@@ -103,6 +103,7 @@
             PlusOutlined,
             QuestionCircleOutlined,
             ReloadOutlined,
+            SettingOutlined,
             StepForwardOutlined,
             VideoCameraOutlined,
         },
@@ -255,6 +256,9 @@
                     });
                 }, null, {onlyVisible: false});           
             },
+            sendData(){  // 设置发送数据
+                global.emit("popup", {type: "sendData", title: "数据发送设置"});
+            },
             setFast(e){  // 设置快进速度
                 let value = e.key;
                 fast.value = parseInt(value);
@@ -317,7 +321,7 @@
             const selectedKey = ref([]);
             return {
                 cameraMode, customViews, global, emulateMode, fast, layersActive, layersAll, 
-                marks, menu, mode, modeReadData, recentOpened, savepath:"", 
+                marks, menu, mode, recentOpened, savepath:"",  
                 selectedKey, speed, tab, viewName, wireframe
             };
         },
@@ -537,11 +541,11 @@
         <div style="align-items:center; display:inline; height:100%" class="bottom marginLR5">
             <span style="align-items:center; display:flex; 
             height: calc(100% - 35px); justify-content:space-evenly;" class="bottom">
-                <!--数据读取模式-->
-                <div class="logo marginLR10 top16" @click="()=>{modeReadData = 3-modeReadData}"
+                <!--数据发送设置-->
+                <div class="logo marginLR10 top16" @click="sendData"
                 @mousedown.prevent @mouseenter = "lightON" @mouseleave = "lightOFF">
-                    数据读取模式<br>
-                    {{{'1': "自动读取", '2': "返回SQL文件"}[modeReadData]}}
+                    <SettingOutlined class="logoBig"/>
+                    <br>数据发送设置
                 </div>
 
                 <!--重新加载-->

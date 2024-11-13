@@ -115,25 +115,6 @@
           );
           let data = result.data;
 
-          // 处理读取到的JSON数据
-          if(data.mode == 1){  // 数据读取模式1
-            console.log(data)
-          }
-          if(data.mode == 2){  // 数据读取模式1
-            console.log(data.RFID);  // 托盘ID
-            console.log(data.deviceID);  // 光电门ID
-            console.log(data.sqlip);
-            console.log(data.username);
-            console.log(data.password);
-            console.log(data.alldb);
-            if(!JSON.parse(data.alldb)) console.log(data.databasename);
-            // databasename: {dbnumber: '1', '1':{dbname:..., alltable:...}}
-            console.log(JSON.parse(data.nocreateinfo));
-            console.log(data.wheredata)
-            console.log(data.delaytime)
-            console.log(data.outputfile)
-          }
-
           if(data.RFID && data.deviceID) {
             global.emit("updateTrayPosition", data);
           }
