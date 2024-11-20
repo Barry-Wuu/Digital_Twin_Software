@@ -82,11 +82,10 @@
         });
       },
       changeDataMode(mode){  // 切换数据发送模式
-        let popup = document.getElementById("popupSendData");
         this.allowSend = false;
         this.dataSend.mode = mode; 
-        popup.style.height = mode == 1 ? "auto" : "50vw";
-        popup.style.overflowY = mode == 1 ? "auto" : "scroll";
+        document.getElementById("popupSendData").style.height = mode == 1 ? "auto" : "60vh";
+        document.getElementById("popupSendDataScroll").style.overflowY = mode == 1 ? "auto" : "scroll";
         this.alignWindow();
       },
       closePopup(quit=true){  // 清空并隐藏新增属性输入栏，关闭弹窗
@@ -300,6 +299,13 @@
   }
 </style>
 
+<style scoped>
+  .text{
+    display: inline-block;
+    width: 150px;
+  }
+</style>
+
 <template>
   <!--弹出式窗口-->
   <div id="popup" class="popup" 
@@ -492,99 +498,113 @@
 
       <!--数据发送设置-->
       <div v-if="popupContent=='sendData'" id="popupSendData" style="
+        display: flex;
+        flex-direction: column;
         text-align: left; 
-        margin:10px; 
-        width: 450px;
+        margin: 10px; 
+        overflow-y: hidden;
+        width: 500px;
       ">
-        数据发送模式：
-        <a-radio :checked="dataSend.mode==1" @change="changeDataMode(1)">模式1</a-radio>
-        <a-radio :checked="dataSend.mode==2" @change="changeDataMode(2)">模式2</a-radio>
-        <div v-if="dataSend.mode == 1">自动读取JSON数据</div>
-        <div v-else>
-          IP地址：<a-input style="width:200px" v-model:value="dataSend.sqlip"/><br>
-          端口号：<a-input type="number" step="1" style="width:200px" v-model:value="dataSend.sqlport"/><br>
-          用户名：<a-input style="width:200px" v-model:value="dataSend.username"/><br>
-          密码：<a-input style="width:200px" v-model:value="dataSend.password"/><br>
-          导出所有数据库：
-          <a-checkbox style="width:100px" v-model:checked="dataSend.alldb" @change="alignWindow">
-            {{ dataSend.alldb ? '是': '否'}}
-          </a-checkbox><br>
-          <div v-if="!dataSend.alldb">选择要导出的数据库与表：</div>
-          <div v-if="!dataSend.alldb" style="
-            border: 1px solid black;
-            border-radius: 5px;
-            height: 200px; 
-            margin: 10px 0;
-            overflow-y: scroll;
-            padding: 10px;
-          ;">
-            <strong v-if="Object.keys(databases).length">
-              已选择{{Object.keys(databases).length}}个数据库<br>
-            </strong>
-            <strong v-if="Object.keys(databases).length==0">未选择数据库<br></strong>
-            <a-collapse v-else accordion>
-              <a-collapse-panel v-for="(item, key) in databases" :header="key" :key="key">
-                导出所有表：<a-checkbox style="width:100px" v-model:checked="item.alltable" @change="alignWindow">
-                  {{ item.alltable ? '是': '否'}}
-                </a-checkbox><br>
-                <div v-if="!item.alltable">
-                  <strong v-if="Object.keys(item.tables).length==0">未选择表<br></strong>
-                  <div v-else>
-                    <strong>已选择{{Object.keys(item.tables).length}}个表</strong>
-                    <a-collapse collapsible="icon">
-                      <a-collapse-panel v-for="(item0, key0) in item.tables" 
-                      :header="key0" :key="key0" :show-arrow="false">
-                        <template #extra><close-outlined @click="delete item.tables[key0]"/></template>
-                      </a-collapse-panel>
-                    </a-collapse>
-                  </div>
-                  <a-button v-if="!item.addingTable" @click="item.addingTable=true"
-                  style="border-color: dodgerblue; color: dodgerblue; margin-top: 10px">
-                    <PlusOutlined/>添加表
-                  </a-button>
-                  <div v-else>
-                    添加表：<a-input style="width: 150px;" placeholder="请输入表名" 
-                    v-model:value="inputTable"/>
-                    <a-button style="border: #0B0 solid 1px; color: #0B0; margin: 0 10px;" 
-                    @click="addTable(item, inputTable)" :disabled="!inputTable">
-                      &nbsp;<CheckOutlined/>
+        <div style="background-color: #EEE;">
+          数据发送模式：
+          <a-radio :checked="dataSend.mode==1" @change="changeDataMode(1)">模式1（自动读取）</a-radio>
+          <a-radio :checked="dataSend.mode==2" @change="changeDataMode(2)">模式2（返回SQL文件）</a-radio>
+        </div>
+        <div id="popupSendDataScroll" style="margin: 10px 0;">
+          <div v-if="dataSend.mode == 1">自动读取JSON数据</div>
+          <div v-else>
+            <span class="text">IP地址：</span>
+            <a-input style="width:200px" v-model:value="dataSend.sqlip"/><br>
+            <span class="text">端口号：</span>
+            <a-input type="number" step="1" style="width:200px" v-model:value="dataSend.sqlport"/><br>
+            <span class="text">用户名：</span>
+            <a-input style="width:200px" v-model:value="dataSend.username"/><br>
+            <span class="text">密码：</span>
+            <a-input style="width:200px" v-model:value="dataSend.password"/><br>
+            <span class="text">导出所有数据库：</span>
+            <a-checkbox style="width:100px" v-model:checked="dataSend.alldb" @change="alignWindow">
+              {{ dataSend.alldb ? '是': '否'}}
+            </a-checkbox><br>
+            <div v-if="!dataSend.alldb">选择要导出的数据库与表：</div>
+            <div v-if="!dataSend.alldb" style="
+              border: 1px solid black;
+              border-radius: 5px;
+              height: 200px; 
+              margin: 10px 0;
+              overflow-y: scroll;
+              padding: 10px;
+            ;">
+              <strong v-if="Object.keys(databases).length">
+                已选择{{Object.keys(databases).length}}个数据库<br>
+              </strong>
+              <strong v-if="Object.keys(databases).length==0">未选择数据库<br></strong>
+              <a-collapse v-else accordion>
+                <a-collapse-panel v-for="(item, key) in databases" :header="key" :key="key">
+                  导出所有表：<a-checkbox style="width:100px" v-model:checked="item.alltable" @change="alignWindow">
+                    {{ item.alltable ? '是': '否'}}
+                  </a-checkbox><br>
+                  <div v-if="!item.alltable">
+                    <strong v-if="Object.keys(item.tables).length==0">未选择表<br></strong>
+                    <div v-else>
+                      <strong>已选择{{Object.keys(item.tables).length}}个表</strong>
+                      <a-collapse collapsible="icon">
+                        <a-collapse-panel v-for="(item0, key0) in item.tables" 
+                        :header="key0" :key="key0" :show-arrow="false">
+                          <template #extra><close-outlined @click="delete item.tables[key0]"/></template>
+                        </a-collapse-panel>
+                      </a-collapse>
+                    </div>
+                    <a-button v-if="!item.addingTable" @click="item.addingTable=true"
+                    style="border-color: dodgerblue; color: dodgerblue; margin-top: 10px">
+                      <PlusOutlined/>添加表
                     </a-button>
-                    <a-button danger @click="item.addingTable = false; inputTable = ''">
-                      <CloseOutlined/>
-                    </a-button>
+                    <div v-else>
+                      添加表：<a-input style="width: 150px;" placeholder="请输入表名" 
+                      v-model:value="inputTable"/>
+                      <a-button style="border: #0B0 solid 1px; color: #0B0; margin: 0 10px;" 
+                      @click="addTable(item, inputTable)" :disabled="!inputTable">
+                        &nbsp;<CheckOutlined/>
+                      </a-button>
+                      <a-button danger @click="item.addingTable = false; inputTable = ''">
+                        <CloseOutlined/>
+                      </a-button>
+                    </div>
                   </div>
-                </div>
-                <template #extra><close-outlined @click="delete databases[key]"/></template>
-              </a-collapse-panel>
-            </a-collapse>
-            <a-button v-if="!addingDatabase" @click="addingDatabase=true"
-            style="border-color: dodgerblue; color: dodgerblue; margin: 10px 0">
-              <PlusOutlined/>添加数据库
-            </a-button>
-            <div v-else>
-              添加数据库：<a-input style="width: 150px;" placeholder="请输入数据库名" 
-              v-model:value="inputDatabase"/>
-              <a-button style="border: #0B0 solid 1px; color: #0B0; margin: 0 10px;" 
-              @click="addDatabase(inputDatabase)" :disabled="!inputDatabase">
-                &nbsp;<CheckOutlined/>
+                  <template #extra><close-outlined @click="delete databases[key]"/></template>
+                </a-collapse-panel>
+              </a-collapse>
+              <a-button v-if="!addingDatabase" @click="addingDatabase=true"
+              style="border-color: dodgerblue; color: dodgerblue; margin: 10px 0">
+                <PlusOutlined/>添加数据库
               </a-button>
-              <a-button danger @click="addingDatabase = false; inputDatabase = ''">
-                <CloseOutlined/>
-              </a-button>
+              <div v-else>
+                添加数据库：<a-input style="width: 150px;" placeholder="请输入数据库名" 
+                v-model:value="inputDatabase"/>
+                <a-button style="border: #0B0 solid 1px; color: #0B0; margin: 0 10px;" 
+                @click="addDatabase(inputDatabase)" :disabled="!inputDatabase">
+                  &nbsp;<CheckOutlined/>
+                </a-button>
+                <a-button danger @click="addingDatabase = false; inputDatabase = ''">
+                  <CloseOutlined/>
+                </a-button>
+              </div>
             </div>
+            <span class="text">不导出表结构：</span>
+            <a-checkbox style="width:100px" v-model:checked="dataSend.nocreateinfo">
+              {{ dataSend.nocreateinfo ? '是': '否'}}
+            </a-checkbox><br>
+            <span class="text">数据筛选条件：</span>
+            <a-input v-model:value="dataSend.wheredata" style="width:300px"/><br>
+            <span class="text">导出频率：</span><a-input type="number" min="3" step="1" addon-after="s"
+            style="width:100px" v-model:value="dataSend.delaytime"/><br>
+            <span class="text">导出位置：</span>
+            <a-input v-model:value="dataSend.outputfile" 
+            placeholder="选择stl文件路径" style="width:300px"/><br>
+            <span class="text">数据开始发送地址：</span>
+            <a-input v-model:value="startSendSite" style="width:300px"/><br>
+            <span class="text">数据结束发送地址：</span>
+            <a-input v-model:value="stopSendSite" style="width:300px"/>
           </div>
-          不导出表结构：
-          <a-checkbox style="width:100px" v-model:checked="dataSend.nocreateinfo">
-            {{ dataSend.nocreateinfo }}
-          </a-checkbox><br>
-          数据筛选条件：<a-input v-model:value="dataSend.wheredata"/><br>
-          导出频率：<a-input type="number" min="3" step="1" addon-after="s"
-          style="width:100px" v-model:value="dataSend.delaytime"/><br>
-          导出位置：
-          <a-input placeholder="选择stl文件路径" v-model:value="dataSend.outputfile"/>
-          <br>
-          数据开始发送地址：<a-input v-model:value="startSendSite"/><br>
-          数据结束发送地址：<a-input v-model:value="stopSendSite"/>
         </div>
         <div style="margin: 10px 0; text-align: center; user-select:none;">
           <a-button type="primary" :disabled="allowSend" @click="sendData(true)">开始发送</a-button>
