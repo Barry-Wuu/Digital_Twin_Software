@@ -300,6 +300,11 @@
 </style>
 
 <style scoped>
+  .row{
+    display: flex;
+    align-items: center;
+    height: 36px;
+  }
   .text{
     display: inline-block;
     width: 150px;
@@ -513,18 +518,32 @@
         <div id="popupSendDataScroll" style="margin: 10px 0;">
           <div v-if="dataSend.mode == 1">自动读取JSON数据</div>
           <div v-else>
-            <span class="text">IP地址：</span>
-            <a-input style="width:200px" v-model:value="dataSend.sqlip"/><br>
-            <span class="text">端口号：</span>
-            <a-input type="number" step="1" style="width:200px" v-model:value="dataSend.sqlport"/><br>
-            <span class="text">用户名：</span>
-            <a-input style="width:200px" v-model:value="dataSend.username"/><br>
-            <span class="text">密码：</span>
-            <a-input style="width:200px" v-model:value="dataSend.password"/><br>
-            <span class="text">导出所有数据库：</span>
-            <a-checkbox style="width:100px" v-model:checked="dataSend.alldb" @change="alignWindow">
-              {{ dataSend.alldb ? '是': '否'}}
-            </a-checkbox><br>
+            <div class="row">
+              <span class="text">IP地址：</span>
+              <a-input style="width:200px" v-model:value="dataSend.sqlip"/>
+              <br>
+            </div>
+            <div class="row">
+              <span class="text">端口号：</span>
+              <a-input type="number" step="1" style="width:200px" v-model:value="dataSend.sqlport"/>
+              <br>
+            </div>
+            <div class="row">
+              <span class="text">用户名：</span>
+              <a-input style="width:200px" v-model:value="dataSend.username"/>
+              <br>
+            </div>
+            <div class="row">
+              <span class="text">密码：</span>
+              <a-input style="width:200px" v-model:value="dataSend.password"/>
+              <br>
+            </div>
+            <div class="row">
+              <span class="text">导出所有数据库：</span>
+              <a-checkbox style="width:100px" v-model:checked="dataSend.alldb" @change="alignWindow">
+                {{ dataSend.alldb ? '是': '否'}}
+              </a-checkbox><br>
+            </div>
             <div v-if="!dataSend.alldb">选择要导出的数据库与表：</div>
             <div v-if="!dataSend.alldb" style="
               border: 1px solid black;
@@ -589,21 +608,39 @@
                 </a-button>
               </div>
             </div>
-            <span class="text">不导出表结构：</span>
-            <a-checkbox style="width:100px" v-model:checked="dataSend.nocreateinfo">
-              {{ dataSend.nocreateinfo ? '是': '否'}}
-            </a-checkbox><br>
-            <span class="text">数据筛选条件：</span>
-            <a-input v-model:value="dataSend.wheredata" style="width:300px"/><br>
-            <span class="text">导出频率：</span><a-input type="number" min="3" step="1" addon-after="s"
-            style="width:100px" v-model:value="dataSend.delaytime"/><br>
-            <span class="text">导出位置：</span>
-            <a-input v-model:value="dataSend.outputfile" 
-            placeholder="选择stl文件路径" style="width:300px"/><br>
-            <span class="text">数据开始发送地址：</span>
-            <a-input v-model:value="startSendSite" style="width:300px"/><br>
-            <span class="text">数据结束发送地址：</span>
-            <a-input v-model:value="stopSendSite" style="width:300px"/>
+            <div class="row">
+              <span class="text">不导出表结构：</span>
+              <a-checkbox style="width:100px" v-model:checked="dataSend.nocreateinfo">
+                {{ dataSend.nocreateinfo ? '是': '否'}}
+              </a-checkbox>
+              <br>
+            </div>
+            <div class="row">
+              <span class="text">数据筛选条件：</span>
+              <a-input v-model:value="dataSend.wheredata" style="width:300px"/>
+              <br>
+            </div>
+            <div class="row">
+              <span class="text">导出频率：</span>
+              <a-input type="number" min="3" step="1" addon-after="s"
+              style="width:100px" v-model:value="dataSend.delaytime"/>
+              <br>
+            </div>
+            <div class="row">
+              <span class="text">导出位置：</span>
+              <a-input v-model:value="dataSend.outputfile" 
+              placeholder="选择stl文件路径" style="width:300px"/>
+              <br>
+            </div>
+            <div class="row">
+              <span class="text">数据开始发送地址：</span>
+              <a-input v-model:value="startSendSite" style="width:300px"/>
+              <br>
+            </div>
+            <div class="row">
+              <span class="text">数据结束发送地址：</span>
+              <a-input v-model:value="stopSendSite" style="width:300px"/>
+            </div>
           </div>
         </div>
         <div style="margin: 10px 0; text-align: center; user-select:none;">
