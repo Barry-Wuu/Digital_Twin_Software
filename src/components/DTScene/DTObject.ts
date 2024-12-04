@@ -9,7 +9,10 @@ global.physicsWorld = new RAPIER.World(gravity);
 export default class DTObject {  // 用DTObject类包裹场景中的对象
     basename: string  // 模型在模型库中的名称
     children = []  // 子物体（自动计算）
-    code = ''  // 自定义脚本
+    code = {  // 自定义脚本
+        update: '',  // 每帧更新
+        onCollision: '',  // 碰撞事件
+    }
     custom = {}  // 自定义属性
     expanded: boolean  // 是否在层级树中展开
     friction0 = 0.5  // 静摩擦力
@@ -17,6 +20,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     geometry: THREE.object  // 模型几何体
     icon: HTMLElement  // 物体图标
     id: number  // 序号
+    isSensor = false  // 是否为传感器
     key: number  // 层级树的键，应等于序号
     label = "无"  // 物体类型
     layers = {
@@ -34,6 +38,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     mesh: THREE.object  // 模型网格
     name: string  // 名称
     physicalID = '0'  // 物理实体ID，可编辑
+    rigid: false  // 是否为刚体
     rigidShape: string | string[]  // 刚体网格，设成字符串易于存取，若为convex则刚体为mesh的凸集
     rigidFollow = false  // 若为是则让刚体强制跟随网格，否则默认让网格跟随刚体
     row = 0  // 子树在层级树模块中占几行
@@ -115,20 +120,21 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             shape = RAPIER.ColliderDesc.cuboid(box.x/2, box.y/2, box.z/2);
         }
         else if(this.rigidShape == "convex"){  // 将自定义几何体的凸集作为刚体形状
-            shape = this.createRigidShape(this.geometry, scaleX, scaleY); 
+            shape = this.createRigidShape({geom: this.geometry, scaleX: scaleX, scaleY: scaleY}); 
         }
         else if(this.rigidShape == "mesh"){  // 根据网格形状直接生成刚体形状
-            shape = this.createRigidShape(this.geometry);   
+            shape = this.createRigidShape({geom: this.geometry});   
         }
         else if(typeof this.rigidShape == "string"){  // 根据THREE的简单几何体生成CANNON刚体
             this.createRigidHelper(); 
             shape = eval(this.rigidShape);   
         }
         else{  // 由回调函数产生的网格形状自定义刚体形状，回调函数储存为字符串数组，其中每个元素代表一行
-            shape = this.createRigidShape(eval(this.rigidShape.join(''))()); 
+            shape = this.createRigidShape({geom: eval(this.rigidShape.join(''))()}); 
         }
 
         shape.setFriction(this.label == "guardrail" ? 0 : this.friction0);
+        shape.isSensor = this.isSensor;  // 设置为传感器
         shape.setMass(this.mass);
         // 设置刚体描述符
         const rbDesc = mass == 0 ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic();
@@ -197,7 +203,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         this.mesh.add(rigidHelper);
         this.layers.rigidHelper = [rigidHelper];
     }
-    createRigidShape(geom, scaleX=1, scaleY=1){  // 从几何形状建立刚体形状
+    createRigidShape({geom, x0=0, y0=0, scaleX=1, scaleY=1}){  // 从几何形状建立刚体形状
         // points里每三个连续的点定义了一个三角形面
         let newVertices: any = [], newIndexes: any = [];
         let scale = this.scale;
@@ -205,9 +211,15 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         let points = geom.attributes.position.array;
         for (let i=0; i < points.length; i+=9) {
             newVertices.push(
-                points[i]*scale*scaleX, points[i+1]*scale*scaleY, points[i+2]*scale, 
-                points[i+3]*scale*scaleX, points[i+4]*scale*scaleY, points[i+5]*scale, 
-                points[i+6]*scale*scaleX, points[i+7]*scale*scaleY, points[i+8]*scale
+                points[i]*scale*scaleX + x0, 
+                points[i+1]*scale*scaleY + y0,
+                points[i+2]*scale, 
+                points[i+3]*scale*scaleX + x0, 
+                points[i+4]*scale*scaleY + y0, 
+                points[i+5]*scale, 
+                points[i+6]*scale*scaleX + x0, 
+                points[i+7]*scale*scaleY + y0,
+                points[i+8]*scale
             );
             newIndexes.push(i/3, i/3+1, i/3+2);
             threeVertices.push(
