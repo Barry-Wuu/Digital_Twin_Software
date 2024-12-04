@@ -7,7 +7,7 @@
             {"title": "滚轮传送带-直道"},
             {"title": "滚轮传送带-顺时针弯道"},
             {"title": "滚轮传送带-逆时针弯道"},
-            {"title": "光电门"}
+            {"title": "平行传送带-岔道"}
         ]},
         {"title": "护栏", "children": [
             {"title": "直护栏"},
@@ -18,6 +18,8 @@
         {"title": "在制品", "children": [
             {"title": "货物"},
             {"title": "托盘"},
+            {"title": "光电门"},
+            {"title": "传感器"},
             {"title": "发生器"},
             {"title": "回收器"}
         ]},
@@ -28,7 +30,8 @@
             {"title": "锥体"}
         ]},
         {"title": "其它", "children": [
-            {"title": "弯道（凸集）"}
+            {"title": "弯道（凸集）"},
+            {"title": "机械臂模型"}
         ]}
     ],
     "model_definition": {
@@ -173,7 +176,7 @@
                     "return new THREE.ExtrudeGeometry(shape, {",  
                         "bevelEnabled: false,",  
                         "curveSegments: 5,",  
-                        "depth: -0.6/DT.scale,",  
+                        "depth: -12,",  
                         "steps: 1,",  
                     "})",
                 "}"
@@ -182,6 +185,36 @@
                 "indicator": "[this.createArrow(0, 5, 180)]",
                 "attachPoint1": "[this.createAttachPoint1(0, 100)]",
                 "attachPoint2": "[this.createAttachPoint2(-100, 0)]"
+            }
+        }, 
+        "平行传送带-岔道": {
+            "icon": "滚轮弯道2.jpg",
+            "material": { "color": "lightgray" },
+            "modelPath": "stl/平行传送带-岔道.stl", 
+            "rigid": true, 
+            "scale": 0.05,
+            "v0": 1.5,
+            "label": "conveyor",
+            "rigidShape": [
+                "()=>{",
+                    "const PI = Math.PI;",
+                    "let r = 3.6/this.scale, R = 6.4/this.scale, shape = new THREE.Shape();",
+                    "shape.moveTo(0, R);",
+                    "shape.absarc(0, 0, R, PI/2, PI, false);",
+                    "shape.absarc(0, 0, r, PI, PI/2, true);",
+                    "shape.closePath();",  
+                    "return new THREE.ExtrudeGeometry(shape, {",  
+                        "bevelEnabled: false,",  
+                        "curveSegments: 5,",  
+                        "depth: -12,",  
+                        "steps: 1,",  
+                    "})",
+                "}"
+            ],
+            "layers":{
+                "indicator": "[this.createArrow(0, 5, 180)]",
+                "attachPoint1": "[this.createAttachPoint1(-30, 0)]",
+                "attachPoint2": "[this.createAttachPoint2(1.78, 30.36), this.createAttachPoint2(14.22, 0),]"
             }
         }, 
         "弯道（凸集）": {
@@ -199,6 +232,14 @@
                 "attachPoint2": "[this.createAttachPoint2(0, 100)]"
             }
         },
+        "机械臂模型": {
+            "icon": "滚轮弯道1.jpg",
+            "material": { "color": "lightgray" },
+            "modelPath": "stl/4robot.stl", 
+            "rigid": true, 
+            "rigidShape": "mesh",
+            "scale": 0.05
+        },
 
         "直护栏": {
             "icon": "直护栏.png",
@@ -214,14 +255,13 @@
                 "()=>{",
                     "const PI = Math.PI;",
                     "let r = 6.4/DT.scale - 0.25, R = 6.4/DT.scale + 0.25, shape = new THREE.Shape();",
-                    "shape.moveTo(0, R);",
                     "shape.absarc(0, 0, R, PI/2, PI, false);",
                     "shape.absarc(0, 0, r, PI, PI/2, true);",
                     "shape.closePath();", 
                     "return new THREE.ExtrudeGeometry(shape, {",  
                         "bevelEnabled: false,",  
                         "curveSegments: 5,",  
-                        "depth: 1/DT.scale,",  
+                        "depth: 1/DT.scale,",
                         "steps: 1,",  
                     "})",
                 "}"
@@ -237,7 +277,6 @@
                 "()=>{",
                     "const PI = Math.PI;",
                     "let r = 3.6/DT.scale - 0.25, R = 3.6/DT.scale + 0.25, shape = new THREE.Shape();",
-                    "shape.moveTo(0, R);",
                     "shape.absarc(0, 0, R, PI/2, PI, false);",
                     "shape.absarc(0, 0, r, PI, PI/2, true);",
                     "shape.closePath();", 
@@ -259,10 +298,11 @@
             "geometry": [
                 "()=>{",
                     "const PI = Math.PI;",
-                    "let r = 10/DT.scale - 0.25, R = 10/DT.scale + 0.25, shape = new THREE.Shape();",
-                    "shape.moveTo(R, 0);",
-                    "shape.absarc(0, 0, R, PI/2 - PI/4, PI/2, false);",
-                    "shape.absarc(0, 0, r, PI/2, PI/2 - PI/4, true);",
+                    "let a = 0.25/DT.scale, A = 6/DT.scale, shape = new THREE.Shape();",
+                    "shape.moveTo(-a, -a);",
+                    "shape.lineTo(A-a, -a);",
+                    "shape.lineTo(A-a, a);",
+                    "shape.lineTo(-a, a);",
                     "shape.closePath();", 
                     "return new THREE.ExtrudeGeometry(shape, {",  
                         "bevelEnabled: false,",  
@@ -273,7 +313,8 @@
                 "}"
             ],
             "label": "guardrail",
-            "material": { "color": "gray" },
+            "layers": {"indicator": "[this.createCircle(0, 0, 0.25)]"},
+            "material": { "color": "#333" },
             "rigid": true, 
             "rigidShape": "mesh"
         },
@@ -288,6 +329,18 @@
                 "indicator": "[this.createArrow(0.5, 0, 0)]"
             },
             "code": "let rb: this.mesh.userData.physicsBody, \n rb.setMassProps(0, new CANNON.Vec3())"
+        },
+        "传感器": {
+            "icon": "传感器.png",
+            "geometry": "new THREE.BoxGeometry(0.2, 3, 0.8)",
+            "label": "sensor",
+            "rigid": true, 
+            "rigidShape": "RAPIER.ColliderDesc.cuboid(0.1, 1.5, 0.4)",
+            "isSensor": true,
+            "material": { "color": "red", "opacity": 0.5, "transparent": true },
+            "layers": {
+                "indicator": "[this.createArrow(0.5, 0, 0)]"
+            }
         },
 
         "货物": {

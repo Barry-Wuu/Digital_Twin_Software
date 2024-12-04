@@ -64,7 +64,7 @@
         <Prop v-if="DT.label=='conveyor' && DT.name.includes('直道')" prop="mesh.scale.x" 
         title="长度" type="inputNumber"
         :options="{delta:0.1, min:0.1, unit:DT.scale / 7.5}"/>
-        <Prop v-if="DT.name.includes('直护栏')" prop="mesh.scale.y" 
+        <Prop v-if="DT.name?.includes('直护栏')" prop="mesh.scale.y" 
         title="长度" type="inputNumber"
         :options="{delta:0.1, min:0.1, unit:DT.scale / 6}"/>
         <Prop prop="mesh.color" title="光源颜色" type="inputVector"/>
@@ -98,7 +98,6 @@
       <!--物理属性-->
       <a-collapse-panel v-if="DT.rb" header="物理属性" key="物理属性">
         <Prop prop="rigid" title="刚体"/>
-        <Prop prop="rb.constructor.name" title="刚体类型"/>
         <Prop prop="rigidFollow" title="运动位姿跟随" type="follow"/>
         <Prop prop="mass" title="质量" type="inputNumber"
         :options="{delta:0.1, min:0.1, max:20}"/>
@@ -106,6 +105,7 @@
         :options="{delta:0.1, min:0, max:1}"/>
         <Prop prop="friction" title="滑动摩擦系数" type="inputNumber"
         :options="{delta:0.1, min:0, max:1}"/>
+        <Prop prop="isSensor" title="是否是传感器"/>
         <Prop prop="v0" title="传送带速度" type="inputNumber"
         :options="{delta:0.1, min:0.1, max:5}"/>
       </a-collapse-panel>
@@ -132,8 +132,18 @@
 
       <!--自定义脚本-->
       <a-collapse-panel v-if="DT.custom" header="自定义脚本" key="自定义脚本">
-        <a-button @click="global.emit('popup', {DT: DT, title: '编辑自定义脚本', type: 'code'})">
-          编辑自定义脚本
+        每帧更新时运行的脚本：
+        <a-button @click="global.emit('popup', {
+          DT: DT, title: '编辑自定义脚本', type: 'code', customCodeType: 'update'
+        })">
+          编辑
+        </a-button>  
+        <br>
+        发生碰撞时运行的脚本：
+        <a-button @click="global.emit('popup', {
+          DT: DT, title: '编辑自定义脚本', type: 'code', customCodeType: 'onCollision'
+        })">
+          编辑
         </a-button>  
       </a-collapse-panel>
     </a-collapse>

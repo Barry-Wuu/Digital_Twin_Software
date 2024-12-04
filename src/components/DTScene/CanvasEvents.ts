@@ -115,7 +115,7 @@ export default defineComponent({
         conveyorRay.set(P, result.applyQuaternion(Q));  // 求鼠标到传送带中轴线最近的一点
         if(dragModel.DT.name.includes("护栏")){
           let [x, y] = [tempModel.position.x, tempModel.position.y];
-          if(dragModel.DT.name == "直护栏") {  // 仅旋转直护栏
+          if(dragModel.DT.name == "直护栏" || dragModel.DT.name == "变道护栏") {  // 仅旋转直护栏
             tempModel.rotateOnWorldAxis(  // 设置物体旋转
               UP, Math.atan(result.y / result.x) + Math.PI / 2
             );

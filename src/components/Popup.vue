@@ -9,7 +9,7 @@
   } from '@ant-design/icons-vue';
 
   const addCustomProp = ref(false);
-  const customCodeFont = ref(3);    
+  const customCodeFont = ref(3);
   const DT = ref();
   const editProp = ref('');
   const editValue = ref();
@@ -40,6 +40,7 @@
       return{
         addingDatabase: false,
         allowSend: false,  // 是否正在发送数据
+        customCodeType: '',  // 自定义脚本类型
         databases: {
           cpps_db: {addingTable: false, alltable: false, tables: {orders:true, features: true}}
         },
@@ -190,7 +191,11 @@
           popupTitle.value = data.title;
           if(data.value) rename.value = data.value;
           popup.style.display = popupMask.style.display = "block";
-          if(data.type == "code") newCode.value = DT.value.code ? DT.value.code : '';
+          if(data.type == "code") {  // 自定义脚本
+            this.customCodeType = data.customCodeType;  // 自定义脚本类型
+            console.log(this.customCodeType, DT.value.code[this.customCodeType])
+            newCode.value = DT.value.code[this.customCodeType] ?? '';
+          }
           this.alignWindow();
         }
       });
@@ -463,7 +468,16 @@
       </div>
 
       <!--自定义脚本-->
-      <div v-if="popupContent=='code'">
+      <div v-if="popupContent == 'code'">
+        <div style="margin: 10px 10px 0 10px; text-align: left;">
+          参数：{{ customCodeType }}
+          <span v-if="customCodeType == 'update'">
+            mesh=此物体；DT=对应的DTObject；rb=对应的刚体
+          </span>
+          <span v-else>
+            mesh0/mesh1=此物体/与之碰撞的物体；DT0/DT1=对应的DTObject；rb0/rb1=对应的刚体；collider0/collider1=对应的碰撞体
+          </span>
+        </div>
         <textarea class="customCode" id="customCode" placeholder="自定义脚本"
         v-model="newCode"
         v-on="this.$nextTick(()=>{setCustomCodeFont(customCodeFont)})"
@@ -486,7 +500,7 @@
           textarea.selectionStart = textarea.selectionEnd = start + insert.length;  
         }"/>
         <a-button class="buttonCustomCode"
-        @click="DT.code=newCode; closePopup()" :disabled="newCode==DT.code">
+        @click="DT.code[customCodeType]=newCode; closePopup()" :disabled="newCode==DT.code">
           保存
         </a-button>
         <a-button class="buttonCustomCode"

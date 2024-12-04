@@ -542,8 +542,8 @@ export default class SceneBuilder{
         triangle.lineTo(x + 0.5*Math.cos(theta1), y + 0.5*Math.sin(theta1));
         triangle.lineTo(x + 0.5*Math.cos(theta2), y + 0.5*Math.sin(theta2));
         const geom = new THREE.ShapeGeometry(triangle);
-        const material = new THREE.MeshBasicMaterial( { color: "white" } );
-        return new THREE.Mesh( geom, material ) ;
+        const material = new THREE.MeshBasicMaterial({ color: "white" });
+        return new THREE.Mesh(geom, material) ;
     }
     createAttachPoint1(x, y) {  // 传送带入口连接点(横坐标，纵坐标)
         const geom = new THREE.BoxGeometry(0.5, 0.5, 0.5);
@@ -562,6 +562,13 @@ export default class SceneBuilder{
         point.position.y = y
         point.name = "ap2";
         return point;
+    }
+    createCircle(x, y, r, color="white") {  // 圆形(横坐标，纵坐标，半径)
+        const circle = new THREE.Shape();
+        circle.absarc(x, y, r, 0, 2 * Math.PI);
+        const geom = new THREE.ShapeGeometry(circle);
+        const material = new THREE.MeshBasicMaterial({ color: color });
+        return new THREE.Mesh(geom, material) ;
     }
     createLabel(mesh){  // 创建名牌
         let labelDOM = document.createElement("div");
@@ -738,6 +745,7 @@ export default class SceneBuilder{
             item.userData.indicator = true; 
             item.visible = global.layers.includes("indicator");
             mesh.add(item);
+            if(DT.label == "guardrail") item.position.z += 1 / DT.scale;
             item.position.z += 0.01 / DT.scale;  // 将箭头稍微上调，以免和物体重叠
         }
         if(DT.layers.attachPoint1) for (let item of DT.layers.attachPoint1) {  // 传送带入口连接点
@@ -770,7 +778,8 @@ export default class SceneBuilder{
     onCollision(){  // 检测物理世界中的物体是否与传送带碰撞，若有则施力
         global.physicsWorld.forEachCollider(collider0 => {
             // 让在制品排在前面，即等于mesh0
-            if(global.rb2mesh[collider0._parent.handle].DT.label != "WIP") return;
+            let label = global.rb2mesh[collider0._parent.handle].DT.label;
+            if(label != "WIP" && !collider0.isSensor()) return;
             let onConveyor = false;  // 记录在制品是否在传送带上，若不在则清空施力
             global.physicsWorld.contactPairsWith(collider0, collider1 => {
                 // 寻找对应的刚体和网格
@@ -836,7 +845,32 @@ export default class SceneBuilder{
                         global.emit("print", `【${DT0.name}${mesh0.id}】被【${DT1.name}${DT1.id}】回收`);
                     }
                 }
+
+                try{  // 刚体与物体碰撞时运行的脚本
+                    if(DT0.code.onCollision){
+                        eval(DT0.code.onCollision);
+                    }
+                }
+                catch(err) {console.log(err);}
             });
+
+            try{
+                let rb0 = collider0._parent;
+                let mesh0 = global.rb2mesh[rb0.handle];
+                let DT0 = mesh0.DT;
+                if(collider0.isSensor()){  // 传感器与物体的重叠时运行的脚本
+                    global.physicsWorld.intersectionPairsWith(collider0, collider1 => {
+                        if(DT0.code.onCollision){ 
+                            let rb1 = collider1._parent;
+                            let mesh1 = global.rb2mesh[rb1.handle];
+                            let DT1 = mesh1.DT; 
+                            eval(DT0.code.onCollision);
+                        }
+                    });
+                } 
+            }
+            catch(err) {console.log(err);}
+
             if(!onConveyor){  // 若在制品不在传送带上则清空施力
                 let rb0 = collider0._parent;
                 rb0.resetForces();
@@ -924,7 +958,7 @@ export default class SceneBuilder{
         Object.values(global.rb2mesh).forEach((mesh: any) => {  // 让网格位置等于刚体位置
             const rb = global.mesh2rb[mesh.uuid];
             const DT = mesh.DT;
-            try{ if(DT.code) eval(DT.code) }  // 若物体有自定义脚本则执行 
+            try{ if(DT.code.update) eval(DT.code.update) }  // 若物体有自定义脚本则执行
             catch(e) {}
             if(!stop && DT.name == "发生器"){  // 未暂停时制造货物
                 if(now - DT.timer >= DT.timeInterval){  // 秒变毫秒
