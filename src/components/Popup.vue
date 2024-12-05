@@ -194,7 +194,15 @@
           if(data.type == "code") {  // 自定义脚本
             this.customCodeType = data.customCodeType;  // 自定义脚本类型
             console.log(this.customCodeType, DT.value.code[this.customCodeType])
-            newCode.value = DT.value.code[this.customCodeType] ?? '';
+            if(typeof DT.value.code[this.customCodeType] == "string") {
+              newCode.value = DT.value.code[this.customCodeType] ?? '';
+            }
+            else if(typeof DT.value.code[this.customCodeType] == "function"){
+              newCode.value = DT.value.code[this.customCodeType]?.toString() ?? '';
+            }
+            else{
+              newCode.value = JSON.stringify(DT.value.code[this.customCodeType] ?? '');
+            }
           }
           this.alignWindow();
         }
