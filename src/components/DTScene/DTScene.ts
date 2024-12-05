@@ -42,6 +42,7 @@ var loading = false;
 const minCameraFocusDistance = 5;  // 双击拉近时相机到物体的最小距离
 const model_definition = modelData.model_definition;
 var origin = new THREE.Vector3(0, 0, 0);
+const PI = Math.PI;
 const RIGHT = new THREE.Vector3(1, 0, 0);  // x轴朝右
 var speed = 1;
 var temp = false;
@@ -274,7 +275,7 @@ export default class SceneBuilder{
 
         // 网格
         const gridHelper = new THREE.GridHelper(500, 100, groundColor, "#AAAAAA");
-        gridHelper.rotateX(Math.PI/2);
+        gridHelper.rotateX(PI/2);
         global.SCENE.add( gridHelper );
         gridHelper.position.z = 0.01;
 
@@ -359,6 +360,42 @@ export default class SceneBuilder{
             global.emit("clickModel", {id:mesh.id, shift:false});  // 创建物体后模拟点击该物体
         });
 
+        // global.emit("rotateMesh", {mesh: global.SCENE.getObjectById(220), angle: 45})
+        global.on("rotateMesh", (data: any) => {  // 让变道护栏接收到消息时旋转
+            let T = data.T ?? 1;
+            let mesh = data.mesh;
+            let angle = data.angle;
+            let t1 = mesh.rotation.z % (2*PI);
+            let t2 = (t1 + angle/180*PI + 2*PI) % (2*PI);
+            let theta = t1;
+            if(angle > 0){  // angle为正是逆顺时针
+                if(theta > t2) theta -= 2*PI;
+            } else {  // 逆时针
+                if(theta < t2) theta += 2*PI;
+            }
+            let dTheta = (t2 - theta)/(T*60);
+            let counter = T*60;
+
+            mesh.DT.code.update = () => {
+                mesh.rotation.z += dTheta;
+                theta = mesh.rotation.z;
+                counter--;
+                if(counter <= 0){
+                    mesh.rotation.z = t2;
+                    mesh.DT.code.update = '';
+                }
+            };
+        });
+
+        // 更新物体位置
+        global.on("updateMeshPosition", (data: any) => {
+            if(emulateMode != "play") return;  // 暂停时不更新
+            data.mesh.position.copy(data.position);
+            data.mesh.updateMatrixWorld(true);
+            data.mesh.updateRigidbodyTransform();
+            //data.mesh.code.update = 
+        });
+
         // 更新托盘位置
         global.on("updateTrayPosition", (data: {deviceID, RFID}) => {
             if(emulateMode != "play") return;  // 暂停时不更新
@@ -380,7 +417,7 @@ export default class SceneBuilder{
                     target.z -= 0.1;  // 托盘高0.6，光电门高0.8，两者中心的高差0.1
                     trayDT.mesh.position.copy(target);
                     // 调整在制品的旋转角
-                    trayDT.mesh.rotation.set(Math.PI/2, 0, 0);
+                    trayDT.mesh.rotation.set(PI/2, 0, 0);
                     let R = new THREE.Euler().setFromQuaternion(Q);
                     trayDT.mesh.rotateOnWorldAxis(UP, R.z);
                     trayDT.updateRigidbodyTransform();  // 强制更新刚体位姿
@@ -534,9 +571,9 @@ export default class SceneBuilder{
     }
     
     createArrow(x, y, theta){  // 指示箭头(横坐标，纵坐标，旋转角)
-        let theta0 = theta * Math.PI / 180;
-        let theta1 = (theta+90) * Math.PI / 180;
-        let theta2 = (theta-90) * Math.PI / 180;
+        let theta0 = theta * PI / 180;
+        let theta1 = (theta+90) * PI / 180;
+        let theta2 = (theta-90) * PI / 180;
         const triangle = new THREE.Shape();
         triangle.moveTo(x + 2*Math.cos(theta0), y + 2*Math.sin(theta0));
         triangle.lineTo(x + 0.5*Math.cos(theta1), y + 0.5*Math.sin(theta1));
@@ -565,7 +602,7 @@ export default class SceneBuilder{
     }
     createCircle(x, y, r, color="white") {  // 圆形(横坐标，纵坐标，半径)
         const circle = new THREE.Shape();
-        circle.absarc(x, y, r, 0, 2 * Math.PI);
+        circle.absarc(x, y, r, 0, 2 * PI);
         const geom = new THREE.ShapeGeometry(circle);
         const material = new THREE.MeshBasicMaterial({ color: color });
         return new THREE.Mesh(geom, material) ;
@@ -658,7 +695,7 @@ export default class SceneBuilder{
         // 光源物体
         global.SCENE.add(light);
         light.position.set(x, y, z);
-        light.rotation.x = Math.PI / 2;
+        light.rotation.x = PI / 2;
         iconMesh.center.set( 0.5, 0.5 );  // 图标居中
         iconMesh.position.set( 0, 0, 0 );  // 图标的三维相对位置
         light.add( iconMesh );
@@ -698,7 +735,7 @@ export default class SceneBuilder{
         });
         mesh0.castShadow = mesh0.receiveShadow = true;
         mesh0.scale.setScalar(DT0.scale);
-        mesh0.rotateX(Math.PI/2);
+        mesh0.rotateX(PI/2);
         mesh0.position.copy(position);
         global.SCENE.add(mesh0);
         return mesh0;
@@ -727,6 +764,7 @@ export default class SceneBuilder{
         mesh.material = new THREE.MeshPhongMaterial(DT.material);
         DT.basename = DT.name = data.title;
         mesh.geometry = DT.geometry;
+        DT.rigidFollow = !DT.mass;
         DT.setTitle();
         DT.updateWireframes();
 
@@ -734,7 +772,7 @@ export default class SceneBuilder{
             attachObjects.add(mesh);
             // localStorage.setItem('attachObjects', JSON.stringify(attachObjects));
         }
-        if(DT.label == "WIP") mesh.rotateX(Math.PI/2);
+        if(DT.label == "WIP") mesh.rotateX(PI/2);
 
         for(let layer in DT.layers){  // 解析图层
             let result = DT.layers[layer];
@@ -955,10 +993,14 @@ export default class SceneBuilder{
         else{
             for(let i=0; i<speed; i++) global.physicsWorld.step();
         }
+
         Object.values(global.rb2mesh).forEach((mesh: any) => {  // 让网格位置等于刚体位置
             const rb = global.mesh2rb[mesh.uuid];
             const DT = mesh.DT;
-            try{ if(DT.code.update) eval(DT.code.update) }  // 若物体有自定义脚本则执行
+            try{  // 若物体有自定义脚本则执行
+                if(typeof DT.code.update == "function") (DT.code.update)();
+                else if(typeof DT.code.update == "string") eval(DT.code.update);
+            }
             catch(e) {}
             if(!stop && DT.name == "发生器"){  // 未暂停时制造货物
                 if(now - DT.timer >= DT.timeInterval){  // 秒变毫秒
@@ -991,6 +1033,7 @@ export default class SceneBuilder{
                 }
             }
         });
+
         this.onCollision();
         if(emulateMode == "step") emulateMode = "pause";  // 步进模式下，每仿真完一步就停止
     }
@@ -1006,7 +1049,7 @@ export default class SceneBuilder{
         const create = ({title, x, y, z, angle=0, length=1}) => {  // 创建直护栏
             mesh = this.createMeshFromModels({title: title}, 
                 new THREE.Vector3(x, y, z),
-                new THREE.Euler(0, 0, angle*Math.PI/180),
+                new THREE.Euler(0, 0, angle*PI/180),
             );
             if(title.includes("直道")) {
                 mesh.scale.x = length / 7.5 * mesh.DT.scale;
