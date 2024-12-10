@@ -436,31 +436,32 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     }
     updateConveyorAttachPoint(value = null){  // 更新传送带刚体的吸附点
         if(this.layers.attachPoint1[0]) 
-            this.layers.attachPoint1[0].scale.x = 
-                value ? 7.5 / value / this.scale : 1/this.mesh.scale.x;
+            this.layers.attachPoint1[0].scale.x = 7.5 / value / this.scale;
         if(this.layers.attachPoint2[0]) 
-            this.layers.attachPoint2[0].scale.x = 
-                value ? 7.5 / value / this.scale : 1/this.mesh.scale.x;
+            this.layers.attachPoint2[0].scale.x = 7.5 / value / this.scale;
     }
-    updateConveyorRigidbody(value = null){  // 更新传送带刚体的长度
-        this.updateConveyorArrow(value);      
-        this.updateConveyorAttachPoint(value);
+    updateConveyorRigidbody(length = null){  // 更新传送带刚体的长度
+        this.updateConveyorArrow(length);      
+        this.updateConveyorAttachPoint(length);
         this.removeRigidBody();  // 移除刚体
         let L = new THREE.Vector3();
         this.mesh.getWorldScale(L);
-        L = L.x / this.scale;  // 获取传送带直道的长度缩放比
+        if(length){
+            L = length / 7.5;
+        }
+        else L = L.x / this.scale;  // 获取传送带直道的长度缩放比
         this.createRigidBody(this.mesh, L);  // 重建刚体 
         this.updateRigidbodyTransform();
     }
     updateGuardRail(length = null){  // 更新直护栏刚体的长度
         this.removeRigidBody();  // 移除刚体
         let L = new THREE.Vector3();
-        this.mesh.getWorldScale(L); console.log(length)
+        this.mesh.getWorldScale(L);
         if(length){
             this.mesh.scale.y = length * this.scale;
             L = length;
         }
-        else L = L.y / this.scale;  // 获取传送带直道的长度缩放比
+        else L = L.y / this.scale;  // 获取护栏的长度缩放比
         this.createRigidBody(this.mesh, 1, L);  // 重建刚体 
         this.updateRigidbodyTransform();
     }

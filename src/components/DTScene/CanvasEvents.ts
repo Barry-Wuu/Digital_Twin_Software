@@ -721,7 +721,6 @@ export default defineComponent({
     onMouseup(e) {
       if(this.scene.controller?.object?.DT?.label == "conveyor" 
         && transformControls && this.scene.controller.mode) {
-        console.log(this.scene.controller.object?.DT)
         this.scene.controller.object?.DT.updateConveyorRigidbody();  // 改变传送带直道尺寸
       }
       mouseType[e.button] = false;

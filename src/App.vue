@@ -121,7 +121,7 @@
           client.thread_num--;
           client.getData(axios, client);
         } catch(error) {
-            console.error(error.message, error);
+            console.warn(error.message, error);
             client.thread_num--;
             client.callback(axios, client);
         };
