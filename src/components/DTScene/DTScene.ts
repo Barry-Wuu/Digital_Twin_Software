@@ -1,4 +1,5 @@
 import bulb from "../../assets/svg/bulb.svg";
+import demoScene from "./DemoScene.json";
 import DTObject from "./DTObject";
 import * as fs from "fs";
 import global from "../../Global";
@@ -1038,15 +1039,16 @@ export default class SceneBuilder{
         if(emulateMode == "step") emulateMode = "pause";  // 步进模式下，每仿真完一步就停止
     }
 
-    // 演示场景，用global.emit("demoScene")启动，用DT().traverse(dt=>dt.v0=2)改变所有传送带速度
+    // 演示场景，1单位长度=50mm
+    // 用global.emit("demoScene")启动，用DT().traverse(dt=>dt.v0=2)改变所有传送带速度
     // 用global.emit("updateTrayPosition", {deviceID:'A', RFID:'a'})向托盘发送消息
-    // 光电门1：a5197017-c560-4713-aacd-01f097dda18f
-    // 光电门3：75292a01-6d17-4d50-bb75-d42718f75fe8
-    // 光电门5：7f698a28-d9d4-456a-9814-19d6c9b2f1a1
-    // 托盘16：822fbee2-1fe0-45c8-b403-8b5cdb31cb25
+    // 光电门1物理实体ID：a5197017-c560-4713-aacd-01f097dda18f
+    // 光电门3物理实体ID：75292a01-6d17-4d50-bb75-d42718f75fe8
+    // 光电门5物理实体ID：7f698a28-d9d4-456a-9814-19d6c9b2f1a1
+    // 托盘16物理实体ID：822fbee2-1fe0-45c8-b403-8b5cdb31cb25
     demoScene(){
         let mesh;
-        const create = ({title, x, y, z, angle=0, length=1}) => {  // 创建直护栏
+        const create = ({title, x, y, z, angle=0, length=1, prop=null}) => {  // 创建直护栏
             mesh = this.createMeshFromModels({title: title}, 
                 new THREE.Vector3(x, y, z),
                 new THREE.Euler(0, 0, angle*PI/180),
@@ -1057,73 +1059,19 @@ export default class SceneBuilder{
             }
             else if(length!=1) mesh.DT.createRigidBody(null, 1, mesh.scale.y=length/6);
             else mesh.DT.createRigidBody();   
-            return mesh
+
+            if(prop){
+                for(let key in prop) mesh.DT[key] = prop[key];
+            }
+            return mesh;
         }
 
-        // 传送带，从左下角开始顺时针创建
-        create({title: "平行传送带-顺时针弯道", x: 6.4, y: 6.4, z: 0.6, angle: 90});
-        create({title: "平行传送带-直道", x: 1.4, y: 6.4, z: 0.6, angle: 90, length: 30.2});
-        create({title: "平行传送带-顺时针弯道", x: 6.4, y: 36.6, z: 0.6, angle: 0});
-        create({title: "平行传送带-直道", x: 6.4, y: 41.6, z: 0.6, angle: 0, length: 93.2});
-        create({title: "平行传送带-直道", x: 90.2, y: 38.6, z: 0.6, angle: 0, length: 98.2});
-        create({title: "平行传送带-顺时针弯道", x: 188.4, y: 33.6, z: 0.6, angle: 270});
-        create({title: "平行传送带-直道", x: 193.4, y: 33.6, z: 0.6, angle: 270, length: 30.2});
-        create({title: "平行传送带-顺时针弯道", x: 188.4, y: 3.4, z: 0.6, angle: 180});
-        create({title: "平行传送带-直道", x: 188.4, y: -1.6, z: 0.6, angle: 180, length: 98.2});
-        create({title: "平行传送带-直道", x: 99.6, y: 1.4, z: 0.6, angle: 180, length: 93.2});
-
-        // 光电门
-        mesh = create({title: "光电门", x: 13.9, y: 41.6, z: 1});
-        mesh.DT.name = "光电门1";
-        mesh.DT.physicalID = "a5197017-c560-4713-aacd-01f097dda18f";
-
-        mesh = create({title: "光电门", x: 106.95, y: 38.6, z: 1});
-        mesh.DT.createRigidBody();
-        mesh.DT.name = "光电门3";
-        mesh.DT.physicalID = "75292a01-6d17-4d50-bb75-d42718f75fe8";
-
-        mesh = create({title: "光电门", x: 125.5, y: -1.6, z: 1});
-        mesh.DT.createRigidBody();
-        mesh.DT.name = "光电门5";
-        mesh.DT.physicalID = "7f698a28-d9d4-456a-9814-19d6c9b2f1a1";
-
-        // 左下转弯处护栏
-        create({title: "弯道外侧护栏", x:6.4, y:6.4, z:0.6, angle:90});
-        create({title: "弯道内侧护栏", x:6.4, y:6.4, z:0.6, angle:90});
-        create({title: "直护栏", x:0, y:21.5, z:1.1, angle:0, length:30.2});
-        create({title: "直护栏", x:2.8, y:21.5, z:1.1, angle:0, length:30.2});
-
-        // 左上转弯处护栏
-        create({title: "弯道外侧护栏", x:6.4, y:36.6, z:0.6, angle:0});
-        create({title: "弯道内侧护栏", x:6.4, y:36.6, z:0.6, angle:0});
-        create({title: "直护栏", x:49.8, y:40.2, z:1.1, angle:90, length:86.8});
-        create({title: "直护栏", x:50.2, y:43, z:1.1, angle:90, length:87.8});
-
-        // 上方变道处护栏
-        create({title: "直护栏", x:97.16, y:41.47, z:1.1, angle:64.3, length:7.1});
-        create({title: "直护栏", x:96.25, y:38.71, z:1.1, angle:64.3, length:7});
-        create({title: "直护栏", x:144.3, y:39.98, z:1.1, angle:90, length:88.2});
-        create({title: "直护栏", x:143.85, y:37.2, z:1.1, angle:90, length:89.1});
-
-        // 右上转弯处护栏
-        create({title: "弯道外侧护栏", x:188.4, y:33.6, z:0.6, angle:270});
-        create({title: "弯道内侧护栏", x:188.4, y:33.6, z:0.6, angle:270});
-        create({title: "直护栏", x:194.8, y:18.5, z:1.1, angle:0, length:30.2});
-        create({title: "直护栏", x:192, y:18.5, z:1.1, angle:0, length:30.2});
-
-        // 右下转弯处护栏
-        create({title: "弯道外侧护栏", x:188.4, y:3.4, z:0.6, angle:180});
-        create({title: "弯道内侧护栏", x:188.4, y:3.4, z:0.6, angle:180});
-        create({title: "直护栏", x:142.05, y:-3, z:1.1, angle:90, length:92.7});
-        create({title: "直护栏", x:142.4, y:-0.2, z:1.1, angle:90, length:92});
-
-        // 下方变道处护栏
-        create({title: "直护栏", x:93.37, y:1.28, z:1.1, angle:64.3, length:7.14});
-        create({title: "直护栏", x:92.63, y:-1.51, z:1.1, angle:64.3, length:7.08});
-        create({title: "直护栏", x:48.33, y:2.77, z:1.1, angle:90, length:84});
-        create({title: "直护栏", x:48, y:0, z:1.1, angle:90, length:83.2});
-        mesh.DT.createRigidBody(null, 1, mesh.scale.y);
-
+        // 传送带演示场景，从左下角开始顺时针创建，存储在同级目录的DemoScene.json中
+        for(let group of Object.values(demoScene)){
+            for(let key in group){
+                create(group[key]);
+            };
+        }
         mesh.DT.updatePhysicalIDMap();
     }       
 }

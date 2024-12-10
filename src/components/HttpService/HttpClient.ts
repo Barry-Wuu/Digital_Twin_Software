@@ -42,7 +42,7 @@ export default class HttpClient{
         console.log(url);
         axios.get(url, {timeout: this.TIMEOUT})
         .then(res => console.log(res.data))
-        .catch(err => console.log(err));
+        .catch(err => console.error(err));
     }  
     postRequest(data) {  // 发送post请求
         console.log(data);
