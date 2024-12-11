@@ -51,12 +51,13 @@
       <a-collapse-panel header="基本属性" key="基本属性">
         <Prop prop="type" title="物体类型"/>
         <Prop prop="id" title="物体网格ID" :options="{fixed:0}"/>
-        <Prop prop="name" title="物体名称" type="inputString" width="120"/>
-        <Prop prop="physicalID" title="物理实体ID" type="inputString" width="120"/>
-        <Prop prop="label" title="物体标签"/>
+        <Prop prop="name" title="物体名称" type="inputString" width="150px"/>
+        <Prop prop="physicalID" title="物理实体ID" type="inputString" width="150px"/>
+        <Prop prop="label" title="物体标签" type="inputString" width="150px"/>
+        <Prop prop="node" title="所属节点" type="inputString" width="150px"/>
         <Prop prop="mesh.visible" title="是否可见" type="checkbox"/>
         <Prop prop="mesh.position" title="位移" type="inputVector"/>
-        <Prop prop="mesh.rotation" title="旋转" type="inputVector" 
+        <Prop prop="mesh.rotation" title="旋转" type="inputVector" width="75px"
         :options="{delta:10, loop:true, min:0, max:360, suffix:'°', unit:angle}"/>
         <Prop v-if="DT.label=='importedModel'" prop="scale" title="比例" type="inputNumber"
         :options="{delta:1, min:0.01, max:100}"/>
@@ -68,16 +69,16 @@
         title="长度" type="inputNumber"
         :options="{delta:0.1, min:0.1, unit:DT.scale / 6}"/>
         <Prop prop="mesh.color" title="光源颜色" type="inputVector"/>
-        <Prop prop="mesh.color" title="颜色代码" type="inputColor" width="120"/>
+        <Prop prop="mesh.color" title="颜色代码" type="inputColor" width="120px"/>
         <Prop prop="mesh.intensity" title="光照强度" type="inputNumber"
         :options="{delta:0.1, min:0}"/>
         <Prop prop="timeInterval" title="发生时间间隔" type="inputNumber"
         :options="{delta:0.01, min:1, max:10, suffix:'s', unit:1000}"/>
-        <Prop prop="skybox.skyColor" title="天空颜色" type="inputColor" width="120"
+        <Prop prop="skybox.skyColor" title="天空颜色" type="inputColor" width="120px"
         @change="global.emit('updateSkybox')"/>
-        <Prop prop="skybox.skyline" title="天际线颜色" type="inputColor" width="120"
+        <Prop prop="skybox.skyline" title="天际线颜色" type="inputColor" width="120px"
         @change="global.emit('updateSkybox')"/>
-        <Prop prop="skybox.groundColor" title="底面颜色" type="inputColor" width="120"
+        <Prop prop="skybox.groundColor" title="底面颜色" type="inputColor" width="120px"
         @change="global.emit('updateSkybox')"/>
       </a-collapse-panel>
 
@@ -116,7 +117,7 @@
         <Prop prop="mesh.material.type" title="材质类型"/>
         <Prop prop="mesh.material.color" title="材质颜色" type="inputVector"
         @change="changeFogColor"/>
-        <Prop prop="mesh.material.color" title="颜色代码" type="inputColor" width="120"
+        <Prop prop="mesh.material.color" title="颜色代码" type="inputColor" width="120px"
         @change="changeFogColor"/>
         <Prop prop="mesh.material.opacity" title="透明度" type="inputNumber"
         :options="{fixed:0, min:0, max:100, suffix:'%', unit:0.01}"/>

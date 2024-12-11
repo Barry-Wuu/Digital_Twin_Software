@@ -33,7 +33,7 @@
       prop: {},
       title: {},
       type: {},
-      width: {default: "80"},
+      width: {default: "80px"},
     },
     components: {CaretDownOutlined, CheckOutlined},
     computed: {  // 计算属性
@@ -239,10 +239,35 @@
         if(this.prop == "name") {DT.value.setTitle(); global.emit("updateTree");}
         this.$emit("change");
         chosenProp.value = null;  // 结束编辑
-        e.target.blur();  // 修改属性之后让元素自动失焦；
+        this.confirm(e, true);  // 修改属性之后让元素自动失焦；
       },   
-      confirm(e){  // 按回车键确认并失焦
-        if(e.type == "keydown" && e.key == "Enter") e.target.blur();
+      confirm(e=null, force=false){  // 按回车键确认并失焦
+        if(force || e?.type == "keydown" && e?.key == "Enter") {
+          e.target.blur();
+          // 发送消息
+          if(DT.value.label == "conveyor"){
+            let DT0 = DT.value;
+            let speed = DT0.speed / 1.5 * 200;
+            let ip = "192.168.137.21";
+            let port = "4844";
+            let uri = DT0.node + "/AAS/Static/Composition/Conveyor/AAS/Dynamic/Belt_Speed:value@Value"
+            global.emit("postRequest", {
+              url: "http://192.168.137.155:8888/NodeWrite",
+              writenumber: "1",
+              writerequestjson: {
+                "1": {
+                  ip: ip,
+                  port: port,
+                  suffix: "",
+                  namspaceindex: DT0.name.includes("传送带") ? DT0.name.slice(3) : DT0.name,
+                  nodeID: uri,
+                  value: speed.toFixed(2),
+                  datatype: "String"
+                }
+              }
+            });
+          }
+        }
       },
       format(prop, N=1){  // 将输出参数格式化
         try{
@@ -346,9 +371,6 @@
         }
         this.$emit("change");
       },
-      propStyle(){  // 属性样式
-        return { "width": this.width + "px" };
-      },
       selectAll(e){  // 全选input中的内容（避免双击颜色代码时井号未选中）
         let x = e.target;
         x.setSelectionRange(0, x.value.length);  
@@ -440,16 +462,16 @@
 
     <!--编辑颜色属性-->
     <span v-else-if="type=='inputColor'">
-      <a-input class="propInput" :style="propStyle()" :title="help.input" 
-      v-model:value="computedProp"
+      <a-input class="propInput" placeholder="无"
+      :style="{width: width}" :title="help.input" v-model:value="computedProp"
       @blur="e=>changeValue({e:e, type:'string'})" 
       @click="startEdit" @dblclick="selectAll" @keydown="confirm"/>
     </span> 
 
     <!--编辑数值属性-->
     <span v-else-if="type=='inputNumber'">
-      <a-input class="propInput" :style="propStyle()" :title="help.input" 
-      v-model:value="computedProp"
+      <a-input class="propInput" placeholder="无"
+      :style="{width: width}" :title="help.input" v-model:value="computedProp"
       @blur="e=>changeValue(getOptions(e))" 
       @click="startEdit" @dblclick="selectAll" @keydown="confirm"
       @wheel="e=>changeValue(getOptions(e))" @wheel.prevent/>
@@ -458,8 +480,8 @@
 
     <!--编辑字符串属性-->
     <span v-else-if="type=='inputString'">
-      <a-input class="propInput" :style="propStyle()" :title="help.input" 
-      v-model:value="computedProp"
+      <a-input class="propInput" placeholder="无" 
+      :style="{width: width}" :title="help.input" v-model:value="computedProp"
       @blur="e=>changeValue(getOptions(e))"
       @click="startEdit" @dblclick="selectAll" @keydown="confirm"
       @wheel="e=>changeValue(getOptions(e))" @wheel.prevent/>
@@ -470,45 +492,48 @@
       <!--THREE三维向量-->
       <span v-if="getProp().isVector3 || getProp().isEuler">
         <strong>x:</strong>
-        <a-input class="propInput" :style="propStyle()" :title="help.input" 
-        v-model:value="computedX" :disabled="DT.label=='protected'"
-        @blur="e=>changeValue(getOptions(e, 'x'))" 
-        @click="e=>startEdit(e, 'x')" @dblclick="selectAll" @keydown="confirm"
-        @wheel="e=>changeValue(getOptions(e, 'x'))" @wheel.prevent/>
+        <a-input class="propInput" :style="{width: width}" :title="help.input" 
+          v-model:value="computedX" :disabled="DT.label=='protected'"
+          @blur="e=>changeValue(getOptions(e, 'x'))" 
+          @click="e=>startEdit(e, 'x')" @dblclick="selectAll" @keydown="confirm"
+          @wheel="e=>changeValue(getOptions(e, 'x'))" @wheel.prevent
+        />
         <div v-if="options.suffix" class="inline">{{ options.suffix }}</div>&nbsp;
         <strong>y:</strong>
-        <a-input class="propInput" :style="propStyle()" :title="help.input" 
-        v-model:value="computedY" :disabled="DT.label=='protected'"
-        @blur="e=>changeValue(getOptions(e, 'y'))" 
-        @click="e=>startEdit(e, 'y')" @dblclick="selectAll" @keydown="confirm"
-        @wheel="e=>changeValue(getOptions(e, 'y'))" @wheel.prevent/>
+        <a-input class="propInput" :style="{width: width}" :title="help.input" 
+          v-model:value="computedY" :disabled="DT.label=='protected'"
+          @blur="e=>changeValue(getOptions(e, 'y'))" 
+          @click="e=>startEdit(e, 'y')" @dblclick="selectAll" @keydown="confirm"
+          @wheel="e=>changeValue(getOptions(e, 'y'))" @wheel.prevent
+        />
         <div v-if="options.suffix" class="inline">{{ options.suffix }}</div>&nbsp; 
         <strong>z:</strong>
-        <a-input class="propInput" :style="propStyle()" :title="help.input" 
-        v-model:value="computedZ" :disabled="DT.label=='protected'"
-        @blur="e=>changeValue(getOptions(e, 'z'))" 
-        @click="e=>startEdit(e, 'z')" @dblclick="selectAll" @keydown="confirm"
-        @wheel="e=>changeValue(getOptions(e, 'z'))" @wheel.prevent/>
+        <a-input class="propInput" :style="{width: width}" :title="help.input" 
+          v-model:value="computedZ" :disabled="DT.label=='protected'"
+          @blur="e=>changeValue(getOptions(e, 'z'))" 
+          @click="e=>startEdit(e, 'z')" @dblclick="selectAll" @keydown="confirm"
+          @wheel="e=>changeValue(getOptions(e, 'z'))" @wheel.prevent
+        />
         <div v-if="options.suffix" class="inline">{{ options.suffix }}</div>
       </span>
       <!--THREE颜色向量-->
       <span v-if="getProp().isColor">
         <strong>R:</strong>
-        <a-input class="propInput" :style="propStyle()" :title="help.input" 
+        <a-input class="propInput" :style="{width: width}" :title="help.input" 
         v-model:value="computedX"
         @blur="e=>changeColor(e, 'r')" 
         @click="e=>startEdit(e, 'r')" @dblclick="selectAll" @keydown="confirm"
         @wheel="e=>changeColor(e, 'r')" @wheel.prevent/>
         &nbsp;
         <strong>G:</strong>
-        <a-input class="propInput" :style="propStyle()" :title="help.input" 
+        <a-input class="propInput" :style="{width: width}" :title="help.input" 
         v-model:value="computedY"
         @blur="e=>changeColor(e, 'g')" 
         @click="e=>startEdit(e, 'g')" @dblclick="selectAll" @keydown="confirm"
         @wheel="e=>changeColor(e, 'g')" @wheel.prevent/>
         &nbsp; 
         <strong>B:</strong>
-        <a-input class="propInput" :style="propStyle()" :title="help.input" 
+        <a-input class="propInput" :style="{width: width}" :title="help.input" 
         v-model:value="computedZ"
         @blur="e=>changeColor(e, 'b')" 
         @click="e=>startEdit(e, 'b')" @dblclick="selectAll" @keydown="confirm"
