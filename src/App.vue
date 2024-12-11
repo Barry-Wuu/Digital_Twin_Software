@@ -11,9 +11,9 @@
   import HttpClient from "./components/HttpService/HttpClient"
   import HttpServer from "./components/HttpService/HttpServer"
 
+  var client = null; // 用于保存http-server进程的引用 
   var dragPoint = [0, 0];
   var draggedSpliter;
-  var httpProcess = null; // 用于保存http-server进程的引用 
   var id = 0;
   var initSize = [0, 0];
   const layout = ref({
@@ -34,7 +34,7 @@
     ]
   });
   const showQuitFullscreen = ref(false);
-  global.on("changeQuitFullscreen", (data)=>{showQuitFullscreen.value = JSON.parse(data)});
+  global.on("changeQuitFullscreen", (data: any)=>{showQuitFullscreen.value = JSON.parse(data)});
   const quitFullscreenStyle = ref("default");
   var target;
 
@@ -97,39 +97,40 @@
   addId(layout.value);
   onMounted(() => {  // 加载完成时
     addSplitMover(layout.value);
-    httpProcess = new HttpClient({  // 启动http服务
+    client = new HttpClient({  // 启动http服务
       site:"192.168.137.155", 
       port: 8888, 
       path: "positionfeedback/frontclient",
       interval: 100,  // ms
       timeout: 500000,  // ms
-      callback: async function (axios, client) {  // 使用阻塞的方式连接并接收消息，全局超时时间为this.TIMEOUT=500s
+      callback: async function () {  // 使用阻塞的方式连接并接收消息，全局超时时间为this.TIMEOUT=500s
         try{
-          if(!client.connect) return;
+          if(!client.allowConnect) return;
           if(client.thread_num >= client.max_thread_num) return;
           client.thread_num++; 
-          console.log("线程数：", client.thread_num)
-          let result = await axios.get(
+          console.log("线程数：", client.thread_num);
+          let result = await client.axios.get(
               `http://${client.SITE}:${client.PORT}/${client.PATH}`, 
               {timeout: client.TIMEOUT}
           );
           let data = result.data;
-
           if(data.RFID && data.deviceID) {
             global.emit("updateTrayPosition", data);
           }
+        } 
+        catch(error) {
+          console.error(error.message, error);
+        }
+        finally{
           client.thread_num--;
-          client.getData(axios, client);
-        } catch(error) {
-            console.warn(error.message, error);
-            client.thread_num--;
-            client.callback(axios, client);
+          client.callback();
         };
       }
     });
-    httpProcess.startConnect();  // 启动连接
+    client.callback();  // 启动连接
+    
     global.on("beforeunload", () => {  // 退出时清理临时文件（src/temp文件夹）
-      httpProcess.kill();
+      client.kill();
     })
     window.addEventListener("drop", () => {
       document.body.style.userSelect = '';  // 恢复文本选择功能
@@ -139,7 +140,7 @@
       document.body.style.userSelect = '';  // 恢复文本选择功能
       draggedSpliter = null;
     });
-  })
+  });
 </script>
 
 <template>

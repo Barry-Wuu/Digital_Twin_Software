@@ -9,8 +9,10 @@ import global from "../../Global"
     }
 */
 export default class HttpClient{
+    allowConnect = true;  // 允许连接
+    allowRequest = true;  // 允许请求
+    axios = axios;  // axios库
     callback;  // 回调函数
-    connect = true;  // 允许连接
     max_thread_num = 10;  // 最大线程数
     polling;  // 连接定时器
     thread_num = 0;  // 当前线程数
@@ -28,26 +30,27 @@ export default class HttpClient{
         this.SITE = site;
         this.TIMEOUT = timeout;
         this.callback = callback;
-        global.on("getRequest", url => this.getRequest(url));
-        global.on("postRequest", data => this.postRequest(data));
+        global.on("changeAllowRequest", (value: boolean) => {this.allowRequest = value});
+        global.on("getRequest", (url: string) => {  // 发送GET请求
+            if(!this.allowRequest) return;
+            console.log("尝试发送POST请求至：", url);
+            axios.get(url)
+            .then(() => console.log("已发送：", url))
+            .catch(err => console.error(err));
+        });
+        global.on("postRequest", (data: any) => {  // 发送POST请求
+            if(!this.allowRequest) return;
+            console.log("尝试发送POST请求至：", data);
+            axios.post(data.url, data.data)
+            .then(() => console.log("已发送：", data.data))
+            .catch(err => console.error(err)); 
+        });
+        global.on("startConnect", () => {  // 连接启动
+            this.allowConnect = true;
+            this.callback(axios, this);
+        });
+        global.on("stopConnect", () => {  // 连接停止
+            this.allowConnect = false;
+        });
     }
-    startConnect() {  // 连接启动
-        this.connect = true;
-        this.callback(axios, this);
-    }
-    stopConnect() {  // 连接停止
-        this.connect = false;
-    }
-    getRequest(url) {  // 发送get请求
-        console.log(url);
-        axios.get(url, {timeout: this.TIMEOUT})
-        .then(res => console.log(res.data))
-        .catch(err => console.error(err));
-    }  
-    postRequest(data) {  // 发送post请求
-        console.log(data);
-        axios.post(data.url, data.data)
-        .then(res => console.log(res))
-        .catch(err => console.error(err)); 
-    }  
 }

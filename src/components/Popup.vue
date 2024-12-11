@@ -39,7 +39,9 @@
     data(){
       return{
         addingDatabase: false,
+        allowConnect: true,  // 允许连接
         allowSend: false,  // 是否正在发送数据
+        allowRequest: true,  // 允许请求
         customCodeType: '',  // 自定义脚本类型
         databases: {
           cpps_db: {addingTable: false, alltable: false, tables: {orders:true, features: true}}
@@ -301,7 +303,7 @@
   }
   .yes-no-content{
     margin-top: 10px; 
-    margin-bottom: -12px; 
+    margin-bottom: 12px; 
     margin-right: 10px; 
     text-align: right;
   }
@@ -532,7 +534,21 @@
         overflow-y: hidden;
         width: 500px;
       ">
-        <div style="background-color: #EEE;">
+        <div class="row">
+          <span class="text">允许连接服务器：</span>
+          <a-checkbox style="width:100px" v-model:checked="allowConnect" 
+          @change="global.emit(allowConnect ? 'startConnect' : 'stopConnect'); alignWindow()">
+            {{ allowConnect ? '是': '否'}}
+          </a-checkbox><br>
+        </div>
+        <div class="row">
+          <span class="text">允许发送请求：</span>
+          <a-checkbox style="width:100px" v-model:checked="allowRequest" 
+          @change="global.emit('changeAllowRequest', allowRequest); alignWindow()">
+            {{ allowRequest ? '是': '否'}}
+          </a-checkbox><br>
+        </div>
+        <div style="background-color: #EEE;"> 
           数据发送模式：
           <a-radio :checked="dataSend.mode==1" @change="changeDataMode(1)">模式1（自动读取）</a-radio>
           <a-radio :checked="dataSend.mode==2" @change="changeDataMode(2)">模式2（返回SQL文件）</a-radio>

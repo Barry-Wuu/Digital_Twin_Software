@@ -10,6 +10,14 @@
   var colorEdit = '';
   const DT: any = ref("未选择对象");
   const input_value = ref(null);
+  const map = {
+              "传送带1": "192.168.137.21",
+              "传送带2": "192.168.137.22",
+              "传送带3": "192.168.137.23",
+              "传送带4": "192.168.137.24",
+              "传送带5": "192.168.137.25",
+              "传送带6": "192.168.137.26",
+  };  // 设备IP地址
   const options: any = {  // options为变量格式要求，此处为其默认值，其各参数为：
     e: null,  // 操作事件
     item: '',  // 被选择的属性名，在点击输入框时由内部设置
@@ -247,22 +255,24 @@
           // 发送消息
           if(DT.value.label == "conveyor"){
             let DT0 = DT.value;
-            let speed = DT0.speed / 1.5 * 200;
-            let ip = "192.168.137.21";
+            let speed = DT0.v0 / 1.5 * 200;
+            let ip = map[DT0.name] ?? '';
             let port = "4844";
             let uri = DT0.node + "/AAS/Static/Composition/Conveyor/AAS/Dynamic/Belt_Speed:value@Value"
             global.emit("postRequest", {
               url: "http://192.168.137.155:8888/NodeWrite",
-              writenumber: "1",
-              writerequestjson: {
-                "1": {
-                  ip: ip,
-                  port: port,
-                  suffix: "",
-                  namspaceindex: DT0.name.includes("传送带") ? DT0.name.slice(3) : DT0.name,
-                  nodeID: uri,
-                  value: speed.toFixed(2),
-                  datatype: "String"
+              data:{
+                writenumber: "1",
+                writerequestjson: {
+                  "1": {
+                    ip: ip,
+                    port: port,
+                    suffix: "",
+                    namspaceindex: "3",
+                    nodeID: uri,
+                    value: speed.toFixed(2),
+                    datatype: "String"
+                  }
                 }
               }
             });
