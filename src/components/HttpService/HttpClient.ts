@@ -33,7 +33,7 @@ export default class HttpClient{
         global.on("changeAllowRequest", (value: boolean) => {this.allowRequest = value});
         global.on("getRequest", (url: string) => {  // 发送GET请求
             if(!this.allowRequest) return;
-            console.log("尝试发送POST请求至：", url);
+            console.log("尝试发送GET请求至：", url);
             axios.get(url)
             .then(() => console.log("已发送：", url))
             .catch(err => console.error(err));

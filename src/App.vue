@@ -60,13 +60,15 @@
             target = e.target;
           };
           if(info == "col-split"){  // 列分隔模块
-            DOM.addEventListener("mousedown", e=>{
-              document.body.style.userSelect = "none";  // 拖动时禁止选中文本
-              addEventListener(e);
-              draggedSpliter = DOM;
+            DOM.addEventListener("mousedown", e => {
+              if(e.buttons == 1){
+                document.body.style.userSelect = "none";  // 拖动时禁止选中文本
+                addEventListener(e);
+                draggedSpliter = DOM;
+              }
             })
-            window.addEventListener("mousemove", e=>{
-              if(draggedSpliter == DOM){
+            window.addEventListener("mousemove", e => {
+              if(e.buttons == 1 && draggedSpliter == DOM){
                 let dX = e.clientX - dragPoint[0];
                 dX = Math.floor(dX / target.parentElement.offsetWidth * 1000);
                 children[i-1].size = initSize[0] + dX;
@@ -75,12 +77,14 @@
             });
           } else if (info == "row-split"){  // 行分隔模块
             DOM.addEventListener("mousedown", e=>{
-              document.body.style.userSelect = "none";  // 拖动时禁止选中文本
-              addEventListener(e);
-              draggedSpliter = DOM;
+              if(e.buttons == 1){
+                document.body.style.userSelect = "none";  // 拖动时禁止选中文本
+                addEventListener(e);
+                draggedSpliter = DOM;
+              }
             })
             window.addEventListener("mousemove", e=>{
-              if(draggedSpliter == DOM){
+              if(e.buttons == 1 && draggedSpliter == DOM){
                 let dY = e.clientY - dragPoint[1];
                 dY = Math.floor(dY / target.parentElement.offsetHeight * 1000);
                 children[i-1].size = initSize[0] + dY;

@@ -40,13 +40,13 @@
     <div v-else-if="item.info == 'col-split'" class="hideBorder" :id="item.id"
         style="cursor: ew-resize; margin-left: 1px; margin-right: 1px;"
         :style="{'width': item.size/10 + '%'}"
-        @mouseover = "(e)=>{e.target.style.border = '2px solid dodgerblue'}"
-        @mouseout = "(e)=>{e.target.style.border = '2px solid white'}"
+        @mouseover = "e => e.target.style.border = '2px solid dodgerblue'"
+        @mouseout = "e => e.target.style.border = '2px solid white'"
     />
     <!--行布局模块-->
     <div v-else-if="item.info == 'row'" :id="item.id"
     style="flex-grow: 1;" :style="{'height': item.size/10 + '%'}">
-        <Layout v-for="(i) in item.children" :item='i' parent="row"/>
+        <Layout v-for="i in item.children" :item='i' parent="row"/>
     </div>
     <!--行分隔模块-->
     <div v-else-if="item.info == 'row-split'" class="hideBorder" :id="item.id"
