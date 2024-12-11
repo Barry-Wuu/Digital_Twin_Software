@@ -56,7 +56,7 @@
           nocreateinfo: false,
           wheredata: 'NULL',  // 字符串
           delaytime: 5,  // 数字，不小于3
-          outputfile: '',  // 字符串，选择文件路径
+          outputfile: 'E:\\MySOL_Workbench\\111.sql',  // 字符串，选择文件路径
         },
         inputDatabase: '',
         inputTable: '',
@@ -125,7 +125,7 @@
         if(!this.dataSend.alldb){
           dataSend0["databasename"] = {};
           dataSend0["databasename"]["dbnumber"] = Object.keys(this.databases).length;
-          Object.keys(this.databases).forEach((dbname, index)=>{
+          Object.keys(this.databases).forEach((dbname, index) => {
             let db = this.databases[dbname];
             let db0 = {
               dbname: dbname,

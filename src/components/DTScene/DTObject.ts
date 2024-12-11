@@ -18,6 +18,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     friction0 = 0.5  // 静摩擦力
     friction = 1  // 滑动摩擦力
     geometry: THREE.object  // 模型几何体
+    geomRigid  // 自定义刚体网格
     icon: HTMLElement  // 物体图标
     id: number  // 序号
     isSensor = false  // 是否为传感器
@@ -122,6 +123,11 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         }
         else if(this.rigidShape == "convex"){  // 将自定义几何体的凸集作为刚体形状
             shape = this.createRigidShape({geom: this.geometry, scaleX: scaleX, scaleY: scaleY}); 
+        }
+        else if(this.rigidShape == "geomRigid"){  // 根据自定义几何体生成刚体形状
+            shape = this.createRigidShape(
+                {geom: eval(this.geomRigid.join(''))(), scaleX: scaleX, scaleY: scaleY}
+            );   
         }
         else if(this.rigidShape == "mesh"){  // 根据网格形状直接生成刚体形状
             shape = this.createRigidShape({geom: this.geometry});   

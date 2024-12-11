@@ -37,10 +37,26 @@
     "model_definition": {
         "平行传送带-直道": {
             "icon": "平行直道.jpg",
+            "geomRigid": [
+                "()=>{",
+                    "let a = 1.5/this.scale, A = 7.5/this.scale, shape = new THREE.Shape();",
+                    "shape.lineTo(0, a);",
+                    "shape.lineTo(A, a);",
+                    "shape.lineTo(A, -a);",
+                    "shape.lineTo(0, -a);",
+                    "shape.closePath();", 
+                    "return new THREE.ExtrudeGeometry(shape, {",  
+                        "bevelEnabled: false,",  
+                        "curveSegments: 5,",  
+                        "depth: -0.6,",  
+                        "steps: 1,",  
+                    "})",
+                "}"
+            ],
             "material": { "color": "lightgray" },
             "modelPath": "stl/平行传送带-直道.stl", 
             "rigid": true,
-            "rigidShape": "convex",
+            "rigidShape": "geomRigid",
             "scale": 0.05,
             "v0": 1.5,
             "label": "conveyor",
@@ -198,7 +214,7 @@
             "rigidShape": [
                 "()=>{",
                     "const PI = Math.PI;",
-                    "let r = 3.6/this.scale, R = 6.4/this.scale, shape = new THREE.Shape();",
+                    "let r = 3.6, R = 6.4, shape = new THREE.Shape();",
                     "shape.moveTo(0, R);",
                     "shape.absarc(0, 0, R, PI/2, PI, false);",
                     "shape.absarc(0, 0, r, PI, PI/2, true);",
@@ -243,7 +259,7 @@
 
         "直护栏": {
             "icon": "直护栏.png",
-            "geometry": "new THREE.BoxGeometry(0.5, 6, 1)",
+            "geometry": "new THREE.BoxGeometry(0.4, 6, 1)",
             "label": "guardrail",
             "material": { "color": "gray" },
             "rigid": true, 
@@ -254,7 +270,7 @@
             "geometry": [
                 "()=>{",
                     "const PI = Math.PI;",
-                    "let r = 6.4/DT.scale - 0.25, R = 6.4/DT.scale + 0.25, shape = new THREE.Shape();",
+                    "let r = 6.4/DT.scale - 0.2, R = 6.4/DT.scale + 0.2, shape = new THREE.Shape();",
                     "shape.absarc(0, 0, R, PI/2, PI, false);",
                     "shape.absarc(0, 0, r, PI, PI/2, true);",
                     "shape.closePath();", 
@@ -276,7 +292,7 @@
             "geometry": [
                 "()=>{",
                     "const PI = Math.PI;",
-                    "let r = 3.6/DT.scale - 0.25, R = 3.6/DT.scale + 0.25, shape = new THREE.Shape();",
+                    "let r = 3.6/DT.scale - 0.2, R = 3.6/DT.scale + 0.2, shape = new THREE.Shape();",
                     "shape.absarc(0, 0, R, PI/2, PI, false);",
                     "shape.absarc(0, 0, r, PI, PI/2, true);",
                     "shape.closePath();", 
