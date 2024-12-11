@@ -478,7 +478,7 @@
       <!--自定义脚本-->
       <div v-if="popupContent == 'code'">
         <div style="margin: 10px 10px 0 10px; text-align: left;">
-          参数：{{ customCodeType }}
+          参数：
           <span v-if="customCodeType == 'update'">
             mesh=此物体；DT=对应的DTObject；rb=对应的刚体
           </span>

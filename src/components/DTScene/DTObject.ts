@@ -37,6 +37,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     material: THREE.object  // 模型材质
     mesh: THREE.object  // 模型网格
     name: string  // 名称
+    node = ''  // 节点名称
     physicalID = '0'  // 物理实体ID，可编辑
     rigid: false  // 是否为刚体
     rigidShape: string | string[]  // 刚体网格，设成字符串易于存取，若为convex则刚体为mesh的凸集
