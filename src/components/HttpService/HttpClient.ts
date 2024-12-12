@@ -23,8 +23,9 @@ export default class HttpClient{
     TIMEOUT: number;  // 连接超时时间（毫秒）  
     
     // 在控制台输入global.emit("postRequest", {a:1})用于发送消息
-    constructor({interval, path, port, site="localhost", timeout, callback}){
+    constructor({interval, max_thread_num, path, port, site="localhost", timeout, callback}){
         this.INTERVAL = interval;
+        if(max_thread_num) this.max_thread_num = max_thread_num;
         this.PATH = path;
         this.PORT = port;
         this.SITE = site;

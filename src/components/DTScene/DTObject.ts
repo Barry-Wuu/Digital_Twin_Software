@@ -494,9 +494,9 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     }
     updatePhysicalIDMap(){  // 更新物理实体ID到物体的映射关系
         global.physicalIDMap = {};
-        for(let DT of global.DTObjects.value){
-            global.physicalIDMap[DT.physicalID] = DT;
-        }
+        global.SCENE.DT.traverse(DT => {
+            if(DT && DT.physicalID) global.physicalIDMap[DT.physicalID] = DT;
+        });
     }
     updateRigidbodyTransform(){  // 强制更新刚体位姿
         let mesh = this.mesh;

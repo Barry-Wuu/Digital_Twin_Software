@@ -108,7 +108,7 @@
         :options="{delta:0.1, min:0, max:1}"/>
         <Prop prop="isSensor" title="是否是传感器"/>
         <Prop prop="v0" title="传送带速度" type="inputNumber"
-        :options="{delta:0.1, min:0.1, max:5}"/>
+        :options="{delta:0.1, min:0, max:200, unit:1.5/200}"/>
       </a-collapse-panel>
       <a-collapse-panel v-else disabled header="物理属性（无）"/>
 
