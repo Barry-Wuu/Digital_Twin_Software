@@ -102,7 +102,8 @@
   onMounted(() => {  // 加载完成时
     addSplitMover(layout.value);
     client = new HttpClient({  // 启动http服务
-      site:"192.168.137.155", 
+      max_thread_num: 1,
+      site: "192.168.137.155", 
       port: 8888, 
       path: "positionfeedback/frontclient",
       interval: 100,  // ms
@@ -118,6 +119,7 @@
               {timeout: client.TIMEOUT}
           );
           let data = result.data;
+          console.log("接收到信息：", data);
           if(data.RFID && data.deviceID) {
             global.emit("updateTrayPosition", data);
           }

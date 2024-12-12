@@ -11,12 +11,12 @@
   const DT: any = ref("未选择对象");
   const input_value = ref(null);
   const map = {
-              "传送带1": "192.168.137.21",
-              "传送带2": "192.168.137.22",
-              "传送带3": "192.168.137.23",
-              "传送带4": "192.168.137.24",
-              "传送带5": "192.168.137.25",
-              "传送带6": "192.168.137.26",
+              "a5197017-c560-4713-aacd-01f097dda18f": "192.168.137.21",
+              "f70042be-5fef-4d45-9b3c-6ab06f384ae7": "192.168.137.22",
+              "75292a01-6d17-4d50-bb75-d42718f75fe8": "192.168.137.23",
+              "f6e1de24-a3c4-4263-b19e-7c6451c992a1": "192.168.137.24",
+              "7f698a28-d9d4-456a-9814-19d6c9b2f1a1": "192.168.137.25",
+              "cc29f8d0-736e-4474-a02b-f05d93a735aa": "192.168.137.26",
   };  // 设备IP地址
   const options: any = {  // options为变量格式要求，此处为其默认值，其各参数为：
     e: null,  // 操作事件
@@ -252,11 +252,19 @@
       confirm(e=null, force=false){  // 按回车键确认并失焦
         if(force || e?.type == "keydown" && e?.key == "Enter") {
           e.target.blur();
+          if(this.prop == "v0"){  // 更改某传送带元件的速度时，也更改所有节点相同的元件的速度
+            global.SCENE.DT.traverse(DT0 => {
+              if(DT0 && DT0 != DT.value && DT0.node == DT.value.node){
+                DT0.v0 = DT.value.v0;
+              }
+              }
+            )
+          }
           // 发送消息
           if(DT.value.label == "conveyor"){
             let DT0 = DT.value;
             let speed = DT0.v0 / 1.5 * 200;
-            let ip = map[DT0.name] ?? '';
+            let ip = map[DT0.node] ?? '';
             let port = "4844";
             let uri = DT0.node + "/AAS/Static/Composition/Conveyor/AAS/Dynamic/Belt_Speed:value@Value"
             global.emit("postRequest", {

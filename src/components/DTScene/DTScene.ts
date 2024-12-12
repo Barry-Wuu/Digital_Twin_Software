@@ -399,6 +399,7 @@ export default class SceneBuilder{
 
         // 更新托盘位置
         global.on("updateTrayPosition", (data: {deviceID, RFID}) => {
+            console.log(data)
             if(emulateMode != "play") return;  // 暂停时不更新
             if(data.RFID == "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
                 data.RFID = "822fbee2-1fe0-45c8-b403-8b5cdb31cb25";  // 
@@ -1063,6 +1064,7 @@ export default class SceneBuilder{
             if(prop){
                 for(let key in prop) mesh.DT[key] = prop[key];
             }
+            global.SCENE.DT.children.push(mesh.DT);
             return mesh;
         }
 
