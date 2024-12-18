@@ -166,6 +166,7 @@
     text-align: center;
     width:100%; 
     height:50px; 
+    white-space: nowrap;
   }  
   .model-collapse{
     border: 1px solid darkgray;
@@ -211,7 +212,7 @@
       <div v-if="!searchValue">
         <!--内置模型-->
         <a-collapse v-model:activeKey="preservedModel">
-          <a-collapse-panel key="内置模型" header="内置模型">
+          <a-collapse-panel key="内置模型" header="内置模型" style="white-space: nowrap;">
             <a-collapse v-model:activeKey="activeKeys1" class="model-collapse">
               <a-collapse-panel v-for="group of model_layout" :disabled="!group.children.length"
               :header="group.title + (group.children.length ? '' : '（无）')" 
