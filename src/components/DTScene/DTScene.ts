@@ -842,7 +842,7 @@ export default class SceneBuilder{
                     let v0 = DT1.v0 * 2 * 60 / fps;  // 传送带中轴线速度v0，运行时根据帧率进行调整
                     let theta = R.z;  //传送带旋转角θ 
                     R = 5;  // 传送带中轴线半径R
-                    if(DT1.name?.includes("直道")){  // 摩擦力 F = kmg(v0-v)/||v0-v||，v和v0为向量
+                    if(DT1.basename?.includes("直道")){  // 摩擦力 F = kmg(v0-v)/||v0-v||，v和v0为向量
                         let v0_vec = new THREE.Vector3(v0*Math.cos(theta), v0*Math.sin(theta), 0);  // 将v0从标量转换为货物处的速度矢量v0_vec
                         v = rb0.linvel();
                         v = new THREE.Vector3(v.x, v.y, v.z);
@@ -851,8 +851,8 @@ export default class SceneBuilder{
                         F.normalize();
                         F.multiplyScalar(2*k*m*g);
                         rb0.addForce(new RAPIER.Vector3(F.x, F.y, F.z));
-                    } else if(DT1.name?.includes("弯道")) {
-                        let dir = DT1.name.includes("逆时针弯道") ? -1 : 1;  // 传送带移动方向（顺/逆时针）
+                    } else if(DT1.basename?.includes("弯道")) {
+                        let dir = DT1.basename.includes("逆时针弯道") ? -1 : 1;  // 传送带移动方向（顺/逆时针）
                         let r = new THREE.Vector3();
                         r.add(mesh0.position).sub(P);
                         r.setZ(0);
@@ -880,7 +880,7 @@ export default class SceneBuilder{
                     DT0.touchSensor = DT1;
                 }
                 else if (DT1.label == "special"){
-                    if (DT1.name == "回收器"){
+                    if (DT1.basename == "回收器"){
                         DT0.destroy();
                         global.emit("print", `【${DT0.name}${mesh0.id}】被【${DT1.name}${DT1.id}】回收`);
                     }
