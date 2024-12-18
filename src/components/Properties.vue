@@ -74,10 +74,10 @@
         <Prop v-if="DT.label=='importedModel'" prop="scale" title="比例" type="inputNumber"
         :options="{delta:1, min:0.01, max:100}"/>
         <Prop v-else prop="scale" title="比例"/>
-        <Prop v-if="DT.label=='conveyor' && DT.name.includes('直道')" prop="mesh.scale.x" 
+        <Prop v-if="DT.label=='conveyor' && DT.basename.includes('直道')" prop="mesh.scale.x" 
         title="长度" type="inputNumber"
         :options="{delta:0.1, min:0.1, unit:DT.scale / 7.5}"/>
-        <Prop v-if="DT.name?.includes('直护栏')" prop="mesh.scale.y" 
+        <Prop v-if="DT.basename?.includes('直护栏')" prop="mesh.scale.y" 
         title="长度" type="inputNumber"
         :options="{delta:0.1, min:0.1, unit:DT.scale / 6}"/>
         <Prop prop="mesh.color" title="光源颜色" type="inputVector"/>
