@@ -402,7 +402,7 @@ export default class SceneBuilder{
             console.log(data)
             if(emulateMode != "play") return;  // 暂停时不更新
             if(data.RFID == "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
-                data.RFID = "822fbee2-1fe0-45c8-b403-8b5cdb31cb25";  // 
+                data.RFID = "822fbee2-1fe0-45c8-b403-8b5cdb31cb25";
             let sensorDT = global.physicalIDMap[data.deviceID];
             let trayDT = global.physicalIDMap[data.RFID];
             if(!sensorDT || !trayDT) return;  // 若传感器或托盘不存在，则不执行后续操作

@@ -23,7 +23,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     id: number  // 序号
     isSensor = false  // 是否为传感器
     key: number  // 层级树的键，应等于序号
-    label = "无"  // 物体类型
+    label = ''  // 物体类型
     layers = {
         attachPoint1: [],  //传送带入口连接点
         attachPoint2: [],  //传送带出口连接点

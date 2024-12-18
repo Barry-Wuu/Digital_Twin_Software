@@ -193,7 +193,7 @@
             for(let DT of global.SCENE.DT.getDTObjects()){  // 根据标签更新各子物体是否可见
               let chosen = choices.value.includes(DT.id);
               if(DT.layers.wireframe.length){    
-                if(DT.layers.label)
+                if(DT.layers.label && DT.layers.label[0])
                   DT.layers.label[0].element.textContent = chosen ? DT.name : '';
                 DT.layers.wireframe[0].visible = chosen;
               }
@@ -258,12 +258,20 @@
   #hierarchy{
     display:flex; outline: none
   }
-  .treelineH{
+  .treelineH1{
     background-color: lightgrey;
     position: absolute; 
     top: 11px; 
     left: -14px;
     width: 12px;
+    height: 2px;
+  }
+  .treelineH2{
+    background-color: lightgrey;
+    position: absolute; 
+    top: 11px; 
+    left: -6px;
+    width: 4px;
     height: 2px;
   }
   .treelineV{
@@ -303,14 +311,15 @@
             <DropboxOutlined v-if="DT.mesh.isGroup || DT.mesh.isScene"/>
             {{ DT.title }}
             <!--横向连接线-->
-            <div v-if="DT.title!='Scene' && DT.isLeaf" class="treelineH"/>
+            <sup v-if="DT.title!='Scene' && DT.isLeaf" class="treelineH1"/>
+            <div v-else class="treelineH2"/>
             <!--纵向连接线-->
             <div v-if="DT.row" class="treelineV" :style="{'height': 12+(DT.row-1)*28+'px'}"/>
           </span>
         </template> 
         <!--展开和折叠标志-->
         <template #switcherIcon="DT">
-          <span style="background-color:white; margin-left: -2px">
+          <span style="background-color: white; margin-left: -2px;">
             <MinusSquareOutlined v-if="DT.expanded"/>
             <PlusSquareOutlined v-else/>
           </span>
@@ -326,7 +335,6 @@
             <BulbOutlined v-if="DT.mesh.isLight"/>
             <CodepenOutlined v-if="DT.mesh.isMesh"/>
             <DragOutlined v-if="DT.type=='AxesHelper'"/>
-            <DropboxOutlined v-if="DT.mesh.isGroup || DT.mesh.isScene"/>
             <span>&nbsp;{{ DT.title.substring(0, DT.title.indexOf(searchValue)) }}</span>
             <span style="color: red"><strong>{{ searchValue }}</strong></span>
             <span>{{ DT.title.substring(DT.title.indexOf(searchValue) + searchValue.length) }}</span>
