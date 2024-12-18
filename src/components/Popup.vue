@@ -39,9 +39,9 @@
     data(){
       return{
         addingDatabase: false,
-        allowConnect: true,  // 允许连接
+        allowConnect: false,  // 允许连接
         allowSend: false,  // 是否正在发送数据
-        allowRequest: true,  // 允许请求
+        allowRequest: false,  // 允许请求
         customCodeType: '',  // 自定义脚本类型
         databases: {
           cpps_db: {addingTable: false, alltable: false, tables: {orders:true, features: true}}
@@ -195,7 +195,6 @@
           popup.style.display = popupMask.style.display = "block";
           if(data.type == "code") {  // 自定义脚本
             this.customCodeType = data.customCodeType;  // 自定义脚本类型
-            console.log(this.customCodeType, DT.value.code[this.customCodeType])
             if(typeof DT.value.code[this.customCodeType] == "string") {
               newCode.value = DT.value.code[this.customCodeType] ?? '';
             }
@@ -485,7 +484,7 @@
             mesh=此物体；DT=对应的DTObject；rb=对应的刚体
           </span>
           <span v-else>
-            mesh0/mesh1=此物体/与之碰撞的物体；DT0/DT1=对应的DTObject；rb0/rb1=对应的刚体；collider0/collider1=对应的碰撞体
+            mesh0/mesh1=此物体/与之碰撞的物体；DT=对应的DTObject；DTs=与此物体碰撞的所有物体；rb0/rb1=对应的刚体；collider0/collider1=对应的碰撞体
           </span>
         </div>
         <textarea class="customCode" id="customCode" placeholder="自定义脚本"

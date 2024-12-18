@@ -2,15 +2,26 @@
   import global from "../Global"
   import Prop from "./Prop.vue"
   import { ref } from 'vue'
+  import {
+    CaretDownOutlined
+  } from '@ant-design/icons-vue';
 
   const DT: any = ref("未选择物体");
   const tube = new EyeDropper();  // 颜色吸管
 
   export default{
-    components:{ Prop },
+    components:{ 
+      CaretDownOutlined,
+      Prop
+    },
     data(){
       return {
         angle: Math.PI/180,
+        customCodeMap:{
+          "发生碰撞时": "onCollision",
+          "开始碰撞时": "onCollisionStart",
+          "结束碰撞时": "onCollisionEnd",
+        },
         DT, 
         global,
       }
@@ -141,12 +152,17 @@
           编辑
         </a-button>  
         <br>
-        发生碰撞时运行的脚本：
-        <a-button @click="global.emit('popup', {
-          DT: DT, title: '编辑自定义脚本', type: 'code', customCodeType: 'onCollision'
-        })">
-          编辑
-        </a-button>  
+        触发事件时运行的脚本：
+        <a-dropdown :trigger="['click']">
+          <template #overlay>
+            <a-menu @click="e => global.emit('popup', {
+              DT: DT, title: '编辑自定义脚本', type: 'code', customCodeType: customCodeMap[e.key]
+            })">
+              <a-menu-item v-for="key in Object.keys(customCodeMap)" :key="key">{{ key }}</a-menu-item>
+            </a-menu>
+          </template>
+          <a-button>展开<CaretDownOutlined/></a-button>
+        </a-dropdown>
       </a-collapse-panel>
     </a-collapse>
   </div>
