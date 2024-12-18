@@ -636,7 +636,7 @@
     <!--只显示属性-->
     <div v-else v-for="prop of [format(computedProp)]" class="inline">
       <div v-if="typeof prop == 'boolean'" class="inline"> {{ prop ? "是" : "否"}} </div>
-      <div v-else class="inline"> {{ prop }} </div>
+      <div v-else class="inline"> {{ prop ? prop : "无" }} </div>
     </div>
   </div>
 </template>

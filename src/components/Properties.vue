@@ -50,6 +50,7 @@
       <!--基本属性-->
       <a-collapse-panel header="基本属性" key="基本属性">
         <Prop prop="type" title="物体类型"/>
+        <Prop prop="basename" title="元件类型"/>
         <Prop prop="id" title="物体网格ID" :options="{fixed:0}"/>
         <Prop prop="name" title="物体名称" type="inputString" width="150px"/>
         <Prop prop="physicalID" title="物理实体ID" type="inputString" width="150px"/>
