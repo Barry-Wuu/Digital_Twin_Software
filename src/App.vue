@@ -133,7 +133,7 @@
         };
       }
     });
-    client.callback();  // 启动连接
+    // client.callback();  启动连接
     
     global.on("beforeunload", () => {  // 退出时清理临时文件（src/temp文件夹）
       client.kill();

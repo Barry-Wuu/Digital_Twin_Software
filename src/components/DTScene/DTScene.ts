@@ -816,106 +816,124 @@ export default class SceneBuilder{
         global.SCENE.background = skybox;
     }
     onCollision(){  // 检测物理世界中的物体是否与传送带碰撞，若有则施力
-        global.physicsWorld.forEachCollider(collider0 => {
+        global.physicsWorld.forEachCollider(collider => {
+            let rb = collider._parent;
+            let mesh = global.rb2mesh[rb.handle];
+            let DT = mesh.DT;
+            DT.touchObject = [];
+
             // 让在制品排在前面，即等于mesh0
-            let label = global.rb2mesh[collider0._parent.handle].DT.label;
-            if(label != "WIP" && !collider0.isSensor()) return;
+            let label = global.rb2mesh[collider._parent.handle].DT.label;
+            
             let onConveyor = false;  // 记录在制品是否在传送带上，若不在则清空施力
-            global.physicsWorld.contactPairsWith(collider0, collider1 => {
+            global.physicsWorld.contactPairsWith(collider, collider0 => {
                 // 寻找对应的刚体和网格
-                let rb0 = collider0._parent, rb1 = collider1._parent;
-                let mesh0 = global.rb2mesh[rb0.handle], mesh1 = global.rb2mesh[rb1.handle];
-                let DT0 = mesh0.DT, DT1 = mesh1.DT;
-                if(DT1.label == "conveyor"){  // 让在制品遇到货物时受摩擦力作用
-                    rb0.resetForces();
-                    rb0.resetTorques();
-                    onConveyor = true;
-                    let J = 10;  // 转动惯量J
-                    let k = Math.min(DT0.friction, DT1.friction);  // 滑动摩擦系数k
-                    let kw = k;  // 转动摩擦系数kw
-                    let m = DT0.mass;  // 质量m
-                    let P = new THREE.Vector3(), Q = new THREE.Quaternion(), R = new THREE.Euler();
-                    mesh1.getWorldPosition(P);
-                    mesh1.getWorldQuaternion(Q);
-                    R.setFromQuaternion(Q);
-                    let v;  // 货物速度v
-                    let v0 = DT1.v0 * 2 * 60 / fps;  // 传送带中轴线速度v0，运行时根据帧率进行调整
-                    let theta = R.z;  //传送带旋转角θ 
-                    R = 5;  // 传送带中轴线半径R
-                    if(DT1.basename?.includes("直道")){  // 摩擦力 F = kmg(v0-v)/||v0-v||，v和v0为向量
-                        let v0_vec = new THREE.Vector3(v0*Math.cos(theta), v0*Math.sin(theta), 0);  // 将v0从标量转换为货物处的速度矢量v0_vec
-                        v = rb0.linvel();
-                        v = new THREE.Vector3(v.x, v.y, v.z);
-                        let F = v0_vec.clone();
-                        F.sub(v);
-                        F.normalize();
-                        F.multiplyScalar(2*k*m*g);
-                        rb0.addForce(new RAPIER.Vector3(F.x, F.y, F.z));
-                    } else if(DT1.basename?.includes("弯道")) {
-                        let dir = DT1.basename.includes("逆时针弯道") ? -1 : 1;  // 传送带移动方向（顺/逆时针）
-                        let r = new THREE.Vector3();
-                        r.add(mesh0.position).sub(P);
-                        r.setZ(0);
-                        let ra = r.length();  // 周向矢量r=v0-v，模ra=||v0-v||
-                        if(ra>=3.2 && ra<=6.4){  // 当货物到弯道的半径为3.2≤ra≤6.4时向其质心施力
-                            // 将v0从标量转换为货物处的速度矢量v0_vec
-                            let v0_vec = new THREE.Vector3(r.y, -r.x, 0);  // 旋转v0
-                            v0_vec.normalize();
-                            v0_vec.multiplyScalar(dir*v0*ra/R, v0_vec);  // 将传送带上r=R处的速度转换为r=ra处的速度
-                            v = rb0.linvel();
-                            let F = v0_vec.clone();  // 周向摩擦力F = μmg(v0-v)/||v0-v||，v和v0为向量
-                            F.sub(v, F);
-                            F.normalize();
-                            F.multiplyScalar(2*k*m*g, F);
-                            rb0.addForce(new RAPIER.Vector3(F.x, F.y, F.z));
-                            // 然后施加转矩，使在制品尽量对准中轴线
-                            let w0 = -dir * v0_vec.length() / ra;  //传送带角速度ω0 
-                            let w = rb0.angvel().z;  //货物角速度ω0
-                            let M = new RAPIER.Vector3(0, 0, 1.5*kw*J*(w0 - w));
-                            rb0.addTorque(M);  // 同理，摩擦力矩 M = kw*J*(ω0-ω)
-                        }  
-                    }
-                }
-                else if (DT1.label == "sensor"){
-                    DT0.touchSensor = DT1;
-                }
-                else if (DT1.label == "special"){
-                    if (DT1.basename == "回收器"){
-                        DT0.destroy();
-                        global.emit("print", `【${DT0.name}${mesh0.id}】被【${DT1.name}${DT1.id}】回收`);
-                    }
-                }
-
-                try{  // 刚体与物体碰撞时运行的脚本
-                    if(DT0.code.onCollision){
-                        eval(DT0.code.onCollision);
-                    }
-                }
-                catch(err) {console.log(err);}
-            });
-
-            try{
                 let rb0 = collider0._parent;
                 let mesh0 = global.rb2mesh[rb0.handle];
                 let DT0 = mesh0.DT;
-                if(collider0.isSensor()){  // 传感器与物体的重叠时运行的脚本
-                    global.physicsWorld.intersectionPairsWith(collider0, collider1 => {
-                        if(DT0.code.onCollision){ 
-                            let rb1 = collider1._parent;
-                            let mesh1 = global.rb2mesh[rb1.handle];
-                            let DT1 = mesh1.DT; 
-                            eval(DT0.code.onCollision);
+                DT.touchObject.push(DT0);
+
+                if(label == "WIP" || collider.isSensor()){
+                    if(DT0.label == "conveyor"){  // 让在制品遇到货物时受摩擦力作用
+                        rb.resetForces();
+                        rb.resetTorques();
+                        onConveyor = true;
+                        let J = 10;  // 转动惯量J
+                        let k = Math.min(DT.friction, DT0.friction);  // 滑动摩擦系数k
+                        let kw = k;  // 转动摩擦系数kw
+                        let m = DT.mass;  // 质量m
+                        let P = new THREE.Vector3(), Q = new THREE.Quaternion(), R = new THREE.Euler();
+                        mesh0.getWorldPosition(P);
+                        mesh0.getWorldQuaternion(Q);
+                        R.setFromQuaternion(Q);
+                        let v;  // 货物速度v
+                        let v0 = DT0.v0 * 2 * 60 / fps;  // 传送带中轴线速度v0，运行时根据帧率进行调整
+                        let theta = R.z;  //传送带旋转角θ 
+                        R = 5;  // 传送带中轴线半径R
+                        if(DT0.basename?.includes("直道")){  // 摩擦力 F = kmg(v0-v)/||v0-v||，v和v0为向量
+                            let v0_vec = new THREE.Vector3(v0*Math.cos(theta), v0*Math.sin(theta), 0);  // 将v0从标量转换为货物处的速度矢量v0_vec
+                            v = rb.linvel();
+                            v = new THREE.Vector3(v.x, v.y, v.z);
+                            let F = v0_vec.clone();
+                            F.sub(v);
+                            F.normalize();
+                            F.multiplyScalar(2*k*m*g);
+                            rb.addForce(new RAPIER.Vector3(F.x, F.y, F.z));
+                        } else if(DT0.basename?.includes("弯道")) {
+                            let dir = DT0.basename.includes("逆时针弯道") ? -1 : 1;  // 传送带移动方向（顺/逆时针）
+                            let r = new THREE.Vector3();
+                            r.add(mesh.position).sub(P);
+                            r.setZ(0);
+                            let ra = r.length();  // 周向矢量r=v0-v，模ra=||v0-v||
+                            if(ra>=3.2 && ra<=6.4){  // 当货物到弯道的半径为3.2≤ra≤6.4时向其质心施力
+                                // 将v0从标量转换为货物处的速度矢量v0_vec
+                                let v0_vec = new THREE.Vector3(r.y, -r.x, 0);  // 旋转v0
+                                v0_vec.normalize();
+                                v0_vec.multiplyScalar(dir*v0*ra/R, v0_vec);  // 将传送带上r=R处的速度转换为r=ra处的速度
+                                v = rb.linvel();
+                                let F = v0_vec.clone();  // 周向摩擦力F = μmg(v0-v)/||v0-v||，v和v0为向量
+                                F.sub(v, F);
+                                F.normalize();
+                                F.multiplyScalar(2*k*m*g, F);
+                                rb.addForce(new RAPIER.Vector3(F.x, F.y, F.z));
+                                // 然后施加转矩，使在制品尽量对准中轴线
+                                let w0 = -dir * v0_vec.length() / ra;  //传送带角速度ω0 
+                                let w = rb.angvel().z;  //货物角速度ω0
+                                let M = new RAPIER.Vector3(0, 0, 1.5*kw*J*(w0 - w));
+                                rb.addTorque(M);  // 同理，摩擦力矩 M = kw*J*(ω0-ω)
+                            }  
                         }
-                    });
-                } 
+                    }
+                    else if (DT0.label == "sensor"){
+                        DT.touchSensor = DT0;
+                    }
+                    else if (DT0.label == "special"){
+                        if (DT0.basename == "回收器"){
+                            DT.destroy();
+                            global.emit("print", `【${DT.name}${mesh.id}】被【${DT0.name}${DT0.id}】回收`);
+                        }
+                    }
+        
+                    if(!onConveyor){  // 若在制品不在传送带上则清空施力
+                        let rb0 = collider._parent;
+                        rb0.resetForces();
+                        rb0.resetTorques();
+                    }
+                };
+            });
+
+            if(collider.isSensor()){  // 传感器与物体的重叠检测
+                global.physicsWorld.intersectionPairsWith(collider, collider0 => {
+                    let rb0 = collider0._parent;
+                    let mesh0 = global.rb2mesh[rb0.handle];
+                    let DT0 = mesh0.DT;
+                    DT.touchObject.push(DT0);
+                });
+            } 
+
+            // 比较这一帧和上一帧的碰撞的物体，前者为空则触发开始碰撞事件，后者为空则触发结束碰撞事件
+            let DTs = DT.touchObject;
+
+            try{  // 刚体与物体碰撞时运行的脚本
+                if(DT.code.onCollision) eval(DT.code.onCollision);
             }
             catch(err) {console.log(err);}
 
-            if(!onConveyor){  // 若在制品不在传送带上则清空施力
-                let rb0 = collider0._parent;
-                rb0.resetForces();
-                rb0.resetTorques();
+            if(!DT.touchObjectBefore?.length && DT.touchObject?.length){  // 触发开始碰撞事件
+                try{  // 开始碰撞时运行的脚本
+                    if(DT.code.onCollisionStart) eval(DT.code.onCollisionStart);
+                }
+                catch(err) {console.log(err);}
             }
+
+            if(DT.touchObjectBefore?.length && !DT.touchObject?.length){  // 触发结束碰撞事件
+                try{  // 开始碰撞时运行的脚本
+                    if(DT.code.onCollisionEnd) eval(DT.code.onCollisionEnd);
+                }
+                catch(err) {console.log(err);}
+            }
+
+            DT.touchObjectBefore = DT.touchObject;
         })
     } 
     preloadModels(){  // 事先载入所有的已有模型

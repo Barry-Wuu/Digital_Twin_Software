@@ -12,6 +12,8 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     code = {  // 自定义脚本
         update: '',  // 每帧更新
         onCollision: '',  // 碰撞事件
+        onCollisionStart: '',  // 碰撞开始事件
+        onCollisionEnd: '',  // 碰撞结束事件
     }
     custom = {}  // 自定义属性
     expanded: boolean  // 是否在层级树中展开
@@ -50,7 +52,9 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     timer = performance.now()  // 定时器（自动计算）
     timeInterval: number  // 定时器触发时间
     title: string  // 标题 = 物体类型 + 名称 + 序号（自动计算）
-    touchSensor: DTObject  // 是否接触到光电门
+    touchObjectBefore: []  // 前一帧碰撞到的物体
+    touchObject: []  // 这一帧碰撞到的物体
+    touchSensor: DTObject  // 光电门碰撞到的物体
     type: string  // 物体的网格类型
     v0: number  // 传送带中轴线速度
     constructor(mesh=null, addToScene=false, asset=null) {  
