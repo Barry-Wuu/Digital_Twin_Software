@@ -465,7 +465,7 @@ export default class SceneBuilder{
                 }
                 else if(e.code == "KeyA") {  // 按A拉伸直道传送带
                     let target = this.controller.object;
-                    if(target.DT.name.includes("直道") || target.DT.name == "直护栏"){
+                    if(target.DT.basename.includes("直道") || target.DT.basename == "直护栏"){
                         this.controller.setMode("scale");
                     }
                 }
@@ -1022,7 +1022,7 @@ export default class SceneBuilder{
                 else if(typeof DT.code.update == "string") eval(DT.code.update);
             }
             catch(e) {}
-            if(!stop && DT.name == "发生器"){  // 未暂停时制造货物
+            if(!stop && DT.basename == "发生器"){  // 未暂停时制造货物
                 if(now - DT.timer >= DT.timeInterval){  // 秒变毫秒
                     let mesh0 = this.createMeshFromModels({title:"货物"}, mesh.position);                 
                     mesh0.rotation.copy(mesh.rotation);

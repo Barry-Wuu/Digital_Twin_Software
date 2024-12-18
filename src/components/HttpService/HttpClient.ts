@@ -9,8 +9,8 @@ import global from "../../Global"
     }
 */
 export default class HttpClient{
-    allowConnect = true;  // 允许连接
-    allowRequest = true;  // 允许请求
+    allowConnect = false;  // 允许连接
+    allowRequest = false;  // 允许请求
     axios = axios;  // axios库
     callback;  // 回调函数
     max_thread_num = 10;  // 最大线程数

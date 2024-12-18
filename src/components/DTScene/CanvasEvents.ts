@@ -110,12 +110,12 @@ export default defineComponent({
       let Q = new THREE.Quaternion();
       conveyor.getWorldPosition(P);
       conveyor.getWorldQuaternion(Q);
-      if(conveyor.DT.name.includes("直道")) {
+      if(conveyor.DT.basename.includes("直道")) {
         let result = RIGHT.clone();
         conveyorRay.set(P, result.applyQuaternion(Q));  // 求鼠标到传送带中轴线最近的一点
-        if(dragModel.DT.name.includes("护栏")){
+        if(dragModel.DT.basename.includes("护栏")){
           let [x, y] = [tempModel.position.x, tempModel.position.y];
-          if(dragModel.DT.name == "直护栏" || dragModel.DT.name == "变道护栏") {  // 仅旋转直护栏
+          if(dragModel.DT.basename == "直护栏" || dragModel.DT.basename == "变道护栏") {  // 仅旋转直护栏
             tempModel.rotateOnWorldAxis(  // 设置物体旋转
               UP, Math.atan(result.y / result.x) + Math.PI / 2
             );
@@ -126,54 +126,54 @@ export default defineComponent({
           tempModel.position.normalize();
           tempModel.position.multiplyScalar(1.4);
           tempModel.position.add(closestPoint);  // 物体位移 = 垂足 + 1.4||鼠标-垂足||
-          if(dragModel.DT.name != "直护栏") {  // 只改变直护栏的x和y坐标
+          if(dragModel.DT.basename != "直护栏") {  // 只改变直护栏的x和y坐标
             tempModel.position.x = x;
             tempModel.position.y = y;
           }
         }
-        else if(dragModel.DT.label == "WIP") {  // 将在制品吸附到传送带中轴线上
+        else if(dragModel.DT.label == "WIP" || dragModel.DT.label == "sensor") {  // 将在制品吸附到传送带中轴线上
           conveyorRay.closestPointToPoint(dragPoint, tempModel.position);  // 物体位移=垂足
           let R = new THREE.Euler();
           R.setFromQuaternion(Q);
           tempModel.rotateOnWorldAxis(UP, R.z);  // 设置物体旋转
         }
       }
-      else if(conveyor.DT.name.includes("弯道")) {
+      else if(conveyor.DT.basename.includes("弯道")) {
         let outer;  // 物体在弯道内侧还是外侧
         let result = dragPoint.clone();  // 求鼠标到弯道圆心的位移之差
         result.sub(P);
         result.z = 0;
         outer = result.length() > 5;
         result.normalize();
-        if (dragModel.DT.name == "直护栏") {  // 将直护栏贴在弯道护栏的边缘
+        if (dragModel.DT.basename == "直护栏") {  // 将直护栏贴在弯道护栏的边缘
           tempModel.rotateOnWorldAxis(UP, Math.atan(result.y / result.x));
           result.multiplyScalar(outer ? 6.4 : 3.6);
           result.add(P);
           tempModel.position.copy(result);  // 设置物体位姿
         } 
-        else if(dragModel.DT.name == "弯道外侧护栏" || dragModel.DT.name == "弯道内侧护栏") {
+        else if(dragModel.DT.basename == "弯道外侧护栏" || dragModel.DT.basename == "弯道内侧护栏") {
           tempModel.position.copy(P);  // 将弯道护栏与弯道对齐
           tempModel.quaternion.copy(Q);
         }
         else {  // 将其它护栏和物体直接放在弯道上
           let [x, y] = [tempModel.position.x, tempModel.position.y];
-          if(dragModel.DT.label == "WIP") {  // 在制品放在弯道中轴线上
+          if(dragModel.DT.label == "WIP" || dragModel.DT.label == "sensor") {  // 在制品放在弯道中轴线上
             tempModel.rotateOnWorldAxis(
               UP, Math.atan2(result.y, result.x) + 
-              (conveyor.DT.name.includes("顺时针") ? -1 : 1) * Math.PI / 2
+              (conveyor.DT.basename.includes("顺时针") ? -1 : 1) * Math.PI / 2
             );
           }
           result.multiplyScalar(5);
           result.add(P);
           tempModel.position.copy(result);
-          if(dragModel.DT.label != "WIP") {  // 其它物体直接放在弯道上
+          if(dragModel.DT.label != "WIP" && dragModel.DT.label != "sensor") {  // 其它物体直接放在弯道上
             tempModel.position.x = x;
             tempModel.position.y = y;
           }
         }
       }
       dragModel.rotation.copy(tempModel.rotation);
-      if(dragModel.DT.label == "WIP" || dragModel.DT.name == "直护栏") {
+      if(dragModel.DT.label == "WIP" || dragModel.DT.label == "sensor") {
         tempModel.position.z = 0.6 + (box.max.z - box.min.z) / 2;  // 传送带高为0.6
       }
       return tempModel.position.clone();
@@ -359,9 +359,9 @@ export default defineComponent({
                         });
                         child.material.color.set('lime');
                       }
-                      if (parentObject.DT.name.includes("顺时针弯道")) outrotation = 0
-                      if (parentObject.DT.name.includes("逆时针弯道")) outrotation = Math.PI / 2
-                      if (parentObject.DT.name.includes("直道")) outrotation = 0
+                      if (parentObject.DT.basename.includes("顺时针弯道")) outrotation = 0
+                      if (parentObject.DT.basename.includes("逆时针弯道")) outrotation = Math.PI / 2
+                      if (parentObject.DT.basename.includes("直道")) outrotation = 0
                     }
                   }
                 }
@@ -390,9 +390,9 @@ export default defineComponent({
                         });
                         child.material.color.set('red');
                       }
-                      if (parentObject.DT.name.includes("顺时针弯道")) inrotation = -Math.PI / 2
-                      if (parentObject.DT.name.includes("逆时针弯道")) inrotation = - Math.PI
-                      if (parentObject.DT.name.includes("直道")) inrotation = 0
+                      if (parentObject.DT.basename.includes("顺时针弯道")) inrotation = -Math.PI / 2
+                      if (parentObject.DT.basename.includes("逆时针弯道")) inrotation = - Math.PI
+                      if (parentObject.DT.basename.includes("直道")) inrotation = 0
                     }
                   }
                 }
@@ -410,9 +410,9 @@ export default defineComponent({
                 dragModel.add(group);
                 dragModel.rotation.x = rotationChange.x;  // X轴旋转
                 dragModel.rotation.y = rotationChange.y;  // Y轴旋转
-                if (dragModel.DT.name.includes("直道")) inrotation = 0
-                else if (dragModel.DT.name.includes("逆时针弯道")) inrotation = - Math.PI
-                else if (dragModel.DT.name.includes("顺时针弯道")) inrotation = -Math.PI / 2
+                if (dragModel.DT.basename.includes("直道")) inrotation = 0
+                else if (dragModel.DT.basename.includes("逆时针弯道")) inrotation = - Math.PI
+                else if (dragModel.DT.basename.includes("顺时针弯道")) inrotation = -Math.PI / 2
                 totalro = dragModel.rotation.z - rotationChange.z + outrotation - inrotation
                 dragModel.rotateOnWorldAxis(UP, -totalro);  // 绕z轴正方向旋转
                 delta1.set(
@@ -451,9 +451,9 @@ export default defineComponent({
                 dragModel.add(group);
                 dragModel.rotation.x = rotationChange.x;  // X轴旋转
                 dragModel.rotation.y = rotationChange.y;  // Y轴旋转
-                if (dragModel.DT.name.includes("直道")) outrotation = 0
-                else if (dragModel.DT.name.includes("逆时针弯道")) outrotation = Math.PI / 2
-                else if (dragModel.DT.name.includes("顺时针弯道")) outrotation = 0
+                if (dragModel.DT.basename.includes("直道")) outrotation = 0
+                else if (dragModel.DT.basename.includes("逆时针弯道")) outrotation = Math.PI / 2
+                else if (dragModel.DT.basename.includes("顺时针弯道")) outrotation = 0
                 totalro = dragModel.rotation.z - rotationChange.z - outrotation + inrotation
                 dragModel.rotateOnWorldAxis(UP, -totalro);  // 绕z轴正方向旋转
                 delta1.set(
@@ -676,12 +676,12 @@ export default defineComponent({
         };
         if(transformControls){
           let mesh = this.scene.controller.object;
-          if(mesh?.DT.name.includes("直道")){  // 不准传送带长度小于0.1
+          if(mesh?.DT.basename.includes("直道")){  // 不准传送带长度小于0.1
             let length = mesh.scale.x / mesh.DT.scale * 7.5;
             if(length < 0.1) mesh.scale.x = 0.1 * mesh.DT.scale / 7.5;
             mesh.DT.updateConveyorRigidbody();
           }
-          else if(mesh?.DT.name == "直护栏"){  // 不准传送带长度小于0.1
+          else if(mesh?.DT.basename == "直护栏"){  // 不准传送带长度小于0.1
             let length = mesh.scale.y / mesh.DT.scale * 7.5;
             if(length < 0.1) mesh.scale.y = 0.1 * mesh.DT.scale / 7.5;
             mesh.DT.updateGuardRail();
