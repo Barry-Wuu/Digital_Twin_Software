@@ -12,6 +12,7 @@
   } from "@ant-design/icons-vue"
   import global from "../Global"
   import DTObject from "./DTScene/DTObject"
+  import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js";
   import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js"
   const path = require("path");
   import * as THREE from 'three'
@@ -102,6 +103,15 @@
         if(asset == "模型"){  // 创建组件后将默认名称设为类型名，同时显现重命名输入框
           assetInput.click();
           loadingModel = true;
+          window.addEventListener('focus', () => {  // 取消逻辑处理
+            setTimeout(() => {
+              if(assetInput.files?.length == 0){
+                this.deleteAsset(dragAsset.value);
+              }
+              assetInput.value = "";
+              dragAsset.value = null;
+            }, 300);
+          }, {once:true})
         }
         else{
           create = true;
@@ -129,6 +139,7 @@
       dragStart(asset){  // 开始拖拽
         dragAsset.value = asset;
         global.emit("dragModelStart", {type: "asset", data: dragAsset.value});
+        dragAsset.value = null; 
       },
       dropOnCard(e, target){  // 拖拽到文件夹上以放入，拖拽到返回上以放出
         let data = e.dataTransfer;
@@ -192,39 +203,41 @@
       },
       loadAsset(e){
         let path0 = e.target.files[0]?.path;  // 从input选择路径导入
-        if(!path0 || !e.target.files[0]){  // 若取消选择导入组件，则清除新增组件图标
-          this.deleteAsset(dragAsset.value);
-          return;
-        }
         path0 = path0.slice(path0.indexOf("src"));
         let newAsset = dragAsset.value;
         newAsset.loading = 0;
         newAsset.name = this.newName(path.basename(path0, path.extname(path0)), newAsset.name);
+        let mtlPath = path0.replace(".obj", ".mtl");
+        let MTLloader = new MTLLoader();
         let OBJloader = new OBJLoader();
-        OBJloader.load(path0, 
-          function loaded(mesh){  // 模型加载完成
-            let index = currentFolder.value.children.indexOf(newAsset);
-            newAsset = currentFolder.value.children[index];  // 使loading更新可被检测
-            setTimeout(function() {  // 过1s后隐藏进度条
-              delete newAsset.loading;
-              newAsset.DT = new DTObject(mesh, false, newAsset.type);
-              newAsset.DT.name = newAsset.name;
-              newAsset.DT.scale = 20;
+        MTLloader.load(mtlPath, function (materials) {
+          materials.preload();
+          OBJloader.setMaterials(materials);
+          OBJloader.load(path0, 
+            function loaded(mesh){  // 模型加载完成
+              let index = currentFolder.value.children.indexOf(newAsset);
+              newAsset = currentFolder.value.children[index]; // 使loading更新可被检测
+              setTimeout(function(){  // 过1s后隐藏进度条
+                delete newAsset.loading;
+                newAsset.DT = new DTObject(mesh, false, newAsset.type);
+                newAsset.DT.name = newAsset.name;
+                newAsset.DT.scale = 20;
+                loadingModel = false;
+              }, 1000);
+            },
+            function loading(e){  // 模型加载时
+              let index = currentFolder.value.children.indexOf(newAsset);
+              newAsset = currentFolder.value.children[index];  // 使loading更新可被检测
+              let progress = e.loaded / e.total * 100;
+              newAsset.loading = progress;
+            },
+            function err(){  // 模型读取错误时弹窗，并删除刚创建的模型组件
+              alert("模型读取错误");
+              this.deleteAsset(dragAsset.value);
               loadingModel = false;
-            }, 1000)
-          }, 
-          function loading(e){  // 模型加载时
-            let index = currentFolder.value.children.indexOf(newAsset);
-            newAsset = currentFolder.value.children[index];  // 使loading更新可被检测
-            let progress = e.loaded / e.total * 100;
-            newAsset.loading = progress;
-          },
-          function err(){  // 模型读取错误时弹窗，并删除刚创建的模型组件
-            alert("模型读取错误");
-            this.deleteAsset(dragAsset.value);
-            loadingModel = false;
-          }
-        )
+            }
+          )
+        });
       },
       newName(name, originalName=null){  
         // 求不重名且序号最小的新名字，如name→name(1)→name(2)→……

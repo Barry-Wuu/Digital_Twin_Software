@@ -713,7 +713,21 @@ export default class SceneBuilder{
         mesh0.traverse((mesh)=>{
             if(mesh.isGroup || mesh.isMesh) {
                 mesh.castShadow = mesh.receiveShadow = true;
-                mesh.material = new THREE.MeshPhongMaterial({color: "lightgray"});
+                if(mesh.isMesh){
+                    if(Array.isArray(mesh.material)){  // 导入模型存在多个material的情况
+                        const materials = [];
+                        for(const material of mesh.material){
+                            const tmpMaterial = new THREE.MeshPhongMaterial();
+                            tmpMaterial.color.copy(material.color);
+                            materials.push(tmpMaterial);
+                        }
+                        mesh.material = materials;
+                    } else {
+                        const tmpMaterial = new THREE.MeshPhongMaterial();
+                        tmpMaterial.color.copy(mesh.material.color); 
+                        mesh.material = tmpMaterial;
+                    }
+                } else mesh.material = new THREE.MeshPhongMaterial;
                 let DT0 = new DTObject(mesh, true);
                 if(mesh.parent) mesh.parent.DT.children.push(DT0);
             }

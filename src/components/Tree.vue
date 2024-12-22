@@ -51,14 +51,17 @@
         global.on("clickModel", (data: {id, shift}) => {  // 点击屏幕中的物体
           let choice = data.id;
           if(data.shift){  // 按住shift为多选模式
-            if(choices.value.includes(choice))  // 多选取消
+            if(choices.value.includes(choice)) {  // 多选取消
               choices.value = choices.value.filter(k => k != choice);
-            else choices.value.push(choice);  // 多选选择
+            } else{  // 多选选择
+              choices.value.push(choice);
+            } 
             if(choices.value.length == 1){  // 只有一个物体被选时控制该物体
               global.emit("controlStart", choices.value[0]);
               global.SCENE.DT.updateGroupWireframes();
             }
             else global.emit("controlEnd");  // 选中多个物体时收起控制器
+            this.updateTree();
           }
           else{  // 单选
             choices.value = [choice];
@@ -120,7 +123,14 @@
         deleteChoices(){
           for(let id of choices.value){
             let DTObject = this.findDTObjectById(id);
-            if(DTObject) DTObject.destroy();
+            if(DTObject){
+              for( let child of DTObject.children){
+                if(choices.value.includes(child.id)){
+                  child.destroy();
+                }
+              }
+              DTObject.destroy();
+            }
           }
           global.emit("hideProperty");  // 清空属性栏
           this.updateTree();
@@ -159,8 +169,8 @@
           }
           else{  // 左键或右键单选，右键不取消单选
             choices.value = [selection];
+            global.SCENE.DT.updateGroupWireframes();  // 更新Group位置
             global.emit("controlStart", {id:selection, left_click:!e.event});  // 选中物体开始控制
-            global.SCENE.DT.updateGroupWireframes();
             lastChoice = selection;
           }
         },
