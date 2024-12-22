@@ -488,11 +488,19 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             box.getCenter(boxMesh.position); 
             let localCenter = DT.mesh.worldToLocal(boxMesh.position)
             boxMesh.position.copy(localCenter);
-            boxMesh.scale.set(
-                box.max.x - box.min.x, 
-                box.max.y - box.min.y, 
-                box.max.z - box.min.z
-            );
+            if(DT.label == "importedModel"){
+                boxMesh.scale.set(
+                    (box.max.x - box.min.x)/20,
+                    (box.max.z - box.min.z)/20,
+                    (box.max.y - box.min.y)/20 
+                );
+            } else {
+                boxMesh.scale.set(
+                    (box.max.x - box.min.x),
+                    (box.max.y - box.min.y),
+                    (box.max.z - box.min.z)
+                );
+            }            
             wireframe.update();
         })
     }
