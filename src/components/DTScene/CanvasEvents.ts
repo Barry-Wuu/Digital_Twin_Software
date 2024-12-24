@@ -170,11 +170,17 @@ export default defineComponent({
       );
       ray.setFromCamera(mouse, this.scene.camera);
     },
-    intersectObject(e, controller = true) {  // 求鼠标发出的射线与物体的交点
+    intersectObject(e, controller=true) {  // 求鼠标发出的射线与物体的交点
       this.castRay(e);  // 射线检测
       for (let intersect of ray.intersectObject(global.SCENE)) {
-        let mesh = intersect.object;
+        let mesh = intersect.object, skip = false;
         if (mesh.isTransformControlsPlane) continue;  // 忽略控制器
+        mesh.traverseAncestors(mesh0 => {  // 忽略被拖动物体的子物体
+          if(mesh0 == dragModel || mesh0 == tempModel){
+            skip = true;
+          };
+        })
+        if (skip) continue;
         if (
           mesh.DT && mesh != dragModel && mesh != tempModel ||  // 若射线检测到的物体无DT则继续往后检测
           controller && mesh.isTransformControls && !mesh.isLine  // 允许点击控制器
@@ -253,7 +259,8 @@ export default defineComponent({
       box.setFromObject(dragModel);
       let center = new THREE.Vector3();
       box.getCenter(center);  // 获取包围盒中心
-      delta.copy(dragModel.position).sub(center);  // Δp = 物体坐标 - 物体的包围盒中心
+      if(dragModel.DT.label != "importedModel")  // Δp = 物体坐标 - 物体的包围盒中心
+        delta.copy(dragModel.position).sub(center);
     },
     onDragleave(e) {
       if(dragModel) {
@@ -282,9 +289,10 @@ export default defineComponent({
           // 若被拖动物体本身不是传送带，且碰到传送带，则将物体移动到传送带中轴线上
           if (dragModel.DT.label != "conveyor" && intersect.mesh.DT.label == "conveyor") {
             this.alignToConveyor(intersect.point, intersect.mesh);
-          } else {
+          } 
+          else {
             let box0 = new THREE.Box3().setFromObject(intersect.mesh);
-            tempModel.position.z += box0.max.z - box.min.z;
+            if(dragModel.DT.label != "importedModel") tempModel.position.z += box0.max.z - box.min.z;
             // 解除吸附时恢复物体在吸附前的旋转
             if (tempTransform.alignMode) {
               tempModel.position.copy(tempTransform.position);
