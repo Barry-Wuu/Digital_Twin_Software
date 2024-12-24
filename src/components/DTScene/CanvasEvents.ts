@@ -80,7 +80,7 @@ export default defineComponent({
       global.emit("changeQuitFullscreen", fullscreen);
       this.resizeCanvas();
     });
-    global.on("dragModelStart", data => { dragData = data });
+    global.on("dragModelStart", data => {dragData = data; });
     global.on("dropout", () => dragModel.remove());
     return { description: null, rendered: false, }
   },
@@ -224,9 +224,9 @@ export default defineComponent({
       let data = e.dataTransfer;
       // 隐藏拖动图像
       function findImg(DOM) {
-        if (!DOM) return;
+        if(!DOM) return;
         for (let child of DOM?.children) {
-          if (child.localName == "img") // {tempImg = child; return;}
+          if(child.localName == "img") // {tempImg = child; return;}
             findImg(child);
         }
       }
@@ -234,14 +234,12 @@ export default defineComponent({
       data.setDragImage(document.createElement("img"), 0, 0);
 
       // 拖入模型
-      data = dragData.data;
+      data = dragData.data; 
       let point = this.intersectObject(e).point;
-      if (!point) return;  // 若拖到天空上则不创建模型
-      dragFromOutside = true;
-      if(dragData.type == "asset")
-        dragModel = this.scene.createMeshFromAssets(data.DT, point);
-      if(dragData.type == "model")
-        dragModel = this.scene.createMeshFromModels(data, point);
+      if(!point) return;  // 若拖到天空上则不创建模型
+      dragFromOutside = true; 
+      if(dragData.type == "asset") dragModel = this.scene.createMeshFromAssets(data.DT, point);
+      if(dragData.type == "model") dragModel = this.scene.createMeshFromModels(data, point);
       if(data.name) dragModel.DT.name = data.name;  // 复制自定义模型名称
       if(data.physicalID && !global.physicalIDMap[data.physicalID])  // 复制自定义模型物理实体ID
         dragModel.DT.physicalID = data.physicalID;  // 若该ID被占用则忽略
@@ -258,7 +256,7 @@ export default defineComponent({
       delta.copy(dragModel.position).sub(center);  // Δp = 物体坐标 - 物体的包围盒中心
     },
     onDragleave(e) {
-      if (dragModel) {
+      if(dragModel) {
         dragFromOutside = false;
         dragModel.DT.destroy();
         dragModel = null;

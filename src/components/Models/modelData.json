@@ -1,5 +1,15 @@
 {
     "model_layout": [
+        {"title": "机器人", "children": [
+            {"title": "四轴机器人"},
+            {"title": "Denso六轴机器人"},
+            {"title": "Keba六轴机器人"},
+            {"title": "双臂七轴机器人"}
+        ]},
+        {"title": "加工设备", "children": [
+            {"title": "CNC精雕机"},
+            {"title": "激光打标机"}
+        ]},
         {"title": "传送带元件", "children": [
             {"title": "平行传送带-直道"},
             {"title": "平行传送带-顺时针弯道"},
@@ -30,11 +40,64 @@
             {"title": "锥体"}
         ]},
         {"title": "其它", "children": [
-            {"title": "弯道（凸集）"},
-            {"title": "机械臂模型"}
+            {"title": "弯道（凸集）"}
         ]}
     ],
     "model_definition": {
+        "四轴机器人": {
+            "icon": "四轴机器人.jpg",
+            "label": "robot",
+            "material": { "color": "lightgray" },
+            "modelPath": "obj/4robot.obj", 
+            "rigid": true, 
+            "rigidShape": "mesh",
+            "scale": 20
+        },
+        "Denso六轴机器人": {
+            "icon": "Denso六轴机器人.jpg",
+            "label": "robot",
+            "modelPath": "obj/6robot.obj", 
+            "rigid": true, 
+            "rigidShape": "mesh",
+            "scale": 20
+        },
+        "Keba六轴机器人": {
+            "icon": "Keba六轴机器人.jpg",
+            "label": "robot",
+            "material": { "color": "lightgray" },
+            "modelPath": "obj/abb_irb52_7_120.obj", 
+            "rigid": true, 
+            "rigidShape": "mesh",
+            "scale": 10
+        },
+        "双臂七轴机器人": {
+            "icon": "双臂七轴机器人.jpg",
+            "label": "robot",
+            "material": { "color": "lightgray" },
+            "modelPath": "obj/double_7robot.obj", 
+            "rigid": true, 
+            "rigidShape": "mesh",
+            "scale": 10
+        },
+        "CNC精雕机": {
+            "icon": "Keba六轴机器人.jpg",
+            "label": "robot",
+            "material": { "color": "lightgray" },
+            "modelPath": "obj/cnc.obj", 
+            "rigid": true, 
+            "rigidShape": "mesh",
+            "scale": 10
+        },
+        "激光打标机": {
+            "icon": "激光打标机.jpg",
+            "label": "robot",
+            "material": { "color": "lightgray" },
+            "modelPath": "obj/laser_marking.obj", 
+            "rigid": true, 
+            "rigidShape": "mesh",
+            "scale": 10
+        },
+
         "平行传送带-直道": {
             "icon": "平行直道.jpg",
             "geomRigid": [
@@ -248,17 +311,9 @@
                 "attachPoint2": "[this.createAttachPoint2(0, 100)]"
             }
         },
-        "机械臂模型": {
-            "icon": "滚轮弯道1.jpg",
-            "material": { "color": "lightgray" },
-            "modelPath": "stl/4robot.stl", 
-            "rigid": true, 
-            "rigidShape": "mesh",
-            "scale": 0.05
-        },
 
         "直护栏": {
-            "icon": "直护栏.png",
+            "icon": "直护栏.jpg",
             "geometry": "new THREE.BoxGeometry(0.4, 6, 1)",
             "label": "guardrail",
             "material": { "color": "gray" },
@@ -266,7 +321,7 @@
             "rigidShape": "convex"
         },
         "弯道外侧护栏": {
-            "icon": "弯道外侧护栏.png",
+            "icon": "弯道外侧护栏.jpg",
             "geometry": [
                 "()=>{",
                     "const PI = Math.PI;",
@@ -276,7 +331,7 @@
                     "shape.closePath();", 
                     "return new THREE.ExtrudeGeometry(shape, {",  
                         "bevelEnabled: false,",  
-                        "curveSegments: 5,",  
+                        "curveSegments: 12,",  
                         "depth: 1/DT.scale,",
                         "steps: 1,",  
                     "})",
@@ -288,7 +343,7 @@
             "rigidShape": "mesh"
         },
         "弯道内侧护栏": {
-            "icon": "弯道内侧护栏.png",
+            "icon": "弯道内侧护栏.jpg",
             "geometry": [
                 "()=>{",
                     "const PI = Math.PI;",
@@ -310,7 +365,7 @@
             "rigidShape": "mesh"
         },
         "变道护栏": {
-            "icon": "变道护栏.png",
+            "icon": "变道护栏.jpg",
             "geometry": [
                 "()=>{",
                     "const PI = Math.PI;",
@@ -346,7 +401,7 @@
             }
         },
         "传感器": {
-            "icon": "传感器.png",
+            "icon": "传感器.jpg",
             "geometry": "new THREE.BoxGeometry(0.2, 3, 0.8)",
             "label": "sensor",
             "rigid": true, 

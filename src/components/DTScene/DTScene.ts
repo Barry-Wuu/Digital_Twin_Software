@@ -394,7 +394,6 @@ export default class SceneBuilder{
             data.mesh.position.copy(data.position);
             data.mesh.updateMatrixWorld(true);
             data.mesh.updateRigidbodyTransform();
-            //data.mesh.code.update = 
         });
 
         // 更新托盘位置
@@ -710,7 +709,7 @@ export default class SceneBuilder{
     }
     createMeshFromAssets(DT, position){  // 定义从组件库中拖入的组件的物体属性
         let mesh0 = DT.mesh.clone();
-        mesh0.traverse((mesh)=>{
+        mesh0.traverse(mesh => {
             if(mesh.isGroup || mesh.isMesh) {
                 mesh.castShadow = mesh.receiveShadow = true;
                 if(mesh.isMesh){
@@ -764,14 +763,20 @@ export default class SceneBuilder{
     ){  // 定义拖入的物体属性
         let mesh = new THREE.Mesh();
         let DT = new DTObject(mesh);
-        let title = data.title;
-        let path = modelData.model_definition[title].modelPath;
+        let obj = JSON.parse(JSON.stringify(model_definition[data.title]));
+        let path = obj.modelPath;
+        if(obj.label == "robot"){
+            let groupDT = new DTObject(new THREE.Group());
+            for(let key in obj) groupDT[key] = obj[key];
+            groupDT.children.push(DT);
+            groupDT.mesh.add(mesh);
+            return this.createMeshFromAssets(groupDT, position);
+        };
         if(path){
             path = `src/assets/models/${path}`;
             DT.geometry = customModels[path];  
         }
         // 先复制JSON中的模型定义再使用，以免相应的模型定义在使用时被自动修改
-        let obj = JSON.parse(JSON.stringify(model_definition[data.title]));
         for(let key in obj) DT[key] = obj[key];
         if(DT.geometry instanceof Array){  // 如果模型的json定义为写成多行的回调函数，则合并为一行并调用
             DT.geometry = eval(DT.geometry.join(''))();
