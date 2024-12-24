@@ -345,7 +345,7 @@
 
     <div class="popup-content" id="popup-content">  
       <!--双项选择栏-->
-      <div v-if="yesNoContent" style="margin-top: 10px; text-align: left">
+      <div v-if="yesNoContent" style="margin: 10px 10px; text-align: left">
         <div v-for="row in yesNoContent.content.split('\r')">
           &nbsp;&nbsp;&nbsp;&nbsp;{{ row }}
         </div>

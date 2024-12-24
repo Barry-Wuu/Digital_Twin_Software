@@ -11,7 +11,7 @@
     RollbackOutlined
   } from "@ant-design/icons-vue"
   import global from "../Global"
-  import DTObject from "./DTScene/DTObject"
+  import DTObject from "./DTScene/DTObject";
   import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js";
   import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js"
   const path = require("path");
@@ -103,7 +103,7 @@
         if(asset == "模型"){  // 创建组件后将默认名称设为类型名，同时显现重命名输入框
           assetInput.click();
           loadingModel = true;
-          window.addEventListener('focus', () => {  // 取消逻辑处理
+          window.addEventListener("focus", () => {  // 取消逻辑处理
             setTimeout(() => {
               if(assetInput.files?.length == 0){
                 this.deleteAsset(dragAsset.value);
@@ -141,7 +141,7 @@
         global.emit("dragModelStart", {type: "asset", data: dragAsset.value});
         dragAsset.value = null; 
       },
-      dropOnCard(e, target){  // 拖拽到文件夹上以放入，拖拽到返回上以放出
+      dropOnCard(e, target){  // 拖拽到文件夹上放入，拖拽到返回上放出
         let data = e.dataTransfer;
         if(data.getData("type") != "asset") return;  // 拖拽数据类型校验
         if(dragAsset.value != target && dragAsset.value.type != "return"){;  // 禁止将组件拖入自身或拖拽返回标志
@@ -210,9 +210,9 @@
         let mtlPath = path0.replace(".obj", ".mtl");
         let MTLloader = new MTLLoader();
         let OBJloader = new OBJLoader();
-        MTLloader.load(mtlPath, function (materials) {
-          materials.preload();
-          OBJloader.setMaterials(materials);
+        MTLloader.load(mtlPath, function(material) {
+          material.preload();
+          OBJloader.setMaterials(material);
           OBJloader.load(path0, 
             function loaded(mesh){  // 模型加载完成
               let index = currentFolder.value.children.indexOf(newAsset);
@@ -221,8 +221,7 @@
                 delete newAsset.loading;
                 newAsset.DT = new DTObject(mesh, false, newAsset.type);
                 newAsset.DT.name = newAsset.name;
-                newAsset.DT.scale = 20;
-                loadingModel = false;
+                loadingModel = false;  // 用户自行调整比例
               }, 1000);
             },
             function loading(e){  // 模型加载时
@@ -457,8 +456,7 @@
         <!--加载中卡片-->
         <a-card v-if="asset.loading" class="card">
           <span class="content" style="margin-top:11px;">
-            <a-progress :percent="asset.loading" :show-info="false"
-            />
+            <a-progress :percent="asset.loading" :show-info="false"/>
             <div style="margin-bottom: 10px; text-align: center;">
               {{ asset.name }}
             </div>
@@ -466,13 +464,13 @@
         </a-card>
         <!--加载完成卡片-->
         <a-card v-else :draggable="asset!=renamingAsset" class="card" hoverable 
-        :style="{'background': asset==dragAsset ? '#E6F4FF' : 'white'}"
-        @click.stop @dragenter.prevent @dragover.prevent
-        @click="clickAsset(asset)" 
-        @contextmenu="onRightClick(asset)"
-        @dblclick="doubleClickAsset(asset);"
-        @dragstart="dragStart(asset)"
-        @drop="e=>dropOnCard(e, asset)"
+          :style="{'background': asset==dragAsset ? '#E6F4FF' : 'white'}"
+          @click.stop @dragenter.prevent @dragover.prevent
+          @click="clickAsset(asset)" 
+          @contextmenu="onRightClick(asset)"
+          @dblclick="doubleClickAsset(asset);"
+          @dragstart="dragStart(asset)"
+          @drop="e=>dropOnCard(e, asset)"
         >
           <span class="content">
             <RollbackOutlined v-if="asset.type == 'return'" class="icon" style="color:red"/>
@@ -494,12 +492,24 @@
       <div v-else-if="searchedAssets.length" v-for="asset of searchedAssets" style="display:flex;">
         <!--无效拖拽排序条-->
         <div class="split"/>
+        <!--加载中卡片-->
+        <a-card v-if="asset.loading" class="card">
+          <span class="content" style="margin-top:11px;">
+            <a-progress :percent="asset.loading" :show-info="false"/>
+            <div style="margin-bottom: 10px; text-align: center;">
+              {{ asset.name }}
+            </div>
+          </span>    
+        </a-card>
         <!--卡片-->
-        <a-card :draggable="asset!=renamingAsset" hoverable class="card"
-        :style="{'background': asset==dragAsset ? '#E6F4FF' : 'white'}"
-        @click.stop
-        @click="clickAsset(asset)"
-        @dblclick="doubleClickAsset(asset);"
+        <a-card v-else :draggable="asset!=renamingAsset" hoverable class="card"
+          :style="{'background': asset==dragAsset ? '#E6F4FF' : 'white'}"
+          @click.stop @dragenter.prevent @dragover.prevent
+          @click="clickAsset(asset)" 
+          @contextmenu="onRightClick(asset)"
+          @dblclick="doubleClickAsset(asset);"
+          @dragstart="dragStart(asset)"
+          @drop="e=>dropOnCard(e, asset)"
         >
           <span class="content">
             <RollbackOutlined v-if="asset.type == 'return'" class="icon" style="color:red"/>

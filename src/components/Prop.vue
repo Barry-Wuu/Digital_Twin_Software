@@ -209,33 +209,17 @@
           }
           else eval(`${prop} = "${result}"`);
         }
-        else if(this.prop == "mesh.scale.x") {  // 改变传送带直道尺寸
-          const confirm = () => {  // 确认修改
-            DT.value.updateConveyorRigidbody(JSON.parse(e.target.value));
+        else if(this.options.max_warn) {  // 属性值设置过大时弹窗确认
+          const confirm = this.options.confirm ? () => {  // 确认修改
+            this.options.confirm(JSON.parse(e.target.value));
             eval(`${prop} = ${result}`);
-            global.emit("updateProp", {action:"mouseup"});
-          };
-          if(JSON.parse(e.target.value) > 100){
-            global.emit("popup", {  // 弹窗确认修改传送带长度
-              title: "确认修改传送带长度",
+            global.emit("updateProp", {action: "mouseup"});
+          } : ()=>eval(`${prop} = ${result}`);
+          if(JSON.parse(e.target.value) > this.options.max_warn){
+            global.emit("popup", {  // 弹窗确认修改
+              title: `确认修改${this.title}`,
               type: "yes_no",
-              content: "传送带过长可能会导致其无法正常工作，是否确认修改？",
-              yes: confirm,
-              no: () => {}  // no为取消
-            });
-          }
-          else confirm();
-        }
-        else if(this.prop == "mesh.scale.y") {  // 改变直护栏尺寸
-          const confirm = () => {  // 确认修改
-            DT.value.updateGuardRail(JSON.parse(e.target.value));
-            eval(`${prop} = ${result}`);
-          };
-          if(JSON.parse(e.target.value) > 100){
-            global.emit("popup", {  // 弹窗确认修改传送带长度
-              title: "确认修改传送带长度",
-              type: "yes_no",
-              content: "传送带过长可能会导致其无法正常工作，是否确认修改？",
+              content: `${this.title}过大可能会导致场景无法正常工作，是否确认修改？`,
               yes: confirm,
               no: () => {}  // no为取消
             });
