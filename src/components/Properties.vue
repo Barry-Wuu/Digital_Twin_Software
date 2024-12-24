@@ -71,8 +71,7 @@
         <Prop prop="mesh.position" title="位移" type="inputVector"/>
         <Prop prop="mesh.rotation" title="旋转" type="inputVector" width="75px"
         :options="{delta:10, loop:true, min:0, max:360, suffix:'°', unit:angle}"/>
-        <Prop v-if="DT.label=='importedModel'" prop="scale" title="比例" type="inputNumber" 
-          :options="{delta:0.1, min:0.1, max_warn:100}"/>
+        <Prop prop="scale" title="比例" type="inputNumber" :options="{delta:0.1, min:0.1, max_warn:100}"/>
         <Prop v-if="DT.label=='conveyor' && DT.basename.includes('直道')" prop="mesh.scale.x" 
           title="长度" type="inputNumber"
           :options="{confirm: value => DT.updateConveyorRigidbody(value), 

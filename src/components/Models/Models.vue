@@ -127,7 +127,6 @@
             function loaded(mesh){  // 模型加载完成
               setTimeout(function(){  // 过1s后隐藏进度条
                 let DT = loadedRobots[item.title] = new DTObject(mesh, false, "model");
-                console.log(DT);
                 DT.name = item.title;
                 DT.scale = item.scale;
                 dragAsset.value.title = '';

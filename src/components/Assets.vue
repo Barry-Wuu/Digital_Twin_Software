@@ -220,6 +220,7 @@
               setTimeout(function(){  // 过1s后隐藏进度条
                 delete newAsset.loading;
                 newAsset.DT = new DTObject(mesh, false, newAsset.type);
+                newAsset.DT.label = "importedModel";
                 newAsset.DT.name = newAsset.name;
                 loadingModel = false;  // 用户自行调整比例
               }, 1000);
