@@ -1,46 +1,45 @@
 {
     "model_layout": [
-        {"title": "机器人", "children": [
-            {"title": "四轴机器人"},
-            {"title": "Denso六轴机器人"},
-            {"title": "Keba六轴机器人"},
-            {"title": "双臂七轴机器人"}
+        {"title": "生产设备", "children": [
+            {"title": "机器人", "children": [
+                {"title": "四轴机器人"},
+                {"title": "Denso六轴机器人"},
+                {"title": "Keba六轴机器人"},
+                {"title": "双臂七轴机器人"}
+            ]},
+            {"title": "加工设备", "children": [
+                {"title": "CNC精雕机"},
+                {"title": "激光打标机"}
+            ]}
         ]},
-        {"title": "加工设备", "children": [
-            {"title": "CNC精雕机"},
-            {"title": "激光打标机"}
-        ]},
-        {"title": "传送带元件", "children": [
-            {"title": "平行传送带-直道"},
-            {"title": "平行传送带-顺时针弯道"},
-            {"title": "平行传送带-逆时针弯道"},
-            {"title": "滚轮传送带-直道"},
-            {"title": "滚轮传送带-顺时针弯道"},
-            {"title": "滚轮传送带-逆时针弯道"},
-            {"title": "平行传送带-岔道"}
-        ]},
-        {"title": "护栏", "children": [
-            {"title": "直护栏"},
-            {"title": "弯道外侧护栏"},
-            {"title": "弯道内侧护栏"},
-            {"title": "变道护栏"}
-        ]},
-        {"title": "在制品", "children": [
-            {"title": "货物"},
-            {"title": "托盘"},
-            {"title": "光电门"},
-            {"title": "传感器"},
-            {"title": "发生器"},
-            {"title": "回收器"}
-        ]},
-        {"title": "在制品（基本几何体）", "children": [
-            {"title": "正方体"},
-            {"title": "球"},
-            {"title": "圆柱"},
-            {"title": "锥体"}
-        ]},
-        {"title": "其它", "children": [
-            {"title": "弯道（凸集）"}
+        {"title": "物流设备", "children": [
+            {"title": "传送装置元件", "children": [
+                {"title": "平行传送装置-直道"},
+                {"title": "平行传送装置-顺时针弯道"},
+                {"title": "平行传送装置-逆时针弯道"},
+                {"title": "滚轮传送装置-直道"},
+                {"title": "滚轮传送装置-顺时针弯道"},
+                {"title": "滚轮传送装置-逆时针弯道"},
+                {"title": "平行传送装置-岔道"},
+                {"title": "直护栏"},
+                {"title": "弯道外侧护栏"},
+                {"title": "弯道内侧护栏"},
+                {"title": "变道护栏"}
+            ]},
+            {"title": "辅助元件", "children": [
+                {"title": "光电门"},
+                {"title": "传感器"},
+                {"title": "发生器"},
+                {"title": "回收器"}
+            ]},
+            {"title": "在制品", "children": [
+                {"title": "货物"},
+                {"title": "托盘"},
+                {"title": "正方体"},
+                {"title": "球"},
+                {"title": "圆柱"},
+                {"title": "锥体"}
+            ]}
         ]}
     ],
     "model_definition": {
@@ -98,7 +97,7 @@
             "scale": 10
         },
 
-        "平行传送带-直道": {
+        "平行传送装置-直道": {
             "icon": "平行直道.jpg",
             "geomRigid": [
                 "()=>{",
@@ -129,7 +128,7 @@
                 "attachPoint2": "[this.createAttachPoint2(150, 0)]"
             }
         },
-        "平行传送带-顺时针弯道": {
+        "平行传送装置-顺时针弯道": {
             "icon": "平行弯道1.jpg",
             "material": { "color": "lightgray" },
             "modelPath": "stl/平行传送带-弯道.stl", 
@@ -160,7 +159,7 @@
             }
             
         },
-        "平行传送带-逆时针弯道": {
+        "平行传送装置-逆时针弯道": {
             "icon": "平行弯道2.jpg",
             "material": { "color": "lightgray" },
             "modelPath": "stl/平行传送带-弯道.stl", 
@@ -190,10 +189,10 @@
                 "attachPoint2": "[this.createAttachPoint2(-100, 0)]"
             }
         }, 
-        "滚轮传送带-直道": {
+        "滚轮传送装置-直道": {
             "icon": "滚轮直道.jpg",
             "material": { "color": "lightgray" },
-            "modelPath": "stl/滚轮传送带-直道.stl", 
+            "modelPath": "stl/滚轮传送装置-直道.stl", 
             "rigid": true,
             "rigidShape": "convex",
             "scale": 0.05,
@@ -205,10 +204,10 @@
                 "attachPoint2": "[this.createAttachPoint2(150, 0)]"
             }
         },
-        "滚轮传送带-顺时针弯道": {
+        "滚轮传送装置-顺时针弯道": {
             "icon": "滚轮弯道1.jpg",
             "material": { "color": "lightgray" },
-            "modelPath": "stl/滚轮传送带-弯道.stl", 
+            "modelPath": "stl/滚轮传送装置-弯道.stl", 
             "rigid": true,
             "scale": 0.05,
             "v0": 1.5,
@@ -236,10 +235,10 @@
             }
             
         },
-        "滚轮传送带-逆时针弯道": {
+        "滚轮传送装置-逆时针弯道": {
             "icon": "滚轮弯道2.jpg",
             "material": { "color": "lightgray" },
-            "modelPath": "stl/滚轮传送带-弯道.stl", 
+            "modelPath": "stl/滚轮传送装置-弯道.stl", 
             "rigid": true, 
             "scale": 0.05,
             "v0": 1.5,
@@ -266,7 +265,7 @@
                 "attachPoint2": "[this.createAttachPoint2(-100, 0)]"
             }
         }, 
-        "平行传送带-岔道": {
+        "平行传送装置-岔道": {
             "icon": "滚轮弯道2.jpg",
             "material": { "color": "lightgray" },
             "modelPath": "stl/平行传送带-岔道.stl", 
@@ -299,7 +298,7 @@
         "弯道（凸集）": {
             "icon": "滚轮弯道1.jpg",
             "material": { "color": "lightgray" },
-            "modelPath": "stl/滚轮传送带-弯道.stl", 
+            "modelPath": "stl/滚轮传送装置-弯道.stl", 
             "rigid": true, 
             "rigidShape": "convex",
             "scale": 0.05,

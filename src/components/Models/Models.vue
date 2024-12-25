@@ -19,8 +19,7 @@
   const loadedRobots = {};
   var modelInput;
   const model_definition = modelData.model_definition;
-  const model_layout = ref(modelData.model_layout);
-  const preservedModel = ref([]);
+  const model_layout: any = ref(modelData.model_layout);
   const searchResult = ref([]);
   const searchValue = ref('');
   var txt;
@@ -31,14 +30,16 @@
       action(e){  // 选择菜单选项
         let option = e.key;
         if(option == "全部展开"){
-          activeKeys1.value = Object.keys(model_layout.value);
+          const recursive = (object, activeKeys) => {
+            if(!activeKeys.includes(object.title)) activeKeys.push(object.title);
+            if(object.children)
+              for(let child of object.children) recursive(child, activeKeys);
+          }
+          recursive({title: "内置模型", children: model_layout.value}, activeKeys1.value);
           activeKeys2.value = Object.keys(customModels.value);
-          preservedModel.value = ["内置模型"];
-          customModelGroup.value = ["自定义模型"];
         }
         if(option == "全部折叠"){
           activeKeys1.value = activeKeys2.value = [];
-          preservedModel.value = customModelGroup.value = [];
         }
         if(option == "添加到自定义模型"){
           this.saveCustomModel(currentModel.value);
@@ -175,12 +176,14 @@
       search(){  // 搜索栏内容改变时
         if(searchValue.value){
           let result = [];
-          for(let group of model_layout.value){
-            for(let item of group.children){
-              if(item.title.indexOf(searchValue.value) > -1) {
-                let newItem = Object.assign({group: ''}, item);
-                newItem.group = group.title;
-                result.push(newItem);
+          for(let c1ass of model_layout.value){
+            for(let group of c1ass.children){
+              for(let item of group.children){
+                if(item.title.indexOf(searchValue.value) > -1) {
+                  let newItem = Object.assign({group: ''}, item);
+                  newItem.group = group.title;
+                  result.push(newItem);
+                }
               }
             }
           }
@@ -206,8 +209,7 @@
       loadedRobots,
       modelData,
       model_definition: model_definition,
-      model_layout, 
-      preservedModel, 
+      model_layout,
       searchValue, 
       searchResult
     }},
@@ -222,15 +224,16 @@
 
 <style>
   .model-card {  
-    display:flex; 
+    display: flex; 
+    width: 110%; 
+    height: 50px;
+    margin-left: -5%;
     text-align: center;
-    width:100%; 
-    height:50px; 
     white-space: nowrap;
   }  
   .model-collapse{
     border: 1px solid darkgray;
-    margin: -12px; 
+    margin: -14px; 
     user-select: none;
   }
   .model-img {  
@@ -271,32 +274,37 @@
       <!--模型列表-->
       <div v-if="!searchValue">
         <!--内置模型-->
-        <a-collapse v-model:activeKey="preservedModel">
+        <a-collapse v-model:activeKey="activeKeys1">
           <a-collapse-panel key="内置模型" header="内置模型" style="white-space: nowrap;">
             <a-collapse v-model:activeKey="activeKeys1" class="model-collapse">
-              <a-collapse-panel v-for="group of model_layout" 
-                :disabled="!group.children.length"
-                :header="group.title + (group.children.length ? '' : '（无）')" 
-                style="text-align: left;"
-              >
-                <a-card v-for="item of group.children" class="model-card" draggable="true" hoverable
-                  @click="onClick(item)"
-                  @contextmenu="onRightClick(item)"
-                  @dragstart="e=>{onClick(item); dragModelStart(e, item)}" 
-                  @mousedown="deselect"
-                >
-                  <div class="model-imgBorder">
-                    <img :src="getIMG(item)" class="model-img" draggable="false"/>
-                  </div>
-                  <div class="model-title">
-                    <span v-if="dragAsset.title==item.title">
-                      <div style="color: #AAA; text-align: left;">模型加载中</div>
-                      <a-progress style="width:8em; transform:translateY(-0.6em)" 
-                      :percent="dragAsset.loading ?? 0" :show-info="false"/>
-                    </span>
-                    <span v-else>{{item.title}}</span>
-                  </div>
-                </a-card>
+              <a-collapse-panel v-for="c1ass of model_layout" :header="c1ass.title" :key="c1ass.title">
+                <a-collapse v-model:activeKey="activeKeys1" class="model-collapse">
+                  <a-collapse-panel v-for="group of c1ass.children" 
+                    :disabled="!group.children.length"
+                    :header="group.title + (group.children.length ? '' : '（无）')" 
+                    :key="group.title" 
+                    style="text-align: left;"
+                  >
+                    <a-card v-for="item of group.children" class="model-card" draggable="true" hoverable
+                      @click="onClick(item)"
+                      @contextmenu="onRightClick(item)"
+                      @dragstart="e=>{onClick(item); dragModelStart(e, item)}" 
+                      @mousedown="deselect"
+                    >
+                      <div class="model-imgBorder">
+                        <img :src="getIMG(item)" class="model-img" draggable="false"/>
+                      </div>
+                      <div class="model-title">
+                        <span v-if="dragAsset.title==item.title">
+                          <div style="color: #AAA; text-align: left;">模型加载中</div>
+                          <a-progress style="width:8em; transform:translateY(-0.6em)" 
+                          :percent="dragAsset.loading ?? 0" :show-info="false"/>
+                        </span>
+                        <span v-else>{{item.title}}</span>
+                      </div>
+                    </a-card>
+                  </a-collapse-panel>
+                </a-collapse>
               </a-collapse-panel>
             </a-collapse>
           </a-collapse-panel>
@@ -304,8 +312,9 @@
         <!--自定义模型-->
         <a-collapse v-model:activeKey="customModelGroup">
           <a-collapse-panel key="自定义模型" 
-          :header="'自定义模型' + (Object.keys(customModels).length ? '' : '（无）')" 
-          :disabled="!Object.keys(customModels).length">
+            :disabled="!Object.keys(customModels).length"
+            :header="'自定义模型' + (Object.keys(customModels).length ? '' : '（无）')"
+          >
             <a-card v-for="item of customModels" class="model-card" draggable="true" hoverable
               style="justify-content:space-between;" 
               @click="onClick(item)"
@@ -331,8 +340,12 @@
       <!--搜索列表-->
       <div v-else>
         <a-card v-if="searchResult.length" v-for="item of searchResult" 
-        class="model-card" draggable="true" hoverable 
-        @dragstart="e=>dragModelStart(e, item)" @mousedown="deselect">
+        class="model-card" draggable="true" hoverable style="margin: 0 2.5%; width: 95%"
+          @click="onClick(item)"
+          @contextmenu="onRightClick(item)"
+          @dragstart="e=>{onClick(item); dragModelStart(e, item)}" 
+          @mousedown="deselect"
+        >
           <div class="model-imgBorder">
             <img :src="getIMG(item)" class="model-img" draggable="false"/>
           </div>
