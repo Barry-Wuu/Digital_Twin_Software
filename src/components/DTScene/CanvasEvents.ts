@@ -80,7 +80,7 @@ export default defineComponent({
       global.emit("changeQuitFullscreen", fullscreen);
       this.resizeCanvas();
     });
-    global.on("dragModelStart", data => {dragData = data; });
+    global.on("dragModelStart", data => {dragData = data});
     global.on("dropout", () => dragModel.remove());
     return { description: null, rendered: false, }
   },
@@ -293,6 +293,7 @@ export default defineComponent({
           else {
             let box0 = new THREE.Box3().setFromObject(intersect.mesh);
             if(dragModel.DT.label != "importedModel") tempModel.position.z += box0.max.z - box.min.z;
+            if(dragModel.DT.custom.zADD) tempModel.position.z += dragModel.DT.custom.zADD;
             // 解除吸附时恢复物体在吸附前的旋转
             if (tempTransform.alignMode) {
               tempModel.position.copy(tempTransform.position);

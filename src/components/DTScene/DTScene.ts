@@ -732,6 +732,7 @@ export default class SceneBuilder{
             }
         });
         let DT0 = mesh0.DT;
+        DT0.custom = JSON.parse(JSON.stringify(DT.custom));
         DT0.name = DT.name;
         DT0.scale = DT.scale;
         DT0.setTitle();

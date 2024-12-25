@@ -9,7 +9,10 @@
             ]},
             {"title": "加工设备", "children": [
                 {"title": "CNC精雕机"},
-                {"title": "激光打标机"}
+                {"title": "激光打标机"},
+                {"title": "上盖机"},
+                {"title": "上盒机"},
+                {"title": "下盒机"}
             ]}
         ]},
         {"title": "物流设备", "children": [
@@ -31,10 +34,14 @@
                 {"title": "传感器"},
                 {"title": "发生器"},
                 {"title": "回收器"}
-            ]},
-            {"title": "在制品", "children": [
+            ]}
+        ]},
+        {"title": "在制品", "children": [
+            {"title": "工件", "children": [
                 {"title": "货物"},
-                {"title": "托盘"},
+                {"title": "托盘"}
+            ]},
+            {"title": "几何体", "children": [
                 {"title": "正方体"},
                 {"title": "球"},
                 {"title": "圆柱"},
@@ -50,7 +57,8 @@
             "modelPath": "obj/4robot.obj", 
             "rigid": true, 
             "rigidShape": "mesh",
-            "scale": 20
+            "scale": 20,
+            "zADD": -1
         },
         "Denso六轴机器人": {
             "icon": "Denso六轴机器人.jpg",
@@ -79,13 +87,14 @@
             "scale": 10
         },
         "CNC精雕机": {
-            "icon": "Keba六轴机器人.jpg",
+            "icon": "CNC精雕机.jpg",
             "label": "robot",
             "material": { "color": "lightgray" },
             "modelPath": "obj/cnc.obj", 
             "rigid": true, 
             "rigidShape": "mesh",
-            "scale": 10
+            "scale": 10,
+            "zADD": 7.5
         },
         "激光打标机": {
             "icon": "激光打标机.jpg",
@@ -95,6 +104,35 @@
             "rigid": true, 
             "rigidShape": "mesh",
             "scale": 10
+        },
+        "上盖机": {
+            "icon": "上盖机.jpg",
+            "label": "robot",
+            "material": { "color": "lightgray" },
+            "modelPath": "obj/lid_install_site.obj", 
+            "rigid": true, 
+            "rigidShape": "mesh",
+            "scale": 10,
+            "zADD": 6.2
+        },
+        "上盒机": {
+            "icon": "上盒机.jpg",
+            "label": "robot",
+            "material": { "color": "lightgray" },
+            "modelPath": "obj/box_load_site.obj", 
+            "rigid": true, 
+            "rigidShape": "mesh",
+            "scale": 10
+        },
+        "下盒机": {
+            "icon": "下盒机.jpg",
+            "label": "robot",
+            "material": { "color": "lightgray" },
+            "modelPath": "obj/box_unload_site.obj", 
+            "rigid": true, 
+            "rigidShape": "mesh",
+            "scale": 10,
+            "zADD": 1.7
         },
 
         "平行传送装置-直道": {
