@@ -5,7 +5,7 @@
   import global from "../../Global"
   import modelData from "./modelData.json";
   import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js";
-  import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js"
+  import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
   import { ref } from "vue";
 
   // JSON格式的模型列表，模型路径为src/assets/models，图标路径为src/assets/icons
@@ -16,7 +16,6 @@
   const customModels: any = ref([]);
   const dragAsset = ref({title: '', loading: 0});
   var fileOutput;
-  const loadedRobots = {};
   var modelInput;
   const model_definition = modelData.model_definition;
   const model_layout: any = ref(modelData.model_layout);
@@ -85,9 +84,9 @@
         let obj = JSON.parse(JSON.stringify(model_definition[data.title]));
         e.dataTransfer.setDragImage(document.createElement("img"), 0, 0); 
         if(obj.label == "robot") {
-          if(!loadedRobots[data.title]) return;
+          if(!global.loadedRobots[data.title]) return;
           global.emit("dragModelStart", {type: "asset", data: {
-            DT: loadedRobots[data.title],
+            DT: global.loadedRobots[data.title],
             name: data.title,
             type: "model",
           }});
@@ -127,7 +126,7 @@
           OBJloader.load(objPath, 
             function loaded(mesh){  // 模型加载完成
               setTimeout(function(){  // 过1s后隐藏进度条
-                let DT = loadedRobots[item.title] = new DTObject(mesh, false, "model");
+                let DT = global.loadedRobots[item.title] = new DTObject(mesh, false, "model");
                 DT.name = item.title;
                 DT.scale = item.scale;
                 if(item.zADD) DT.custom.zADD = item.zADD;
@@ -152,7 +151,7 @@
         let item = JSON.parse(JSON.stringify(modelData.model_definition[card.title]));
         item.title = card.title;
         if(item.label == "robot") {
-          if(!loadedRobots[item.title]){
+          if(!global.loadedRobots[item.title]){
             dragAsset.value.title = item.title;
             dragAsset.value.loading = 0;
             this.loadAsset(item);
@@ -207,7 +206,6 @@
       customModelGroup,
       customModels,
       dragAsset,
-      loadedRobots,
       modelData,
       model_definition: model_definition,
       model_layout,

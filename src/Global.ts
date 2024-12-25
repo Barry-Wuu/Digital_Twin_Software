@@ -9,6 +9,7 @@ export default {  // 导出所有数据
     camera: null,
     DTObjects: ref([]),
     layers: [],  // 当前场景的图层
+    loadedRobots: {},
     mesh2rb: {},  // mesh2rb为mesh的uuid到刚体的映射表，用于防止mesh和rb之间循环引用
     mode: "edit",  // 编辑模式（edit）或浏览模式（view）
     physicalIDMap: {},  // 物理实体ID到物体的映射关系

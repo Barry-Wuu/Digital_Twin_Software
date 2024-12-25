@@ -14,6 +14,7 @@ import { ColladaLoader } from "three/examples/jsm/loaders/COLLADALoader.js"
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js'
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
 import { FXAAShader } from "three/examples/jsm/shaders/FXAAShader.js"
+import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { OutlinePassFixed } from "./OutlinePassFixed"
@@ -707,7 +708,7 @@ export default class SceneBuilder{
         lightDT.setTitle();
         return light;
     }
-    createMeshFromAssets(DT, position){  // 定义从组件库中拖入的组件的物体属性
+    createMeshFromAssets(DT, position, angle=0){  // 定义从组件库中拖入的组件的物体属性
         let mesh0 = DT.mesh.clone();
         mesh0.traverse(mesh => {
             if(mesh.isGroup || mesh.isMesh) {
@@ -732,8 +733,8 @@ export default class SceneBuilder{
             }
         });
         let DT0 = mesh0.DT;
+        DT0.basename = DT0.name = DT.name;
         DT0.custom = JSON.parse(JSON.stringify(DT.custom));
-        DT0.name = DT.name;
         DT0.scale = DT.scale;
         DT0.setTitle();
         DT0.updateWireframes();
@@ -752,6 +753,7 @@ export default class SceneBuilder{
         mesh0.castShadow = mesh0.receiveShadow = true;
         mesh0.scale.setScalar(DT0.scale);
         mesh0.rotateX(PI/2);
+        mesh0.rotateOnWorldAxis(UP, angle * PI / 180);
         mesh0.position.copy(position);
         global.SCENE.add(mesh0);
         return mesh0;
@@ -1085,33 +1087,101 @@ export default class SceneBuilder{
     // 光电门3物理实体ID：75292a01-6d17-4d50-bb75-d42718f75fe8
     // 光电门5物理实体ID：7f698a28-d9d4-456a-9814-19d6c9b2f1a1
     // 托盘16物理实体ID：822fbee2-1fe0-45c8-b403-8b5cdb31cb25
-    demoScene(){
-        let mesh;
+    demoScene(){  
+        // 如果有较大的模型则全部加载并弹窗展示加载进度 
+        let mesh, loadingModel = {}, loadingProgress = {}, loadedTotal = 0;
+        
         const create = ({title, x, y, z, angle=0, length=1, prop=null}) => {  // 创建直护栏
-            mesh = this.createMeshFromModels({title: title}, 
-                new THREE.Vector3(x, y, z),
-                new THREE.Euler(0, 0, angle*PI/180),
-            );
-            if(title.includes("直道")) {
-                mesh.scale.x = length / 7.5 * mesh.DT.scale;
-                mesh.DT.updateConveyorRigidbody();
+            if(model_definition[title].label == "robot"){
+                this.createMeshFromAssets(
+                    global.loadedRobots[title], 
+                    new THREE.Vector3(x, y, z),
+                    angle
+                );
+                return;
             }
-            else if(length!=1) mesh.DT.createRigidBody(null, 1, mesh.scale.y=length/6);
-            else mesh.DT.createRigidBody();   
+            else{
+                mesh = this.createMeshFromModels({title: title}, 
+                    new THREE.Vector3(x, y, z),
+                    new THREE.Euler(0, 0, angle*PI/180),
+                );
+                if(title.includes("直道")) {
+                    mesh.scale.x = length / 7.5 * mesh.DT.scale;
+                    mesh.DT.updateConveyorRigidbody();
+                }
+                else if(length!=1) mesh.DT.createRigidBody(null, 1, mesh.scale.y=length/6);
+                else mesh.DT.createRigidBody();
+            }
 
             if(prop){
                 for(let key in prop) mesh.DT[key] = prop[key];
             }
             global.SCENE.DT.children.push(mesh.DT);
-            return mesh;
         }
 
-        // 传送带演示场景，从左下角开始顺时针创建，存储在同级目录的DemoScene.json中
-        for(let group of Object.values(demoScene)){
-            for(let key in group){
-                create(group[key]);
+        function createScene(){
+            // 传送带演示场景，从左下角开始顺时针创建，存储在同级目录的DemoScene.json中
+            for(let group of Object.values(demoScene)){
+                for(let item of group){
+                    create(item);
+                };
+            }
+            mesh.DT.updatePhysicalIDMap();
+        }
+
+        for(let group of Object.values(demoScene)){  // 搜索有无较大的模型
+            for(let item of group){
+                let title = item.title;
+                if(model_definition[title].label == "robot" && 
+                    !global.loadedRobots[title] && !loadingModel[title]){
+                    loadingModel[title] = item;
+                    loadingProgress[title] = 0;
+                }
             };
         }
-        mesh.DT.updatePhysicalIDMap();
+        if(!Object.keys(loadingModel).length){  // 无较大的模型则直接创建场景，否则等模型加载完再创建
+            createScene();
+            return;
+        }
+
+        for(let title in loadingModel){  // 加载较大的模型
+            let item = model_definition[title];
+            let objPath = "src/assets/models/" + item.modelPath;  // 从input选择路径导入
+            let mtlPath = objPath.replace(".obj", ".mtl");
+            let MTLloader = new MTLLoader();
+            let OBJloader = new OBJLoader();
+            function updateProgress(){
+                let progress = Object.values(loadingProgress).reduce((a, b) => a + b, 0);
+                let progressTotal = Object.keys(loadingModel).length*100;
+                console.log(`模型加载进度：${progress/progressTotal * 100}%`);
+            }
+
+            MTLloader.load(mtlPath, function(material) {
+                material.preload();
+                OBJloader.setMaterials(material);
+                OBJloader.load(objPath, 
+                    function loaded(mesh){  // 模型加载完成
+                        let DT = global.loadedRobots[title] = new DTObject(mesh, false, "model");
+                        DT.name = title;
+                        DT.scale = item.scale;
+                        if(item.zADD) DT.custom.zADD = item.zADD;
+                        updateProgress();
+                        loadedTotal++; console.log("模型加载完成")
+                        if(loadedTotal == Object.keys(loadingModel).length){  // 模型全部加载完成
+                            createScene();
+                        }
+                    },
+                    function loading(e){  // 模型加载时
+                        let progress = e.loaded / e.total * 100;
+                        loadingProgress[title] = progress;
+                        updateProgress();
+                    },
+                    function err(e){  // 模型读取错误时弹窗，并删除刚创建的模型组件
+                        alert("模型读取错误");
+                        console.error(e);
+                    }
+                )
+            });
+        }
     }       
 }
