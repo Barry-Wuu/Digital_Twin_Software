@@ -130,6 +130,7 @@
                 let DT = loadedRobots[item.title] = new DTObject(mesh, false, "model");
                 DT.name = item.title;
                 DT.scale = item.scale;
+                if(item.zADD) DT.custom.zADD = item.zADD;
                 dragAsset.value.title = '';
                 dragAsset.value.loading = 0;
               }, 1000);
@@ -225,9 +226,9 @@
 <style>
   .model-card {  
     display: flex; 
-    width: 110%; 
+    width: calc(100% + 20px); 
     height: 50px;
-    margin-left: -5%;
+    margin-left: -10px;
     text-align: center;
     white-space: nowrap;
   }  

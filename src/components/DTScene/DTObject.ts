@@ -15,7 +15,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         onCollisionStart: '',  // 碰撞开始事件
         onCollisionEnd: '',  // 碰撞结束事件
     }
-    custom = {}  // 自定义属性
+    custom: any = {}  // 自定义属性
     expanded: boolean  // 是否在层级树中展开
     friction0 = 0.5  // 静摩擦力
     friction = 1  // 滑动摩擦力
@@ -39,7 +39,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     mass = 0  // 质量
     material: THREE.object  // 模型材质
     mesh: THREE.object  // 模型网格
-    name: string  // 名称
+    name = ''  // 名称
     node = ''  // 节点名称
     physicalID = '0'  // 物理实体ID，可编辑
     rigid: false  // 是否为刚体
@@ -393,7 +393,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         let title = '';
         if(this.type == "AmbientLight") title = "环境光";
         else if(this.type == "DirectionalLight") title = "平行光";
-        else if(this.type == "Group") title = "群组";
+        else if(this.type == "Group") title = this.name ? this.name : "群组";
         else if(this.mesh.userData.ground) title = "地面";
         else if(this.name) {  // 若标题太长则截取20个字符
             if(this.name.length <= 20) title = this.name;
