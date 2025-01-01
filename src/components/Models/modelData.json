@@ -9,7 +9,9 @@
             ]},
             {"title": "加工设备", "children": [
                 {"title": "CNC精雕机"},
-                {"title": "激光打标机"},
+                {"title": "激光打标机"}
+            ]},
+            {"title": "包装设备", "children": [
                 {"title": "上盖机"},
                 {"title": "上盒机"},
                 {"title": "下盒机"}
@@ -57,7 +59,7 @@
             "modelPath": "obj/4robot.obj", 
             "rigid": true, 
             "rigidShape": "mesh",
-            "scale": 20,
+            "scale": 30,
             "zADD": -1
         },
         "Denso六轴机器人": {
@@ -66,7 +68,7 @@
             "modelPath": "obj/6robot.obj", 
             "rigid": true, 
             "rigidShape": "mesh",
-            "scale": 20
+            "scale": 30
         },
         "Keba六轴机器人": {
             "icon": "Keba六轴机器人.jpg",
@@ -84,7 +86,7 @@
             "modelPath": "obj/double_7robot.obj", 
             "rigid": true, 
             "rigidShape": "mesh",
-            "scale": 10
+            "scale": 15
         },
         "CNC精雕机": {
             "icon": "CNC精雕机.jpg",
@@ -93,8 +95,8 @@
             "modelPath": "obj/cnc.obj", 
             "rigid": true, 
             "rigidShape": "mesh",
-            "scale": 10,
-            "zADD": 7.5
+            "scale": 20,
+            "zADD": 15
         },
         "激光打标机": {
             "icon": "激光打标机.jpg",
@@ -112,8 +114,7 @@
             "modelPath": "obj/lid_install_site.obj", 
             "rigid": true, 
             "rigidShape": "mesh",
-            "scale": 10,
-            "zADD": 6.2
+            "scale": 20
         },
         "上盒机": {
             "icon": "上盒机.jpg",
@@ -122,7 +123,7 @@
             "modelPath": "obj/box_load_site.obj", 
             "rigid": true, 
             "rigidShape": "mesh",
-            "scale": 10
+            "scale": 20
         },
         "下盒机": {
             "icon": "下盒机.jpg",
@@ -131,8 +132,8 @@
             "modelPath": "obj/box_unload_site.obj", 
             "rigid": true, 
             "rigidShape": "mesh",
-            "scale": 10,
-            "zADD": 1.7
+            "scale": 20,
+            "zADD": 3.4
         },
 
         "平行传送装置-直道": {

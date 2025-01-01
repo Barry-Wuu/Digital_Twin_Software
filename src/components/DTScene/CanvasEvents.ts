@@ -289,6 +289,7 @@ export default defineComponent({
           // 若被拖动物体本身不是传送带，且碰到传送带，则将物体移动到传送带中轴线上
           if (dragModel.DT.label != "conveyor" && intersect.mesh.DT.label == "conveyor") {
             this.alignToConveyor(intersect.point, intersect.mesh);
+            tempModel.position.z += box.min.z;
           } 
           else {
             let box0 = new THREE.Box3().setFromObject(intersect.mesh);
