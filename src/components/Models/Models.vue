@@ -129,9 +129,13 @@
                 let DT = global.loadedRobots[item.title] = new DTObject(mesh, false, "model");
                 DT.name = item.title;
                 DT.scale = item.scale;
-                if(item.zADD) DT.custom.zADD = item.zADD;
                 dragAsset.value.title = '';
                 dragAsset.value.loading = 0;
+                if(item.rotation) mesh.rotation.set(
+                  item.rotation.x * Math.PI / 180, 
+                  item.rotation.y * Math.PI / 180, 
+                  item.rotation.z * Math.PI / 180
+                );
               }, 1000);
             },
             function loading(e){  // 模型加载时
