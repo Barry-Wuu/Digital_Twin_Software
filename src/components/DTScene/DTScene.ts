@@ -25,6 +25,7 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js"
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js"
 import { ViewHelper } from "three/examples/jsm/helpers/ViewHelper.js"
 import { TransformControls } from "three/examples/jsm/controls/TransformControls.js"
+import { log } from "console";
 
 var attached;  // 控制器附着的物体
 var BottomFPS, BottomTimer;
@@ -574,8 +575,8 @@ export default class SceneBuilder{
     
     createArrow(x, y, theta){  // 指示箭头(横坐标，纵坐标，旋转角)
         let theta0 = theta * PI / 180;
-        let theta1 = (theta+90) * PI / 180;
-        let theta2 = (theta-90) * PI / 180;
+        let theta1 = (theta + 90) * PI / 180;
+        let theta2 = (theta - 90) * PI / 180;
         const triangle = new THREE.Shape();
         triangle.moveTo(x + 2*Math.cos(theta0), y + 2*Math.sin(theta0));
         triangle.lineTo(x + 0.5*Math.cos(theta1), y + 0.5*Math.sin(theta1));
@@ -708,7 +709,7 @@ export default class SceneBuilder{
         lightDT.setTitle();
         return light;
     }
-    createMeshFromAssets(DT, position, angle=0){  // 定义从组件库中拖入的组件的物体属性
+    createMeshFromAssets(DT, position, rotation){  // 定义从组件库中拖入的组件的物体属性
         let mesh0 = DT.mesh.clone();
         mesh0.traverse(mesh => {
             if(mesh.isGroup || mesh.isMesh) {
@@ -747,14 +748,13 @@ export default class SceneBuilder{
                 DT.mass = 0;
                 DT.rigidFollow = true;
                 DT.rigidShape = "box";
-                DT.createRigidBody("rigidHelper");
+                // DT.createRigidBody("rigidHelper");
             }
         });
         mesh0.castShadow = mesh0.receiveShadow = true;
         mesh0.scale.setScalar(DT0.scale);
-        mesh0.rotateX(PI/2);
-        mesh0.rotateOnWorldAxis(UP, angle * PI / 180);
         mesh0.position.copy(position);
+        if(rotation) mesh0.rotation.copy(rotation);
         global.SCENE.add(mesh0);
         return mesh0;
     }   
@@ -773,7 +773,7 @@ export default class SceneBuilder{
             for(let key in obj) groupDT[key] = obj[key];
             groupDT.children.push(DT);
             groupDT.mesh.add(mesh);
-            return this.createMeshFromAssets(groupDT, position);
+            return this.createMeshFromAssets(groupDT, position, rotation);
         };
         if(path){
             path = `src/assets/models/${path}`;
@@ -1091,19 +1091,19 @@ export default class SceneBuilder{
         // 如果有较大的模型则全部加载并弹窗展示加载进度 
         let mesh, loadingModel = {}, loadingProgress = {}, loadedTotal = 0;
         
-        const create = ({title, x, y, z, angle=0, length=1, prop=null}) => {  // 创建直护栏
+        const create = ({title, position, rotation, length=1, prop=null}) => {  // 创建直护栏
             if(model_definition[title].label == "robot"){
                 this.createMeshFromAssets(
                     global.loadedRobots[title], 
-                    new THREE.Vector3(x, y, z),
-                    angle
+                    new THREE.Vector3(position.x, position.y, position.z), 
+                    new THREE.Euler(rotation.x*PI/180, rotation.y*PI/180, rotation.z*PI/180)
                 );
                 return;
             }
             else{
                 mesh = this.createMeshFromModels({title: title}, 
-                    new THREE.Vector3(x, y, z),
-                    new THREE.Euler(0, 0, angle*PI/180),
+                    new THREE.Vector3(position.x, position.y, position.z),
+                    new THREE.Euler(rotation.x*PI/180, rotation.y*PI/180, rotation.z*PI/180),
                 );
                 if(title.includes("直道")) {
                     mesh.scale.x = length / 7.5 * mesh.DT.scale;
@@ -1164,7 +1164,6 @@ export default class SceneBuilder{
                         let DT = global.loadedRobots[title] = new DTObject(mesh, false, "model");
                         DT.name = title;
                         DT.scale = item.scale;
-                        if(item.zADD) DT.custom.zADD = item.zADD;
                         updateProgress();
                         loadedTotal++; console.log("模型加载完成")
                         if(loadedTotal == Object.keys(loadingModel).length){  // 模型全部加载完成

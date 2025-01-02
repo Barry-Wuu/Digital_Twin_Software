@@ -2,7 +2,7 @@ import { defineComponent, ref, watch } from "vue"
 import * as THREE from "three"
 import DTScene from "./DTScene"
 import global from "../../Global"
-
+import modelData from "../Models/modelData.json";
 import { SelectionHelper } from "three/examples/jsm/interactive/SelectionHelper.js";
 import { SelectionBoxFixed } from "./SelectionBoxFixed";
 
@@ -29,6 +29,7 @@ var isDrag = false;  // 是否在用鼠标移动模型
 var isSelected = false; // 是否完成了框选
 var isSelecting = false; // 是否在框选
 const keys: any = {};  // 同一时刻按下的按键
+const model_definition = modelData.model_definition;
 var mouseType = [false, false, false];  // 左、中、右键是否按下
 const ray = new THREE.Raycaster();  // 从鼠标发出的射线检测器
 var parent;
@@ -294,7 +295,8 @@ export default defineComponent({
           else {
             let box0 = new THREE.Box3().setFromObject(intersect.mesh);
             if(dragModel.DT.label != "importedModel") tempModel.position.z += box0.max.z - box.min.z;
-            if(dragModel.DT.custom.zADD) tempModel.position.z += dragModel.DT.custom.zADD;
+            let item = model_definition[dragModel.DT.basename];
+            if(item.zADD) tempModel.position.z += item.zADD;
             // 解除吸附时恢复物体在吸附前的旋转
             if (tempTransform.alignMode) {
               tempModel.position.copy(tempTransform.position);
