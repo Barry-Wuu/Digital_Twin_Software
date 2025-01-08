@@ -22,7 +22,6 @@ import { PointerLockControls } from "three/examples/jsm/controls/PointerLockCont
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js"
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js"
-import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js"
 import { ViewHelper } from "three/examples/jsm/helpers/ViewHelper.js"
 import { TransformControls } from "three/examples/jsm/controls/TransformControls.js"
 import { log } from "console";
@@ -40,7 +39,6 @@ let front = new THREE.Vector3();
 var groundColor = "azure";
 const groundSize = 250;  // 地面范围：-groundSize ≤ x ≤ groundSize，-groundSize ≤ y ≤ groundSize
 const Ground = new THREE.Plane(UP);  // 平面z=0
-var loader = new STLLoader();
 var loading = false;
 const minCameraFocusDistance = 5;  // 双击拉近时相机到物体的最小距离
 const model_definition = modelData.model_definition;
@@ -437,7 +435,7 @@ export default class SceneBuilder{
                 DT.setTitle();
                 DT.updateWireframes();
             }
-            global.emit("clickModel", {id:mesh.id, shift:false});  // 创建物体后模拟点击该物体
+            global.emit("clickModel", {id: mesh.id, shift: false});  // 创建物体后模拟点击该物体
         });
 
         // global.emit("rotateMesh", {mesh: global.SCENE.getObjectById(220), angle: 45})
@@ -577,9 +575,6 @@ export default class SceneBuilder{
                 new THREE.Ray(p0, front).intersectPlane(Ground, this.orbitControl.target);
             }
         })
-
-        // 预先载入自定义模型
-        this.preloadModels();
         global.on("init", ()=>this.init());
     }
     async init(){  // 场景更新时的操作
@@ -852,10 +847,7 @@ export default class SceneBuilder{
             groupDT.mesh.add(mesh);
             return this.createMeshFromAssets(groupDT, position, rotation);
         };
-        if(path){
-            path = `src/assets/models/${path}`;
-            DT.geometry = customModels[path];  
-        }
+        if(path) DT.geometry = customModels[path];  
         // 先复制JSON中的模型定义再使用，以免相应的模型定义在使用时被自动修改
         for(let key in obj) DT[key] = obj[key];
         if(DT.geometry instanceof Array){  // 如果模型的json定义为写成多行的回调函数，则合并为一行并调用
@@ -1035,25 +1027,6 @@ export default class SceneBuilder{
             DT.touchObjectBefore = DT.touchObject;
         })
     } 
-    preloadModels(){  // 事先载入所有的已有模型
-        const modelPath = "src/assets/models";
-        function searchFiles(dir) {  // 使用同步操作
-            fs.readdirSync(modelPath + dir).forEach(fileName => {
-                let filePath = modelPath + dir + '/' + fileName;
-                let stats = fs.statSync(filePath);
-                if (stats.isDirectory()) {  // 如果是文件夹
-                    searchFiles(dir + '/' + fileName);  // 递归子目录
-                }
-                else if (path.extname(filePath) == ".stl") {  // 如果是stl文件
-                    customModels[filePath] = true; // 保存模型文件的路径
-                }
-            });
-        }
-        searchFiles('');  // 然后异步载入相应几何体（THREE.geometry）
-        for(let modelPath in customModels){
-            loader.loadAsync(modelPath).then(geom => {customModels[modelPath] = geom;});   
-        }
-    }
     removeRigidBody(mesh){  // 移除刚体
         let rb = mesh.DT.rb();
         global.physicsWorld.removeBody(rb);
@@ -1165,9 +1138,14 @@ export default class SceneBuilder{
     // 光电门5物理实体ID：7f698a28-d9d4-456a-9814-19d6c9b2f1a1
     // 托盘16物理实体ID：822fbee2-1fe0-45c8-b403-8b5cdb31cb25
     demoScene(){  
-        // 如果有较大的模型则全部加载并弹窗展示加载进度 
+        // 清除场景中原有的模型，地面、灯光等除外
+        for(let DT of global.DTObjects.value) {
+            if(DT.label != "protected" && !DT.mesh.isLight){
+                DT.destroy();
+            }
+        }
+        // 如果有较大的模型则全部加载并弹窗展示加载进度
         let mesh, loadingModel = {}, loadingProgress = {}, loadedModels = 0, loadedTotal = 0;
-        
         const create = ({title, position, rotation, length=1, prop=null}) => {  // 创建直护栏
             if(model_definition[title].label == "robot"){
                 this.createMeshFromAssets(
@@ -1203,7 +1181,8 @@ export default class SceneBuilder{
                     create(item);
                 };
             }
-            mesh.DT.updatePhysicalIDMap();
+            global.SCENE.DT.updatePhysicalIDMap();
+            global.SCENE.DT.updateWireframes();
         }
 
         for(let group of Object.values(demoScene)){  // 搜索有无较大的模型
@@ -1224,7 +1203,7 @@ export default class SceneBuilder{
 
         for(let title in loadingModel){  // 加载较大的模型
             let item = model_definition[title];
-            let objPath = "src/assets/models/" + item.modelPath;  // 从input选择路径导入
+            let objPath = item.modelPath;  // 从input选择路径导入
             let mtlPath = objPath.replace(".obj", ".mtl");
             let MTLloader = new MTLLoader();
             let OBJloader = new OBJLoader();
@@ -1233,11 +1212,11 @@ export default class SceneBuilder{
                 let progressTotal = loadedTotal*100;
                 global.emit("popup", {
                     type: "loading",
-                    title: "模型加载中", 
+                    title: "场景加载中", 
                     content: `已加载${loadedModels}/${loadedTotal}个模型`,
                     progress: progress / progressTotal * 100,
                     close: close
-                });
+                }); 
             }
             MTLloader.load(mtlPath, function(material) {
                 material.preload();
@@ -1257,7 +1236,7 @@ export default class SceneBuilder{
                     function loading(e){  // 模型加载时
                         let progress = e.loaded / e.total * 100;
                         loadingProgress[title] = progress;
-                        updateProgress();
+                        // updateProgress();
                     },
                     function err(e){  // 模型读取错误时弹窗，并删除刚创建的模型组件
                         alert("模型读取错误");

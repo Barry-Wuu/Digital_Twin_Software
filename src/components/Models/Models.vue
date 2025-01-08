@@ -6,6 +6,7 @@
   import modelData from "./modelData.json";
   import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js";
   import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
+  import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js"
   import { ref } from "vue";
 
   // JSON格式的模型列表，模型路径为src/assets/models，图标路径为src/assets/icons
@@ -115,12 +116,12 @@
         }
         catch {}
       },
-      loadAsset(item){
-        let objPath = "src/assets/models/" + item.modelPath;  // 从input选择路径导入
+      async loadBuiltInModel(item){
+        let objPath = item.modelPath;  // 从input选择路径导入
         let mtlPath = objPath.replace(".obj", ".mtl");
         let MTLloader = new MTLLoader();
-        let OBJloader = new OBJLoader();
-        MTLloader.load(mtlPath, function(material) {
+        let OBJloader = new OBJLoader(); console.log(item,  global.loadedRobots)
+        await MTLloader.load(mtlPath, function(material) {
           material.preload();
           OBJloader.setMaterials(material);
           OBJloader.load(objPath, 
@@ -142,8 +143,9 @@
               let progress = e.loaded / e.total * 100;
               dragAsset.value.loading = progress;
             },
-            function err(){  // 模型读取错误时弹窗，并删除刚创建的模型组件
+            function err(e){  // 模型读取错误时弹窗，并删除刚创建的模型组件
               alert("模型读取错误");
+              console.error(e);
               this.deleteAsset(dragAsset.value);
               dragAsset.value.title = '';
               dragAsset.value.loading = 0;
@@ -158,13 +160,27 @@
           if(!global.loadedRobots[item.title]){
             dragAsset.value.title = item.title;
             dragAsset.value.loading = 0;
-            this.loadAsset(item);
+            this.loadBuiltInModel(item);
           }
         }
       },
       onRightClick(item){  // 在自定义模型上按右键编辑物体名称、物理实体ID或删除物体
         if(!currentModel.value) while(!currentModel.value) currentModel.value = item;
         else this.$nextTick(()=>{currentModel.value = item; currentModel.value});
+      },
+      async preloadModels(){  // 事先载入软件src目录里的所有内置模型
+          for(let basename in model_definition){
+              let item = model_definition[basename];
+              let modelPath = item.modelPath; 
+              if(modelPath?.endsWith('.obj')){  // 读取obj模型
+                  item.title = basename;
+                  await this.loadBuiltInModel(item);   
+              }
+              else if(modelPath?.endsWith('.stl')){  // 读取stl模型
+                  let STLloader = new STLLoader();
+                  await STLloader.loadAsync(modelPath).then(geom => {customModels[modelPath] = geom;});   
+              }
+          }
       },
       saveCustomModel(data){  // 保存自定义模型
         // 根据title补齐basename，或者根据basename补齐title
@@ -220,7 +236,8 @@
       global.on("saveCustomModel", data => this.saveCustomModel(data));
       document.addEventListener("contextmenu", ()=>{currentModel.value = null}, true);
       fileOutput = document.getElementById("fileOutput");
-      modelInput= document.getElementById("modelInput");
+      modelInput = document.getElementById("modelInput");
+      this.preloadModels();  // 预先载入自定义模型
     }
   }
 </script>

@@ -19,6 +19,7 @@
     {key: "组件库"}
   ]
   const helpContent = ref("场景");
+  const loadingProgress = ref(0);
   var main;
   const newCode = ref('');
   const newProp = ref('');
@@ -60,7 +61,6 @@
         },
         inputDatabase: '',
         inputTable: '',
-        loadingProgress: 0,
         startSendSite: "http://192.168.137.155:8888/DiaoDuStart",
         stopSendSite: "http://192.168.137.155:8888/DiaoDuStop"
       }
@@ -172,6 +172,7 @@
         helpChange, 
         helpContent, 
         helpTree, 
+        loadingProgress,
         newCode, 
         newProp, 
         popup, 
@@ -195,7 +196,7 @@
         else {
           popupContent.value = data.type;
           popupTitle.value = data.title;
-          if(data.progress) this.loadingProgress = data.progress.toFixed(1);
+          if(data.progress) loadingProgress.value = JSON.parse(data.progress.toFixed(1));
           if(data.value) rename.value = data.value;
           popup.style.display = popupMask.style.display = "block";
           if(data.type == "code") {  // 自定义脚本
@@ -343,7 +344,7 @@
     <div id="popup-header" class="popup-header">  
       <strong style="color:white">{{ popupTitle }}</strong>
       <!--退出-->
-      <a-button id="popup-quit" danger type="primary" @click="closePopup">
+      <a-button v-if="popupContent!='loading'" id="popup-quit" danger type="primary" @click="closePopup">
         <CloseOutlined/>
       </a-button>  
     </div>  
