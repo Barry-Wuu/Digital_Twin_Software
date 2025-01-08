@@ -122,7 +122,7 @@ global.on("changeEmulateMode", (mode: string)=>{
                         global.physicsWorld.createCollider(shape, rb);
                         tempGuardrails.push(rb);
                         return;
-                        
+
                         // 显示两直护栏交点处的隐形护栏
                         let mesh1 = new THREE.Mesh(
                             new THREE.BoxGeometry(k*2/tan, w*2, 1),
@@ -1137,11 +1137,9 @@ export default class SceneBuilder{
     // 托盘16物理实体ID：822fbee2-1fe0-45c8-b403-8b5cdb31cb25
     demoScene(){  
         // 清除场景中原有的模型，地面、灯光等除外
-        for(let DT of global.DTObjects.value) {
-            if(DT.label != "protected" && !DT.mesh.isLight){
-                DT.destroy();
-            }
-        }
+        global.SCENE.DT.traverse(DT => {
+            if(DT.label != "protected" && !DT.mesh.isLight) DT.destroy();
+        });
         // 如果有较大的模型则全部加载并弹窗展示加载进度
         let mesh, loadingModel = {}, loadingProgress = {}, loadedModels = 0, loadedTotal = 0;
         const create = ({title, position, rotation, length=1, prop=null}) => {  // 创建直护栏
