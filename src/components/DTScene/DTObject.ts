@@ -17,7 +17,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     }
     custom: any = {}  // 自定义属性
     expanded: boolean  // 是否在层级树中展开
-    friction0 = 0.5  // 静摩擦力
+    friction0 = 0.1  // 静摩擦力
     friction = 1  // 滑动摩擦力
     geometry: THREE.object  // 模型几何体
     geomRigid  // 自定义刚体网格
@@ -144,7 +144,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             shape = this.createRigidShape({geom: eval(this.rigidShape.join(''))()}); 
         }
 
-        shape.setFriction(this.label == "guardrail" ? 0 : this.friction0);
+        shape.setFriction(this.friction0);
         shape.isSensor = this.isSensor;  // 设置为传感器
         shape.setMass(this.mass);
         // 设置刚体描述符
@@ -394,6 +394,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         if(this.type == "AmbientLight") title = "环境光";
         else if(this.type == "DirectionalLight") title = "平行光";
         else if(this.type == "Group") title = this.name ? this.name : "群组";
+        else if(this.type == "Scene") title = this.name ? this.name : "场景";
         else if(this.mesh.userData.ground) title = "地面";
         else if(this.name) {  // 若标题太长则截取20个字符
             if(this.name.length <= 20) title = this.name;

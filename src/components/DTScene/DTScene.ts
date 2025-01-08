@@ -49,6 +49,7 @@ const PI = Math.PI;
 const RIGHT = new THREE.Vector3(1, 0, 0);  // x轴朝右
 var speed = 1;
 var temp = false;
+var tempGuardrails = [];
 var UP = new THREE.Vector3(0, 0, 1);  // z轴朝上
 
 // 物理量
@@ -67,7 +68,79 @@ var timeUpdateFPS = performance.now();
 const gravity = new RAPIER.Vector3(0.0, 0.0, -9.81)
 global.physicsWorld = new RAPIER.World(gravity);
 
-global.on("changeEmulateMode", (mode: string)=>{emulateMode = mode});
+global.on("changeEmulateMode", (mode: string)=>{
+    emulateMode = mode;
+    if(mode == "play"){  // 开始仿真时
+        // 清除之前生成的隐形护栏
+        for(let rb of tempGuardrails){
+            global.physicsWorld.removeRigidBody(rb);
+        }
+        tempGuardrails = [];
+
+        // 在每两个护栏的交点处增加一截小的隐形护栏，让在制品转弯更加流畅
+        global.physicsWorld.forEachCollider(collider => {
+            let rb = collider._parent;
+            let mesh = global.rb2mesh[rb.handle];
+            let DT = mesh?.DT;
+            if(DT?.basename == "直护栏"){
+                global.physicsWorld.contactPairsWith(collider, collider0 => {
+                    // 寻找对应的刚体和网格
+                    let rb0 = collider0._parent;
+                    let mesh0 = global.rb2mesh[rb0.handle];
+                    let DT0 = mesh0.DT;
+                    if(DT0.basename == "直护栏" && DT0.id > DT.id){
+                        const k = 0.5;  // 隐形护栏到两直护栏的交点的距离
+                        const w = 0.1;  // 隐形护栏的半宽
+                        let [x1, y1, z1] = mesh.position;
+                        let theta1 = mesh.rotation.z + PI/2;
+                        let [x2, y2] = mesh0.position;
+                        let theta2 = mesh0.rotation.z + PI/2;
+                        let d_theta = Math.abs(theta1 - theta2)
+                        if(d_theta <= 1e-5) return;  // 平行
+                        // 用线性代数求直线(x1, y1, theta1)和直线(x2, y2, theta2)的交点
+                        const A = Math.cos(theta1);
+                        const B = -Math.cos(theta2);
+                        const C = Math.sin(theta1);
+                        const D = -Math.sin(theta2);
+                        const det = A * D - B * C;
+                        const t = (D*(x2-x1) - B*(y2-y1)) / det;
+                        let x = x1 + A*t;
+                        let y = y1 + C*t;
+                        // 调整旋转角
+                        let tan = Math.min(Math.tan(d_theta/2), 1/Math.tan(d_theta/2));
+                        let theta = (theta1 + theta2) / 2;
+                        if(d_theta > PI/2) theta += PI/2;
+                        // 调整位置
+                        let sin = Math.sin(theta);
+                        let cos = Math.cos(theta);
+                        if(k*cos*(y1-y) - k*sin*(x1-x) > 0) [x, y] = [x-k*sin, y+k*cos];
+                        else [x, y] = [x+k*sin, y-k*cos];
+                        // 添加刚体盒子
+                        const rbDesc = RAPIER.RigidBodyDesc.fixed();
+                        rbDesc.setTranslation(x, y, z1);  // 刚体的初始位置
+                        let Q = new THREE.Quaternion().setFromAxisAngle(UP, theta);
+                        rbDesc.setRotation(new RAPIER.Quaternion(Q.x, Q.y, Q.z, Q.w));  // 刚体的初始旋转
+                        // 将形状添加到刚体中
+                        const rb = global.physicsWorld.createRigidBody(rbDesc);
+                        const shape = RAPIER.ColliderDesc.cuboid(k/tan, w, 0.5);
+                        shape.setFriction(0);
+                        global.physicsWorld.createCollider(shape, rb);
+                        tempGuardrails.push(rb);
+                        return;
+                        // 显示两直护栏交点处的隐形护栏
+                        let mesh1 = new THREE.Mesh(
+                            new THREE.BoxGeometry(k*2/tan, w*2, 1),
+                            new THREE.MeshBasicMaterial({color: "red"})
+                        )
+                        mesh1.position.set(x, y, z1);
+                        mesh1.rotation.set(0, 0, theta);
+                        global.SCENE.add(mesh1);
+                    }
+                });
+            }
+        });
+    }
+});
 global.on("changeSpeed", (k: string)=>{speed = parseInt(k.slice(0, k.length-1))});
 global.on("clearLoads", ()=>{global.SCENE.DT.clearLoads()});
 global.on("loading", ()=>{loading = true});
@@ -189,6 +262,7 @@ export default class SceneBuilder{
 
         // 平行光
         this.createLight("DirectionalLight", -16, -16, 24);
+        this.createLight("AmbientLight", -20, -16, 24);
 
         // 物体控制器 
         this.controller = new TransformControls(this.camera, cssRendererDOM);
@@ -262,7 +336,7 @@ export default class SceneBuilder{
 
         // 地面
         this.ground = new THREE.Mesh( 
-            new THREE.PlaneGeometry(500, 500), 
+            new THREE.PlaneGeometry(1000, 1000), 
             new THREE.MeshBasicMaterial({ color: groundColor })
         );
         let DTGround = new DTObject(this.ground, true);
@@ -277,7 +351,7 @@ export default class SceneBuilder{
         DTGround.setTitle("地面"); 
 
         // 网格
-        const gridHelper = new THREE.GridHelper(500, 100, groundColor, "#AAAAAA");
+        const gridHelper = new THREE.GridHelper(1000, 100, groundColor, "#AAAAAA");
         gridHelper.rotateX(PI/2);
         global.SCENE.add( gridHelper );
         gridHelper.position.z = 0.01;
@@ -350,7 +424,10 @@ export default class SceneBuilder{
         // 创建物体
         global.on("createMesh", (type: any) => {
             let mesh, DT;
-            if(type.includes("Light")) mesh = this.createLight(type);  // 创建灯光
+            if(type.includes("Light")){
+                mesh = this.createLight(type);  // 创建灯光
+                if(mesh.isAmbientLight) mesh.intensity = 0.1;  // 降低默认创建的环境光强度
+            }
             else{
                 if(type == "Group") {  // 创建群组
                     mesh = new THREE.Group();
@@ -510,7 +587,7 @@ export default class SceneBuilder{
         global.SCENE.DT.setSkyboxByColor();
         global.on("updateSkybox", ()=>{global.SCENE.DT.setSkyboxByColor()});
         // 远处雾化
-        global.SCENE.fog = new THREE.Fog(this.ground.material.color, 5, 300);
+        global.SCENE.fog = new THREE.Fog(this.ground.material.color, 5, 600);
         global.on("changeFogColor", (isGround)=>{  // 更改地面颜色时同时更改雾的颜色
             if(isGround) global.SCENE.fog.color.copy(this.ground.material.color);
         });
@@ -689,8 +766,8 @@ export default class SceneBuilder{
         }
         if(type == "AmbientLight"){  // 环境光
             light = new THREE.AmbientLight("white");
-            // 环境光图标
-            lightDOM.src = sun;
+            light.intensity = 0.1;
+            lightDOM.src = sun;  // 环境光图标
         }  
         // 光源图标
         lightDOM.id = light.id;
@@ -841,12 +918,12 @@ export default class SceneBuilder{
         global.physicsWorld.forEachCollider(collider => {
             let rb = collider._parent;
             let mesh = global.rb2mesh[rb.handle];
+            if(!mesh) return;
             let DT = mesh.DT;
             DT.touchObject = [];
 
             // 让在制品排在前面，即等于mesh0
             let label = global.rb2mesh[collider._parent.handle].DT.label;
-            
             let onConveyor = false;  // 记录在制品是否在传送带上，若不在则清空施力
             global.physicsWorld.contactPairsWith(collider, collider0 => {
                 // 寻找对应的刚体和网格
