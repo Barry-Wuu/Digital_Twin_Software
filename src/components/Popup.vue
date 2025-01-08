@@ -27,7 +27,7 @@
   const popupContent = ref('');
   const popupTitle = ref('');
   const rename = ref('');
-  const yesNoContent = ref({content:'', yes:(e=null)=>{}, no:()=>{}});
+  const popupData = ref({content:'', yes:(e=null)=>{}, no:()=>{}});
 
   export default{
     components:{
@@ -60,6 +60,7 @@
         },
         inputDatabase: '',
         inputTable: '',
+        loadingProgress: 0,
         startSendSite: "http://192.168.137.155:8888/DiaoDuStart",
         stopSendSite: "http://192.168.137.155:8888/DiaoDuStop"
       }
@@ -178,19 +179,23 @@
         popupMask, 
         popupTitle, 
         rename, 
-        yesNoContent
+        popupData
       }
     },
     mounted(){
       for(let node of helpTree) node.title = node.key;
+      global.on("closePopup", ()=>{this.closePopup()});
       global.on("popup", (data: any)=>{  // 显示弹窗，弹窗类型由obj.type决定
         DT.value = data.DT;
         // 显示“是否确认动作或重命名组件”窗口
-        yesNoContent.value = ["rename", "yes_no"].includes(data.type) ? data : null;
-        if(popupContent.value == data.type) this.closePopup();
+        popupData.value = data.content ? data : null;
+        if(popupContent.value == data.type && data.type != "loading" || data.close == true){
+          this.closePopup();  // 加载模型时，仅全部加载完后关闭弹窗
+        }
         else {
           popupContent.value = data.type;
           popupTitle.value = data.title;
+          if(data.progress) this.loadingProgress = data.progress.toFixed(1);
           if(data.value) rename.value = data.value;
           popup.style.display = popupMask.style.display = "block";
           if(data.type == "code") {  // 自定义脚本
@@ -344,17 +349,23 @@
     </div>  
 
     <div class="popup-content" id="popup-content">  
+      <!--进度加载栏-->
+      <div v-if="popupContent=='loading'" class="yes-no-content">
+        <a-progress :percent="loadingProgress" :status="loadingProgress > 99.9 ? '' : 'active'" 
+        style="margin-left: 10px; width: 400px"/>
+      </div>
+
       <!--双项选择栏-->
-      <div v-if="yesNoContent" style="margin: 10px 10px; text-align: left">
-        <div v-for="row in yesNoContent.content.split('\r')">
+      <div v-if="popupData" style="margin: 10px 10px; text-align: left">
+        <div v-for="row in popupData.content.split('\r')">
           &nbsp;&nbsp;&nbsp;&nbsp;{{ row }}
         </div>
       </div>
       <div v-if="popupContent=='yes_no'" class="yes-no-content">
-        <a-button class="yes-no-confirm" @click="yesNoContent.yes(); closePopup()">
+        <a-button class="yes-no-confirm" @click="popupData.yes(); closePopup()">
           是<CheckOutlined/>
         </a-button>
-        <a-button danger @click="yesNoContent.no ? yesNoContent.no() : null; closePopup()">
+        <a-button danger @click="popupData.no ? popupData.no() : null; closePopup()">
           否<CloseOutlined/>
         </a-button>
       </div>
@@ -362,10 +373,10 @@
       <!--重命名窗口-->
       <div v-if="popupContent=='rename'" class="yes-no-content">
         <a-input v-model:value="rename" style="width: 97%; margin-bottom:10px"></a-input>
-        <a-button class="yes-no-confirm" @click="yesNoContent.yes(rename); closePopup()">
+        <a-button class="yes-no-confirm" @click="popupData.yes(rename); closePopup()">
           是<CheckOutlined/>
         </a-button>
-        <a-button danger @click="yesNoContent.no ? yesNoContent.no() : null; closePopup()">
+        <a-button danger @click="popupData.no ? popupData.no() : null; closePopup()">
           否<CloseOutlined/>
         </a-button>
       </div>

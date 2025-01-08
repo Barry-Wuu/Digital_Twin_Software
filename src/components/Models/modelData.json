@@ -342,6 +342,7 @@
         },
 
         "直护栏": {
+            "friction0": 0,
             "icon": "直护栏.jpg",
             "geometry": "new THREE.BoxGeometry(0.4, 6, 1)",
             "label": "guardrail",
