@@ -124,7 +124,7 @@
           for(let id of choices.value){
             let DTObject = this.findDTObjectById(id);
             if(DTObject){
-              for( let child of DTObject.children){
+              for(let child of DTObject.children){
                 if(choices.value.includes(child.id)){
                   child.destroy();
                 }

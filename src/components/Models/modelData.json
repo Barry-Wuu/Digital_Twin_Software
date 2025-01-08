@@ -56,7 +56,7 @@
             "icon": "四轴机器人.jpg",
             "label": "robot",
             "material": { "color": "lightgray" },
-            "modelPath": "obj/4robot.obj", 
+            "modelPath": "src/assets/models/obj/4robot.obj", 
             "rotation": {"x": 90, "y": 0, "z": 0},
             "scale": 30,
             "zADD": -1
@@ -64,7 +64,7 @@
         "Denso六轴机器人": {
             "icon": "Denso六轴机器人.jpg",
             "label": "robot",
-            "modelPath": "obj/6robot.obj", 
+            "modelPath": "src/assets/models/obj/6robot.obj", 
             "rotation": {"x": 90, "y": 0, "z": 0},
             "scale": 30
         },
@@ -72,7 +72,7 @@
             "icon": "Keba六轴机器人.jpg",
             "label": "robot",
             "material": { "color": "lightgray" },
-            "modelPath": "obj/abb_irb52_7_120.obj", 
+            "modelPath": "src/assets/models/obj/abb_irb52_7_120.obj", 
             "rotation": {"x": 90, "y": 0, "z": 0},
             "scale": 10
         },
@@ -80,7 +80,7 @@
             "icon": "双臂七轴机器人.jpg",
             "label": "robot",
             "material": { "color": "lightgray" },
-            "modelPath": "obj/double_7robot.obj", 
+            "modelPath": "src/assets/models/obj/double_7robot.obj", 
             "rotation": {"x": 90, "y": 0, "z": 0},
             "scale": 25
         },
@@ -88,7 +88,7 @@
             "icon": "CNC精雕机.jpg",
             "label": "robot",
             "material": { "color": "lightgray" },
-            "modelPath": "obj/cnc.obj", 
+            "modelPath": "src/assets/models/obj/cnc.obj", 
             "rotation": {"x": 90, "y": 0, "z": 0},
             "scale": 20,
             "zADD": 15
@@ -97,7 +97,7 @@
             "icon": "激光打标机.jpg",
             "label": "robot",
             "material": { "color": "lightgray" },
-            "modelPath": "obj/laser_marking.obj", 
+            "modelPath": "src/assets/models/bj/laser_marking.obj", 
             "rotation": {"x": 90, "y": 0, "z": 0},
             "scale": 10
         },
@@ -105,7 +105,7 @@
             "icon": "上盖机.jpg",
             "label": "robot",
             "material": { "color": "lightgray" },
-            "modelPath": "obj/lid_install_site.obj", 
+            "modelPath": "src/assets/models/obj/lid_install_site.obj", 
             "rotation": {"x": 90, "y": 0, "z": 0},
             "scale": 20
         },
@@ -113,7 +113,7 @@
             "icon": "上盒机.jpg",
             "label": "robot",
             "material": { "color": "lightgray" },
-            "modelPath": "obj/box_load_site.obj", 
+            "modelPath": "src/assets/models/obj/box_load_site.obj", 
             "rotation": {"x": 90, "y": 0, "z": 0},
             "scale": 20
         },
@@ -121,7 +121,7 @@
             "icon": "下盒机.jpg",
             "label": "robot",
             "material": { "color": "lightgray" },
-            "modelPath": "obj/box_unload_site.obj", 
+            "modelPath": "src/assets/models/obj/box_unload_site.obj", 
             "rotation": {"x": 90, "y": 0, "z": 0},
             "scale": 20,
             "zADD": 3.4
@@ -146,7 +146,7 @@
                 "}"
             ],
             "material": { "color": "lightgray" },
-            "modelPath": "stl/平行传送装置-直道.stl", 
+            "modelPath": "src/assets/models/stl/平行传送装置-直道.stl", 
             "rigid": true,
             "rigidShape": "geomRigid",
             "scale": 0.05,
@@ -161,7 +161,7 @@
         "平行传送装置-顺时针弯道": {
             "icon": "平行弯道1.jpg",
             "material": { "color": "lightgray" },
-            "modelPath": "stl/平行传送装置-弯道.stl", 
+            "modelPath": "src/assets/models/stl/平行传送装置-弯道.stl", 
             "rigid": true,
             "scale": 0.05,
             "v0": 1.5,
@@ -192,7 +192,7 @@
         "平行传送装置-逆时针弯道": {
             "icon": "平行弯道2.jpg",
             "material": { "color": "lightgray" },
-            "modelPath": "stl/平行传送装置-弯道.stl", 
+            "modelPath": "src/assets/models/stl/平行传送装置-弯道.stl", 
             "rigid": true, 
             "scale": 0.05,
             "v0": 1.5,
@@ -222,7 +222,7 @@
         "滚轮传送装置-直道": {
             "icon": "滚轮直道.jpg",
             "material": { "color": "lightgray" },
-            "modelPath": "stl/滚轮传送装置-直道.stl", 
+            "modelPath": "src/assets/models/stl/滚轮传送装置-直道.stl", 
             "rigid": true,
             "rigidShape": "convex",
             "scale": 0.05,
@@ -237,7 +237,7 @@
         "滚轮传送装置-顺时针弯道": {
             "icon": "滚轮弯道1.jpg",
             "material": { "color": "lightgray" },
-            "modelPath": "stl/滚轮传送装置-弯道.stl", 
+            "modelPath": "src/assets/models/stl/滚轮传送装置-弯道.stl", 
             "rigid": true,
             "scale": 0.05,
             "v0": 1.5,
@@ -268,7 +268,7 @@
         "滚轮传送装置-逆时针弯道": {
             "icon": "滚轮弯道2.jpg",
             "material": { "color": "lightgray" },
-            "modelPath": "stl/滚轮传送装置-弯道.stl", 
+            "modelPath": "src/assets/models/stl/滚轮传送装置-弯道.stl", 
             "rigid": true, 
             "scale": 0.05,
             "v0": 1.5,
@@ -298,7 +298,7 @@
         "平行传送装置-岔道": {
             "icon": "滚轮弯道2.jpg",
             "material": { "color": "lightgray" },
-            "modelPath": "stl/平行传送装置-岔道.stl", 
+            "modelPath": "src/assets/models/stl/平行传送装置-岔道.stl", 
             "rigid": true, 
             "scale": 0.05,
             "v0": 1.5,
@@ -328,7 +328,7 @@
         "弯道（凸集）": {
             "icon": "滚轮弯道1.jpg",
             "material": { "color": "lightgray" },
-            "modelPath": "stl/滚轮传送装置-弯道.stl", 
+            "modelPath": "src/assets/models/stl/滚轮传送装置-弯道.stl", 
             "rigid": true, 
             "rigidShape": "convex",
             "scale": 0.05,
