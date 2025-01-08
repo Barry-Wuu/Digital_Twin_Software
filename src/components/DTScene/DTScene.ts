@@ -126,7 +126,7 @@ global.on("changeEmulateMode", (mode: string)=>{
                         shape.setFriction(0);
                         global.physicsWorld.createCollider(shape, rb);
                         tempGuardrails.push(rb);
-                        return;
+                        //return;
                         // 显示两直护栏交点处的隐形护栏
                         let mesh1 = new THREE.Mesh(
                             new THREE.BoxGeometry(k*2/tan, w*2, 1),
@@ -426,7 +426,7 @@ export default class SceneBuilder{
             let mesh, DT;
             if(type.includes("Light")){
                 mesh = this.createLight(type);  // 创建灯光
-                if(mesh.isAmbientLight) mesh.intensity = 0.1;  // 降低默认创建的环境光强度
+                if(mesh.isAmbientLight) mesh.intensity = 0.5;  // 降低默认创建的环境光强度
             }
             else{
                 if(type == "Group") {  // 创建群组
@@ -766,7 +766,7 @@ export default class SceneBuilder{
         }
         if(type == "AmbientLight"){  // 环境光
             light = new THREE.AmbientLight("white");
-            light.intensity = 0.1;
+            light.intensity = 0.5;
             lightDOM.src = sun;  // 环境光图标
         }  
         // 光源图标
@@ -1166,7 +1166,7 @@ export default class SceneBuilder{
     // 托盘16物理实体ID：822fbee2-1fe0-45c8-b403-8b5cdb31cb25
     demoScene(){  
         // 如果有较大的模型则全部加载并弹窗展示加载进度 
-        let mesh, loadingModel = {}, loadingProgress = {}, loadedTotal = 0;
+        let mesh, loadingModel = {}, loadingProgress = {}, loadedModels = 0, loadedTotal = 0;
         
         const create = ({title, position, rotation, length=1, prop=null}) => {  // 创建直护栏
             if(model_definition[title].label == "robot"){
@@ -1216,7 +1216,8 @@ export default class SceneBuilder{
                 }
             };
         }
-        if(!Object.keys(loadingModel).length){  // 无较大的模型则直接创建场景，否则等模型加载完再创建
+        loadedTotal = Object.keys(loadingModel).length;
+        if(!loadedTotal){  // 无较大的模型则直接创建场景，否则等模型加载完再创建
             createScene();
             return;
         }
@@ -1227,12 +1228,17 @@ export default class SceneBuilder{
             let mtlPath = objPath.replace(".obj", ".mtl");
             let MTLloader = new MTLLoader();
             let OBJloader = new OBJLoader();
-            function updateProgress(){
-                let progress = Object.values(loadingProgress).reduce((a, b) => a + b, 0);
-                let progressTotal = Object.keys(loadingModel).length*100;
-                console.log(`模型加载进度：${progress/progressTotal * 100}%`);
+            function updateProgress(close=false){
+                let progress = Object.values(loadingProgress).reduce((a, b) => a+b, 0);
+                let progressTotal = loadedTotal*100;
+                global.emit("popup", {
+                    type: "loading",
+                    title: "模型加载中", 
+                    content: `已加载${loadedModels}/${loadedTotal}个模型`,
+                    progress: progress / progressTotal * 100,
+                    close: close
+                });
             }
-
             MTLloader.load(mtlPath, function(material) {
                 material.preload();
                 OBJloader.setMaterials(material);
@@ -1242,9 +1248,10 @@ export default class SceneBuilder{
                         DT.name = title;
                         DT.scale = item.scale;
                         updateProgress();
-                        loadedTotal++; console.log("模型加载完成")
-                        if(loadedTotal == Object.keys(loadingModel).length){  // 模型全部加载完成
+                        loadedModels++;
+                        if(loadedModels == loadedTotal){  // 模型全部加载完成
                             createScene();
+                            updateProgress(true);
                         }
                     },
                     function loading(e){  // 模型加载时
