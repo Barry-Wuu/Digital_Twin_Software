@@ -82,7 +82,7 @@
             "material": { "color": "lightgray" },
             "modelPath": "obj/double_7robot.obj", 
             "rotation": {"x": 90, "y": 0, "z": 0},
-            "scale": 15
+            "scale": 25
         },
         "CNC精雕机": {
             "icon": "CNC精雕机.jpg",
@@ -146,7 +146,7 @@
                 "}"
             ],
             "material": { "color": "lightgray" },
-            "modelPath": "stl/平行传送带-直道.stl", 
+            "modelPath": "stl/平行传送装置-直道.stl", 
             "rigid": true,
             "rigidShape": "geomRigid",
             "scale": 0.05,
@@ -161,7 +161,7 @@
         "平行传送装置-顺时针弯道": {
             "icon": "平行弯道1.jpg",
             "material": { "color": "lightgray" },
-            "modelPath": "stl/平行传送带-弯道.stl", 
+            "modelPath": "stl/平行传送装置-弯道.stl", 
             "rigid": true,
             "scale": 0.05,
             "v0": 1.5,
@@ -192,7 +192,7 @@
         "平行传送装置-逆时针弯道": {
             "icon": "平行弯道2.jpg",
             "material": { "color": "lightgray" },
-            "modelPath": "stl/平行传送带-弯道.stl", 
+            "modelPath": "stl/平行传送装置-弯道.stl", 
             "rigid": true, 
             "scale": 0.05,
             "v0": 1.5,
@@ -298,7 +298,7 @@
         "平行传送装置-岔道": {
             "icon": "滚轮弯道2.jpg",
             "material": { "color": "lightgray" },
-            "modelPath": "stl/平行传送带-岔道.stl", 
+            "modelPath": "stl/平行传送装置-岔道.stl", 
             "rigid": true, 
             "scale": 0.05,
             "v0": 1.5,
