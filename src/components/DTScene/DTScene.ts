@@ -1,7 +1,6 @@
 import bulb from "../../assets/svg/bulb.svg";
 import demoScene from "./DemoScene.json";
 import DTObject from "./DTObject";
-import * as fs from "fs";
 import global from "../../Global";
 import modelData from "../Models/modelData.json";
 const path = require("path");
@@ -24,12 +23,10 @@ import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js"
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js"
 import { ViewHelper } from "three/examples/jsm/helpers/ViewHelper.js"
 import { TransformControls } from "three/examples/jsm/controls/TransformControls.js"
-import { log } from "console";
 
 var attached;  // 控制器附着的物体
 var BottomFPS, BottomTimer;
 const cameraFrontRay = new THREE.Ray();
-let customModels = {};
 let attachObjects = new THREE.Group();
 var emulateMode = "stop";  // 仿真模式
 var fps = 60;  // 帧率
@@ -124,7 +121,8 @@ global.on("changeEmulateMode", (mode: string)=>{
                         shape.setFriction(0);
                         global.physicsWorld.createCollider(shape, rb);
                         tempGuardrails.push(rb);
-                        //return;
+                        return;
+                        
                         // 显示两直护栏交点处的隐形护栏
                         let mesh1 = new THREE.Mesh(
                             new THREE.BoxGeometry(k*2/tan, w*2, 1),
@@ -847,7 +845,7 @@ export default class SceneBuilder{
             groupDT.mesh.add(mesh);
             return this.createMeshFromAssets(groupDT, position, rotation);
         };
-        if(path) DT.geometry = customModels[path];  
+        if(path) DT.geometry = global.loadedModels[data.title];  
         // 先复制JSON中的模型定义再使用，以免相应的模型定义在使用时被自动修改
         for(let key in obj) DT[key] = obj[key];
         if(DT.geometry instanceof Array){  // 如果模型的json定义为写成多行的回调函数，则合并为一行并调用
@@ -1149,7 +1147,7 @@ export default class SceneBuilder{
         const create = ({title, position, rotation, length=1, prop=null}) => {  // 创建直护栏
             if(model_definition[title].label == "robot"){
                 this.createMeshFromAssets(
-                    global.loadedRobots[title], 
+                    global.loadedModels[title], 
                     new THREE.Vector3(position.x, position.y, position.z), 
                     new THREE.Euler(rotation.x*PI/180, rotation.y*PI/180, rotation.z*PI/180)
                 );
@@ -1189,7 +1187,7 @@ export default class SceneBuilder{
             for(let item of group){
                 let title = item.title;
                 if(model_definition[title].label == "robot" && 
-                    !global.loadedRobots[title] && !loadingModel[title]){
+                    !global.loadedModels[title] && !loadingModel[title]){
                     loadingModel[title] = item;
                     loadingProgress[title] = 0;
                 }
@@ -1223,7 +1221,7 @@ export default class SceneBuilder{
                 OBJloader.setMaterials(material);
                 OBJloader.load(objPath, 
                     function loaded(mesh){  // 模型加载完成
-                        let DT = global.loadedRobots[title] = new DTObject(mesh, false, "model");
+                        let DT = global.loadedModels[title] = new DTObject(mesh, false, "model");
                         DT.name = title;
                         DT.scale = item.scale;
                         updateProgress();

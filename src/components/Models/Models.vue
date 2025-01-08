@@ -85,9 +85,9 @@
         let obj = JSON.parse(JSON.stringify(model_definition[data.title]));
         e.dataTransfer.setDragImage(document.createElement("img"), 0, 0); 
         if(obj.label == "robot") {
-          if(!global.loadedRobots[data.title]) return;
+          if(!global.loadedModels[data.title]) return;
           global.emit("dragModelStart", {type: "asset", data: {
-            DT: global.loadedRobots[data.title],
+            DT: global.loadedModels[data.title],
             name: data.title,
             type: "model",
           }});
@@ -120,14 +120,14 @@
         let objPath = item.modelPath;  // 从input选择路径导入
         let mtlPath = objPath.replace(".obj", ".mtl");
         let MTLloader = new MTLLoader();
-        let OBJloader = new OBJLoader(); console.log(item,  global.loadedRobots)
+        let OBJloader = new OBJLoader();
         await MTLloader.load(mtlPath, function(material) {
           material.preload();
           OBJloader.setMaterials(material);
           OBJloader.load(objPath, 
             function loaded(mesh){  // 模型加载完成
               setTimeout(function(){  // 过1s后隐藏进度条
-                let DT = global.loadedRobots[item.title] = new DTObject(mesh, false, "model");
+                let DT = global.loadedModels[item.title] = new DTObject(mesh, false, "model");
                 DT.name = item.title;
                 DT.scale = item.scale;
                 dragAsset.value.title = '';
@@ -157,7 +157,7 @@
         let item = JSON.parse(JSON.stringify(modelData.model_definition[card.title]));
         item.title = card.title;
         if(item.label == "robot") {
-          if(!global.loadedRobots[item.title]){
+          if(!global.loadedModels[item.title]){
             dragAsset.value.title = item.title;
             dragAsset.value.loading = 0;
             this.loadBuiltInModel(item);
@@ -178,7 +178,9 @@
               }
               else if(modelPath?.endsWith('.stl')){  // 读取stl模型
                   let STLloader = new STLLoader();
-                  await STLloader.loadAsync(modelPath).then(geom => {customModels[modelPath] = geom;});   
+                  await STLloader.loadAsync(modelPath).then(
+                    geom => {global.loadedModels[basename] = geom;}
+                  );   
               }
           }
       },

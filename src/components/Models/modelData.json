@@ -97,7 +97,7 @@
             "icon": "激光打标机.jpg",
             "label": "robot",
             "material": { "color": "lightgray" },
-            "modelPath": "src/assets/models/bj/laser_marking.obj", 
+            "modelPath": "src/assets/models/obj/laser_marking.obj", 
             "rotation": {"x": 90, "y": 0, "z": 0},
             "scale": 10
         },
