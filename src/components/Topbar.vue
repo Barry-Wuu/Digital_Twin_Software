@@ -197,17 +197,7 @@
                         });  
                     });  
                     Promise.all(promises).then(()=>{  // 文件全部解压完后读取解压文件  
-                        GLTFloader.load("src/temp/Scene.txt", (file)=>{
-                            let DTScene = global.SCENE.DT;
-                            let obj = fs.readFileSync("src/temp/DTObjects.txt", "utf-8");
-                            DTScene.copyFrom(JSON.parse(obj), true);
-                            let scene = file.scene;
-                            if(!scene.userData.id) scene = scene.children[0];
-                            DTScene.mesh = scene;
-                            DTScene.mesh.DT = DTScene;
-                            DTScene.newScene();
-                            global.emit("foldAll");  // 折叠层级树
-                        });                  
+                        global.emit("loadScene", "src/temp/DemoScene.json");             
                     })
                 }) 
             },

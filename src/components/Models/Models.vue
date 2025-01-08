@@ -3,7 +3,7 @@
   import DTObject from "../DTScene/DTObject";
   const fs = require("fs");
   import global from "../../Global"
-  import modelData from "./modelData.json";
+  import modelData from "../../assets/json/modelData.json";
   import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js";
   import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
   import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js"
