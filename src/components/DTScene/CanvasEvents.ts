@@ -2,7 +2,7 @@ import { defineComponent, ref, watch } from "vue"
 import * as THREE from "three"
 import DTScene from "./DTScene"
 import global from "../../Global"
-import modelData from "../Models/modelData.json";
+import modelData from "../../assets/json/modelData.json";
 import { SelectionHelper } from "three/examples/jsm/interactive/SelectionHelper.js";
 import { SelectionBoxFixed } from "./SelectionBoxFixed";
 
