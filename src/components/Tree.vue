@@ -324,13 +324,13 @@
             <sup v-if="DT.title!='Scene' && DT.isLeaf" class="treelineH1"/>
             <div v-else class="treelineH2"/>
             <!--纵向连接线-->
-            <div v-if="DT.row" class="treelineV" :style="{'height': 12+(DT.row-1)*28+'px'}"/>
+            <div v-if="DT.tree.row" class="treelineV" :style="{'height': 12+(DT.tree.row-1)*28+'px'}"/>
           </span>
         </template> 
         <!--展开和折叠标志-->
         <template #switcherIcon="DT">
           <span style="background-color: white; margin-left: -2px;">
-            <MinusSquareOutlined v-if="DT.expanded"/>
+            <MinusSquareOutlined v-if="DT.tree.expanded"/>
             <PlusSquareOutlined v-else/>
           </span>
         </template>

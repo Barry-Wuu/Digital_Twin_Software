@@ -16,7 +16,6 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         onCollisionEnd: '',  // 碰撞结束事件
     }
     custom: any = {}  // 自定义属性
-    expanded: boolean  // 是否在层级树中展开
     friction0 = 0.1  // 静摩擦力
     friction = 1  // 滑动摩擦力
     geometry: THREE.object  // 模型几何体
@@ -45,7 +44,6 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     rigid: false  // 是否为刚体
     rigidShape: string | string[]  // 刚体网格，设成字符串易于存取，若为convex则刚体为mesh的凸集
     rigidFollow = false  // 若为是则让刚体强制跟随网格，否则默认让网格跟随刚体
-    row = 0  // 子树在层级树模块中占几行
     scale = 1  // 尺寸
     sensorPass = null  // 光电门是否在冷却
     skybox: object  // 天空盒
@@ -55,6 +53,10 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     touchObjectBefore: []  // 前一帧碰撞到的物体
     touchObject: []  // 这一帧碰撞到的物体
     touchSensor: DTObject  // 光电门碰撞到的物体
+    tree = {
+        expanded: false,  // 是否在层级树中展开
+        row: 0,  // 子树在层级树模块中占几行
+    }
     type: string  // 物体的网格类型
     v0: number  // 传送带中轴线速度
     constructor(mesh=null, addToScene=false, asset=null) {  
@@ -320,19 +322,19 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     }
     setRow(expanded){  // 设置物体在树中的行数
         let children = this.children, lastRow = 0;
-        this.expanded = expanded.includes(this.key);
-        if(this.expanded){
-            this.row = children.length;
+        this.tree.expanded = expanded.includes(this.key);
+        if(this.tree.expanded){
+            this.tree.row = children.length;
             for(let i=0; i<children.length; i++){
-                if(i<children.length-1) this.row += children[i].setRow(expanded);
+                if(i<children.length-1) this.tree.row += children[i].setRow(expanded);
                 else{
                     try{lastRow = children[children.length-1].setRow(expanded);}
                     catch{}
                 }
             }
         }
-        else this.row = 0;
-        return this.row + lastRow;
+        else this.tree.row = 0;
+        return this.tree.row + lastRow;
     }
     setSkyboxByColor() {  // 根据上中下三种颜色设置天空盒
         let skybox: any = this.skybox;

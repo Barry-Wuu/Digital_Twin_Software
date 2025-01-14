@@ -178,7 +178,6 @@ export default class SceneBuilder{
             if(loading) return;
             global.SCENE.DT.updateChildren();
             global.emit("updateTree");
-            if(!temp) global.emit("saveInitScene");
             temp = true;
         });
 
@@ -909,17 +908,21 @@ export default class SceneBuilder{
         global.SCENE.DT.traverse(DT => {
             if(DT.label != "protected" && !DT.mesh.isLight) DT.destroy();
         });
-        let demoScene = JSON.parse(fs.readFileSync(jsonPath).toString());
-
+        
         // 如果有较大的模型则全部加载并弹窗展示加载进度
+        let scene = JSON.parse(fs.readFileSync(jsonPath).toString()); console.log(scene)
         let mesh, loadingModel = {}, loadingProgress = {}, loadedModels = 0, loadedTotal = 0;
-        const create = ({title, position, rotation, length=1, prop=null}) => {  // 创建直护栏
+        const createItem = ({title, position, rotation, length=1, prop=null}) => {  // 创建直护栏
             if(model_definition[title].label == "robot"){
-                this.createMeshFromAssets(
+                let mesh = this.createMeshFromAssets(
                     global.loadedModels[title], 
                     new THREE.Vector3(position.x, position.y, position.z), 
                     new THREE.Euler(rotation.x*PI/180, rotation.y*PI/180, rotation.z*PI/180)
                 );
+                if(prop && prop.scale){  // 若场景文件中有定义比例则采用，否则使用模型定义里的默认比例
+                    mesh.scale.setScalar(prop.scale);
+                    mesh.DT.scale = prop.scale;
+                }
                 return;
             }
             else{
@@ -933,6 +936,10 @@ export default class SceneBuilder{
                 }
                 else if(length!=1) mesh.DT.createRigidBody(null, 1, mesh.scale.y=length/6);
                 else mesh.DT.createRigidBody();
+                if(prop && prop.scale){  // 若场景文件中有定义比例则采用，否则使用模型定义里的默认比例
+                    mesh.position.setScalar(prop.scale);
+                    mesh.DT.scale = prop.scale;
+                }
             }
 
             if(prop){
@@ -943,16 +950,16 @@ export default class SceneBuilder{
 
         function createScene(){
             // 传送带演示场景，从左下角开始顺时针创建，存储在同级目录的DemoScene.json中
-            for(let group of Object.values(demoScene)){
+            for(let group of Object.values(scene)){
                 for(let item of group){
-                    create(item);
+                    createItem(item);
                 };
             }
             global.SCENE.DT.updatePhysicalIDMap();
             global.SCENE.DT.updateWireframes();
         }
 
-        for(let group of Object.values(demoScene)){  // 搜索有无较大的模型
+        for(let group of Object.values(scene)){  // 搜索有无较大的模型
             for(let item of group){
                 let title = item.title;
                 if(model_definition[title].label == "robot" && 
