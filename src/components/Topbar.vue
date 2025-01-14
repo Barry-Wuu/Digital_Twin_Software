@@ -64,17 +64,7 @@
         "lightArrow": "光照方向",
     });
     const marks = {0:'1x', 25: '2x', 50: '4x', 75: '8x', 100: '10x'};
-    var menu = [
-        ["文件", [
-            "新建场景", "载入场景", "保存场景", "最近打开",
-            "——",
-            "设置",
-            "——",
-            "退出"
-        ]],
-        "主要功能",
-        "可视化"
-    ]
+    var menu = ["文件", "主要功能", "可视化"];
     const mode = ref("edit");  // 编辑模式（edit）或浏览模式（view）
     const recentOpened = ref([]);  // 最近打开的场景文件
     const speed = ref(0);
@@ -109,9 +99,21 @@
         },
         methods:{
             action(option){  // 场景操作
-                if(option == "新建场景") this.loadScene(null, "src/temp/New.DTScene");
-                if(option == "载入场景") fileInput.click();
-                if(option == "保存场景") this.saveScene();
+                if(option == "新建场景"){
+                    global.emit("popup", {  // 弹窗确认修改
+                        title: "确认新建场景",
+                        type: "yes_no",
+                        content: "在新建场景之前要保存场景吗？（按×取消）",
+                        yes: () => {  // 先保存场景再新建场景
+                            this.saveScene();
+                            this.newScene();
+                        },
+                        no: () => this.newScene()  // 直接新建场景
+                    });
+                }
+                else if(option == "保存场景") this.saveScene();
+                else if(option == "载入场景") fileInput.click();
+                else if(option == "退出") this.closeConfirm();
             },
             changeCamera(e){  // 切换相机类型（投影/正交）
                 cameraMode.value = e.key;
@@ -174,6 +176,18 @@
                 this.$nextTick(()=>{viewName.value = ''});
             },
             clearLoads(){global.emit("clearLoads")},  // 清除所有货物
+            closeConfirm(){
+                global.emit("popup", {  // 弹窗询问是否关闭
+                    title: "关闭窗口",
+                    type: "yes_no",
+                    content: "确定要关闭窗口吗？",
+                    yes: ()=>{  // 确认关闭
+                        global.emit("closeWindow");
+                        ipc.send("closeWindow");
+                    },
+                    // no为取消关闭
+                });
+            },
             lightON(e, condition = true){  // 鼠标移入图标时将其点亮
                 if(condition) e.target.style.color = 'dodgerblue';
             },
@@ -182,7 +196,10 @@
             },
             loadScene(e=null, target=null){
                 let DTFilePath;  // 选择路径
-                if(e) DTFilePath = e.target.files[0].path;  // 从input选择路径导入
+                if(e) {
+                    DTFilePath = e.target.files[0].path;  // 从input选择路径导入
+                    e.target.value = '';  // 清空input的值，以免选择和上次相同的文件时不触发事件
+                }
                 else DTFilePath = target;  // 从指定路径导入
                 if(DTFilePath.slice(0,3)!="src") this.setHistory(DTFilePath);  // 若从绝对路径导入则修改文件打开记录
                 let zip = new JSZip();
@@ -197,11 +214,16 @@
                         });  
                     });  
                     Promise.all(promises).then(()=>{  // 文件全部解压完后读取解压文件  
-                        global.emit("loadScene", "src/temp/DemoScene.json");             
+                        global.emit("loadScene", "src/temp/scene.json");             
                     })
                 }) 
             },
             message(data){ BottomMessage.textContent = data; },
+            newScene(){  // 清除场景中原有的模型，地面、灯光等除外
+                global.SCENE.DT.traverse(DT => {
+                    if(DT.label != "protected" && !DT.mesh.isLight) DT.destroy();
+                });
+            },
             reload(){  // 重新加载
                 global.emit("popup", {  // 弹窗询问是否重新加载页面
                     title: "重新加载页面",
@@ -211,40 +233,40 @@
                     // no为取消关闭
                 });
             },
-            saveScene(target=null, DTObjects="src/temp/DTObjects.txt", Scene="src/temp/Scene.txt"){
+            saveScene(){
+                const path = "src/temp/scene.json";  // 临时保存路径
                 let DTScene = global.SCENE.DT;
-                // 暂时移除位姿控制器
-                let children = DTScene.mesh.children;
-                let controller = children.filter(mesh => mesh.isTransformControls)[0];
-                DTScene.mesh.remove(controller);
-                // 保存DTObject
-                let data = JSON.stringify(DTScene.clone());
+                let json = {exported: []}
+                for(let DT of DTScene.children){
+                    if(!DT.basename) continue;  // 若为灯光、地面等则跳过
+                    let mesh = DT.mesh;
+                    let item = {
+                        title: DT.basename,
+                        position: {x: mesh.position.x, y: mesh.position.y, z: mesh.position.z},
+                        rotation: {x: mesh.rotation.x, y: mesh.rotation.y, z: mesh.rotation.z},
+                        prop: {}
+                    };
+                    for(let key in DT){  // 将DT中有定义的、基本属性类型的、除id和key以外的属性保存到json中
+                        if(DT[key] !== undefined && typeof DT[key] != "object" 
+                        && key != "id" && key != "key"){
+                            item.prop[key] = DT[key];
+                        }
+                    }
+                    json.exported.push(item);
+                }
                 try {fs.readdirSync("src/temp");}  // 无临时文件夹则创建临时文件夹
                 catch {fs.mkdirSync("src/temp");}
-                fs.writeFileSync(DTObjects, data);
-                // 保存GLTF场景文件，克隆场景并自动去除其中的DT，以节省文件大小
-                let clone = DTScene.mesh.clone();
-                GLTFexporter.parse(clone, function (scene) {
-                    DTScene.mesh.add(controller);  // 恢复控制器
-                    // 压缩
-                    const file = JSON.stringify(scene);
-                    fs.writeFileSync(Scene, file);
-                    const zip = new JSZip(), zipFile = "src/temp/DTScene.DTScene";  
-                    zip.file(path.basename(DTObjects), fs.readFileSync(DTObjects)); 
-                    zip.file(path.basename(Scene), fs.readFileSync(Scene));
-                    zip.generateAsync({type: "nodebuffer"}).then(data => {
-                        if(target){
-                            fs.writeFileSync(target, data); 
-                            return;
-                        }
-                        fs.writeFileSync(zipFile, data);
-                    }).then(()=>{  // 选择目录并下载
-                        if(target) return;
-                        fileOutput.href = zipFile;  // 被下载的文件
-                        fileOutput.download = "场景.DTScene";  // 默认文件名
-                        fileOutput.click();
-                    });
-                }, null, {onlyVisible: false});           
+                fs.writeFileSync(path, JSON.stringify(json));  // 保存临时json文件
+                // 压缩
+                const zip = new JSZip(), zipFile = "src/temp/DTScene.zip";  
+                zip.file(zipFile, fs.readFileSync(path));
+                zip.generateAsync({type: "nodebuffer"}).then(data => {
+                    fs.writeFileSync(zipFile, data);
+                }).then(()=>{  // 选择目录并下载
+                    fileOutput.href = zipFile;  // 被下载的文件
+                    fileOutput.download = "场景.DTScene";  // 默认文件名
+                    fileOutput.click();
+                });
             },
             sendData(){  // 设置发送数据
                 global.emit("popup", {type: "sendData", title: "数据发送设置"});
@@ -317,18 +339,7 @@
         },
         mounted(){  
             ipc.send("closeDevTools");  // 默认关闭开发人员工具
-            ipc.on("closeConfirm", () => {  // 退出前弹窗确认
-                global.emit("popup", {  // 弹窗询问是否关闭
-                    title: "关闭窗口",
-                    type: "yes_no",
-                    content: "确定要关闭窗口吗？",
-                    yes: ()=>{  // 确认关闭
-                        global.emit("closeWindow");
-                        ipc.send("closeWindow");
-                    },
-                    // no为取消关闭
-                });
-            });
+            ipc.on("closeConfirm", () => this.closeConfirm());  // 退出前弹窗确认
             BottomMessage = document.getElementById("BottomMessage");
             BottomSpeed = document.getElementById("BottomSpeed");
             fileInput = document.getElementById("fileInput");
@@ -358,7 +369,6 @@
                 }
                 deleteFolder("src/temp");
             });
-            global.on("saveInitScene", ()=>{this.saveScene("src/temp/New.DTScene")});
         },
     });
 </script>
@@ -398,16 +408,26 @@
     <a-menu mode="horizontal" style="user-select: none">
         <a-sub-menu v-for="key in menu">
             <template #title>
-                <div v-if="typeof key == 'object'">{{key[0]}}</div>
-                <div v-else @click="changeTab(key);"
+                <div @click="if(key != '文件') changeTab(key);"
                 :style="{'color': tab == key ? 'dodgerblue': 'black'}">
                     {{key}}
                 </div>
             </template>
 
             <!--文件-->
-            <a-list v-if="typeof key == 'object'" v-for="option in key[1]">  
-                <a-sub-menu v-if="option=='最近打开'" title="最近打开">
+            <div v-if="key=='文件'">
+                <a-sub-menu title="场景">
+                    <a-menu-item key="新建场景" title="新建场景" @click="action('新建场景')">
+                        新建场景
+                    </a-menu-item> 
+                    <a-menu-item key="保存场景" title="保存场景" @click="action('保存场景')">
+                        保存场景
+                    </a-menu-item> 
+                    <a-menu-item key="载入场景" title="载入场景" @click="action('载入场景')">
+                        载入场景
+                    </a-menu-item> 
+                </a-sub-menu>
+                <a-sub-menu title="最近打开">
                     <a-menu-item v-for="(path, index) in recentOpened.slice().reverse()" 
                     :key="path"  @click="loadScene(null, path)">
                         {{ index + 1 + '：' + path }}
@@ -416,13 +436,14 @@
                     <hr class="splitH"/>          
                     <a-menu-item @click="setHistory('clear')">清空历史记录</a-menu-item>
                 </a-sub-menu>
-                <a-menu-item v-else-if="option!='——'" :key="option"
-                :style="option == '退出' ? {color: 'red'} : {}" :title="{option}"
-                @click="action(option)">
-                    {{option}}
+                <hr class="splitH"/>  
+                <a-menu-item key="设置" title="设置" @click="action('设置')">
+                    设置
+                </a-menu-item> 
+                <a-menu-item key="退出" style="color: red" title="退出" @click="action('退出')">
+                    退出
                 </a-menu-item>  
-                <hr v-else class="splitH"/>  
-            </a-list>  
+            </div>
         </a-sub-menu>
     </a-menu>
 
