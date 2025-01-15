@@ -78,12 +78,24 @@
       computedX: {
         get(){
           if(this.propX) return this.format(this.propX);  // 拖动物体时强制更新属性值
+          let mesh = DT.value.mesh;
           let result = eval("DT.value." + this.prop);
-          if(result.isVector3 || result.isEuler){  // 编辑向量
+          if(!result && mesh){
+            if(this.prop == "world_position"){  // 更新绝对位移
+              let P = mesh.getWorldPosition(new THREE.Vector3());
+              return this.format(P.x);
+            }
+            else if(this.prop == "world_rotation"){  // 更新绝对旋转
+              let Q = mesh.getWorldQuaternion(new THREE.Quaternion());
+              let R = new THREE.Euler().setFromQuaternion(Q);
+              return this.format(R.x);
+            }
+          }
+          else if(result?.isVector3 || result?.isEuler){  // 编辑向量
             if(chosenProp.value == this.prop + '.x') return input_value.value;  // 编辑中
             else return this.format(result.x);
           }
-          if(result.isColor){  // 编辑颜色
+          else if(result?.isColor){  // 编辑颜色
             if(chosenProp.value == this.prop + '.r') return input_value.value;  // 编辑中
             return this.format(result.r, 255);
           }
@@ -91,10 +103,27 @@
         },
         set(value){
           let result = eval("DT.value." + this.prop);
-          if(result.isVector3 || result.isEuler){  // 编辑向量
+          let mesh = DT.value.mesh;
+          if(!result && mesh){
+            if(this.prop == "world_position"){  // 改变绝对位移
+              let parent = mesh.parent;
+              mesh.removeFromParent();
+              mesh.position.x = value;
+              parent.attach(mesh);
+              input_value.value = value;
+            }
+            else if(this.prop == "world_rotation"){  // 改变绝对旋转
+              let parent = mesh.parent;
+              mesh.removeFromParent();
+              mesh.rotation.x = value;
+              parent.attach(mesh);
+              input_value.value = value;
+            }
+          }
+          else if(result?.isVector3 || result?.isEuler){  // 编辑向量
             if(chosenProp.value == this.prop + '.x') input_value.value = value;  // 编辑中
           }
-          if(result.isColor){  // 编辑向量
+          else if(result?.isColor){  // 编辑向量
             if(chosenProp.value == this.prop + '.r') input_value.value = value;  // 编辑中
           }
         }
@@ -102,12 +131,24 @@
       computedY: {
         get(){
           if(this.propY) return this.format(this.propY);  // 拖动物体时强制更新属性值
+          let mesh = DT.value.mesh;
           let result = eval("DT.value." + this.prop);
-          if(result.isVector3 || result.isEuler){  // 编辑向量
+          if(!result && mesh){
+            if(this.prop == "world_position"){  // 更新绝对位移
+              let P = mesh.getWorldPosition(new THREE.Vector3());
+              return this.format(P.y);
+            }
+            else if(this.prop == "world_rotation"){  // 更新绝对旋转
+              let Q = mesh.getWorldQuaternion(new THREE.Quaternion());
+              let R = new THREE.Euler().setFromQuaternion(Q);
+              return this.format(R.y);
+            }
+          }
+          else if(result?.isVector3 || result?.isEuler){  // 编辑向量
             if(chosenProp.value == this.prop + '.y') return input_value.value;  // 编辑中
             else return this.format(result.y); 
           }
-          if(result.isColor){  // 编辑颜色
+          else if(result?.isColor){  // 编辑颜色
             if(chosenProp.value == this.prop + '.g') return input_value.value;  // 编辑中
             return this.format(result.g, 255);
           }
@@ -115,10 +156,27 @@
         },
         set(value){
           let result = eval("DT.value." + this.prop);
-          if(result.isVector3 || result.isEuler){  // 编辑向量
+          let mesh = DT.value.mesh;
+          if(!result && mesh){
+            if(this.prop == "world_position"){  // 改变绝对位移
+              let parent = mesh.parent;
+              mesh.removeFromParent();
+              mesh.position.y = value;
+              parent.attach(mesh);
+              input_value.value = value;
+            }
+            else if(this.prop == "world_rotation"){  // 改变绝对旋转
+              let parent = mesh.parent;
+              mesh.removeFromParent();
+              mesh.rotation.y = value;
+              parent.attach(mesh);
+              input_value.value = value;
+            }
+          }
+          else if(result?.isVector3 || result?.isEuler){  // 编辑向量
             if(chosenProp.value == this.prop + '.y') input_value.value = value;  // 编辑中
           }
-          if(result.isColor){  // 编辑向量
+          else if(result?.isColor){  // 编辑向量
             if(chosenProp.value == this.prop + '.g') input_value.value = value;  // 编辑中
           }
         }
@@ -126,12 +184,24 @@
       computedZ: {
         get(){
           if(this.propZ) return this.format(this.propZ);  // 拖动物体时强制更新属性值
+          let mesh = DT.value.mesh;
           let result = eval("DT.value." + this.prop);
-          if(result.isVector3 || result.isEuler){  // 编辑向量
+          if(!result && mesh){
+            if(this.prop == "world_position"){  // 更新绝对位移
+              let P = mesh.getWorldPosition(new THREE.Vector3());
+              return this.format(P.z);
+            }
+            else if(this.prop == "world_rotation"){  // 更新绝对旋转
+              let Q = mesh.getWorldQuaternion(new THREE.Quaternion());
+              let R = new THREE.Euler().setFromQuaternion(Q);
+              return this.format(R.z);
+            }
+          }
+          else if(result?.isVector3 || result?.isEuler){  // 编辑向量
             if(chosenProp.value == this.prop + '.z') return input_value.value;  // 编辑中
             else return this.format(result.z);   
           }
-          if(result.isColor){  // 编辑颜色
+          else if(result?.isColor){  // 编辑颜色
             if(chosenProp.value == this.prop + '.b') return input_value.value;  // 编辑中
             return this.format(result.b, 255);
           }
@@ -139,10 +209,27 @@
         },
         set(value){
           let result = eval("DT.value." + this.prop);
-          if(result.isVector3 || result.isEuler){  // 编辑向量
+          let mesh = DT.value.mesh;
+          if(!result && mesh){
+            if(this.prop == "world_position"){  // 改变绝对位移
+              let parent = mesh.parent;
+              mesh.removeFromParent();
+              mesh.position.z = value;
+              parent.attach(mesh);
+              input_value.value = value;
+            }
+            else if(this.prop == "world_rotation"){  // 改变绝对旋转
+              let parent = mesh.parent;
+              mesh.removeFromParent();
+              mesh.rotation.z = value;
+              parent.attach(mesh);
+              input_value.value = value;
+            }
+          }
+          else if(result?.isVector3 || result?.isEuler){  // 编辑向量
             if(chosenProp.value == this.prop + '.z') input_value.value = value;  // 编辑中
           }
-          if(result.isColor){  // 编辑向量
+          else if(result?.isColor){  // 编辑向量
             if(chosenProp.value == this.prop + '.b') input_value.value = value;  // 编辑中
           }
         }
@@ -176,6 +263,7 @@
         input_value.value = e.target.value;
         let blur = e.type == "blur";
         let enter = e.type == "keydown" && e.key == "Enter";
+        let mesh = DT.value.mesh;
         let wheel = e.type == "wheel";
         if(!(blur || enter || wheel)) return;
         let result = input_value.value;
@@ -189,9 +277,30 @@
           if(unit) result *= unit;
           input_value.value = result;
         }
-        if(this.prop == "scale") {  // 改变导入模型的比例
-            DT.value.mesh.scale.setScalar(result);
+        if(this.prop == "world_position"){  // 改变绝对位移
+          let parent = mesh.parent;
+          mesh.removeFromParent();
+          mesh.position[item] = result;
+          parent.attach(mesh);
+          this.$emit("change");
+          chosenProp.value = null;  // 结束编辑
+          this.confirm(e, true);  // 修改属性之后让元素自动失焦
+          return;
         }
+        else if(this.prop == "world_rotation"){  // 改变绝对旋转
+          let parent = mesh.parent;
+          mesh.removeFromParent();
+          mesh.rotation[item] = result;
+          parent.attach(mesh);
+          this.$emit("change");
+          chosenProp.value = null;  // 结束编辑
+          this.confirm(e, true);  // 修改属性之后让元素自动失焦
+          return;
+        }
+        else if(this.prop == "scale") {  // 改变导入模型的比例
+          mesh.scale.setScalar(result);
+        }
+
         let prop = "DT.value." + this.prop + (item ? '.' + item : '');  // 结束编辑时更改属性值
         if(eval(prop).isColor) eval(prop).setStyle(result);
         else if(this.type == "inputString") {
@@ -227,11 +336,11 @@
           else confirm();
         }
         else eval(`${prop} = ${result}`);
-
         if(this.prop == "name") {DT.value.setTitle(); global.emit("updateTree");}
+
         this.$emit("change");
         chosenProp.value = null;  // 结束编辑
-        this.confirm(e, true);  // 修改属性之后让元素自动失焦；
+        this.confirm(e, true);  // 修改属性之后让元素自动失焦
       },   
       confirm(e=null, force=false){  // 按回车键确认并失焦
         if(force || e?.type == "keydown" && e?.key == "Enter") {
@@ -241,8 +350,7 @@
               if(DT0 && DT0 != DT.value && DT0.node == DT.value.node){
                 DT0.v0 = DT.value.v0;
               }
-              }
-            )
+            })
           }
           // 发送消息
           if(DT.value.label == "conveyor"){
@@ -392,20 +500,36 @@
       global.on("updateProp", (data: any) => {  // 拖动物体时在属性栏实时更新其位移和旋转属性
         if(data.action == "mouseup") 
           this.propActive = this.propX = this.propY = this.propZ = null;
-        else if(this.prop == "mesh.position") {  // 更新位移
-          this.propX = data.mesh.position.x;
-          this.propY = data.mesh.position.y;
-          this.propZ = data.mesh.position.z;
-        }
-        else if(this.prop == "mesh.rotation") {  // 更新旋转
-          this.propX = data.mesh.rotation.x;
-          this.propY = data.mesh.rotation.y;
-          this.propZ = data.mesh.rotation.z;
+        else if(data.mesh){
+          if(this.prop == "world_position") {  // 更新绝对位移
+            let P = data.mesh.getWorldPosition(new THREE.Vector3());
+            this.propX = P.x;
+            this.propY = P.y;
+            this.propZ = P.z;
+          }
+          else if(this.prop == "world_rotation") {  // 更新绝对旋转
+            let Q = data.mesh.getWorldQuaternion(new THREE.Quaternion());
+            let R = new THREE.Euler().setFromQuaternion(Q);
+            this.propX = R.x;
+            this.propY = R.y;
+            this.propZ = R.z;
+          }
+          else if(this.prop == "mesh.position") {  // 更新相对位移
+            this.propX = data.mesh.position.x;
+            this.propY = data.mesh.position.y;
+            this.propZ = data.mesh.position.z;
+          }
+          else if(this.prop == "mesh.rotation") {  // 更新相对旋转
+            this.propX = data.mesh.rotation.x;
+            this.propY = data.mesh.rotation.y;
+            this.propZ = data.mesh.rotation.z;
+          }
         }
         else if(data.action == "mousemove" && this.prop == "mesh.scale.x"){  // 更新直道传送带长度
           this.propActive = data.mesh.scale.x;
         }
       });
+      global.emit("updateProp", DT.value);
     },
   }
 </script>
@@ -435,8 +559,8 @@
     line-height: 20px;
     margin-left: 10px;
   }
-  .editColor:hover{ cursor:pointer; }  
-  .inline {display:inline;}
+  .editColor:hover{ cursor: pointer; }  
+  .inline {display: inline;}
   .inputRow {
     display:block;
     margin-top:3px; 
@@ -452,7 +576,7 @@
 </style>
 
 <template>
-  <div v-if="hasProp(prop)" class="inputRow">
+  <div v-if="hasProp(prop) || prop=='world_position' || prop=='world_rotation'" class="inputRow">
     <!--属性名-->
     <strong> {{title}}：</strong>
 
@@ -492,7 +616,8 @@
     <!--编辑三维向量属性，chosenProp=prop代表正在编辑-->
     <span v-else-if="type=='inputVector'"><br>
       <!--THREE三维向量-->
-      <span v-if="getProp().isVector3 || getProp().isEuler">
+      <span v-if="prop=='world_position' || prop=='world_rotation' ||
+      getProp().isVector3 || getProp().isEuler">
         <strong>x:</strong>
         <a-input class="propInput" :style="{width: width}" :title="help.input" 
           v-model:value="computedX" :disabled="DT.label=='protected'"
@@ -519,7 +644,7 @@
         <div v-if="options.suffix" class="inline">{{ options.suffix }}</div>
       </span>
       <!--THREE颜色向量-->
-      <span v-if="getProp().isColor">
+      <span v-else-if="getProp().isColor">
         <strong>R:</strong>
         <a-input class="propInput" :style="{width: width}" :title="help.input" 
         v-model:value="computedX"
