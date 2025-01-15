@@ -68,8 +68,11 @@
         <Prop prop="label" title="物体标签" type="inputString" width="150px"/>
         <Prop prop="node" title="所属节点" type="inputString" width="150px"/>
         <Prop prop="mesh.visible" title="是否可见" type="checkbox"/>
-        <Prop prop="mesh.position" title="位移" type="inputVector"/>
-        <Prop prop="mesh.rotation" title="旋转" type="inputVector" width="75px"
+        <Prop prop="mesh.position" title="相对位移" type="inputVector"/>
+        <Prop prop="mesh.rotation" title="相对旋转" type="inputVector" width="75px"
+        :options="{delta:10, loop:true, min:0, max:360, suffix:'°', unit:angle}"/>
+        <Prop prop="world_position" title="绝对位移" type="inputVector"/>
+        <Prop prop="world_rotation" title="绝对旋转" type="inputVector" width="75px"
         :options="{delta:10, loop:true, min:0, max:360, suffix:'°', unit:angle}"/>
         <Prop prop="scale" title="比例" type="inputNumber" :options="{delta:0.1, min:0.1, max_warn:100}"/>
         <Prop v-if="DT.label=='conveyor' && DT.basename.includes('直道')" prop="mesh.scale.x" 

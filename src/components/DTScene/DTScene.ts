@@ -216,7 +216,7 @@ export default class SceneBuilder{
             let visible = global.layers.includes("gizmo");
             this.camera = {"透视": this.cameraPersp, "正交": this.cameraOrtho} [data];
             this.camera.position.copy(position);
-            this.gizmoPersp.visible = visible && data == "透视";
+            this.gizmoPersp = visible && data == "透视";
             this.gizmoOrtho.visible = visible && data == "正交";
             this.orbitControl.object = this.camera;
             this.orbitControl.target.copy(target);
