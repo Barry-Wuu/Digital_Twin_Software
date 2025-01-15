@@ -195,18 +195,26 @@
                 if(condition) e.target.style.color = 'black';
             },
             loadScene(e=null, target=null){
+                fs.readdir("src/temp", (err, files) => {  // 清除src/temp文件夹中的文件
+                    if(err) return;
+                    for (const file of files) {
+                        fs.unlink(path.join("src/temp", file), err => {if(err) return;});
+                    }
+                });
+
                 let DTFilePath;  // 选择路径
-                if(e) {
+                if(target) DTFilePath = target;  // 从指定路径导入
+                else {
                     DTFilePath = e.target.files[0].path;  // 从input选择路径导入
                     e.target.value = '';  // 清空input的值，以免选择和上次相同的文件时不触发事件
                 }
-                else DTFilePath = target;  // 从指定路径导入
-                if(DTFilePath.slice(0,3)!="src") this.setHistory(DTFilePath);  // 若从绝对路径导入则修改文件打开记录
+                this.setHistory(DTFilePath);  // 更新文件打开记录
+
                 let zip = new JSZip();
                 const zipFile = fs.readFileSync(DTFilePath), promises = [];  
                 zip.loadAsync(zipFile).then(() => {  // 解压  
                     zip.forEach((relativePath, zipEntry) => {  
-                        const writePath = "src/temp/" + relativePath;  
+                        const writePath = "src/temp/" + relativePath;
                         let promise = zipEntry.async('nodebuffer');
                         promises.push(promise);
                         promise.then((buffer) => {  
@@ -234,16 +242,20 @@
                 });
             },
             saveScene(){
-                const path = "src/temp/scene.json";  // 临时保存路径
                 let DTScene = global.SCENE.DT;
-                let json = {exported: []}
+                let json = {exported: []};
                 for(let DT of DTScene.children){
                     if(!DT.basename) continue;  // 若为灯光、地面等则跳过
                     let mesh = DT.mesh;
+                    let title = DT.basename;
                     let item = {
-                        title: DT.basename,
+                        title: title,
                         position: {x: mesh.position.x, y: mesh.position.y, z: mesh.position.z},
-                        rotation: {x: mesh.rotation.x, y: mesh.rotation.y, z: mesh.rotation.z},
+                        rotation: {
+                            x: mesh.rotation.x * 180 / Math.PI, 
+                            y: mesh.rotation.y * 180 / Math.PI, 
+                            z: mesh.rotation.z * 180 / Math.PI
+                        },
                         prop: {}
                     };
                     for(let key in DT){  // 将DT中有定义的、基本属性类型的、除id和key以外的属性保存到json中
@@ -252,18 +264,27 @@
                             item.prop[key] = DT[key];
                         }
                     }
+                    // 计算并输出直道和直护栏的长度
+                    if(title.includes("直道")) {
+                        item["length"] = mesh.scale.x * 7.5 / mesh.DT.scale;
+                    }
+                    else if(title == "直护栏") {
+                        item["length"] = mesh.scale.y * 6 / mesh.DT.scale;
+                    }
                     json.exported.push(item);
                 }
                 try {fs.readdirSync("src/temp");}  // 无临时文件夹则创建临时文件夹
                 catch {fs.mkdirSync("src/temp");}
-                fs.writeFileSync(path, JSON.stringify(json));  // 保存临时json文件
+                // 保存临时json文件
+                const path = "src/temp/scene.json";  // 临时保存路径
+                fs.writeFileSync(path, JSON.stringify(json));
                 // 压缩
-                const zip = new JSZip(), zipFile = "src/temp/DTScene.zip";  
-                zip.file(zipFile, fs.readFileSync(path));
-                zip.generateAsync({type: "nodebuffer"}).then(data => {
-                    fs.writeFileSync(zipFile, data);
-                }).then(()=>{  // 选择目录并下载
-                    fileOutput.href = zipFile;  // 被下载的文件
+                const zip = new JSZip(), outputPath = "src/temp/DTScene.zip";  
+                zip.file("scene.json", fs.readFileSync(path));
+                zip.generateAsync({type: "nodebuffer"})
+                .then(data => fs.writeFileSync(outputPath, data))
+                .then(() => {  // 选择目录并下载
+                    fileOutput.href = outputPath;  // 被下载的文件
                     fileOutput.download = "场景.DTScene";  // 默认文件名
                     fileOutput.click();
                 });
@@ -427,7 +448,7 @@
                         载入场景
                     </a-menu-item> 
                 </a-sub-menu>
-                <a-sub-menu title="最近打开">
+                <a-sub-menu title="最近加载">
                     <a-menu-item v-for="(path, index) in recentOpened.slice().reverse()" 
                     :key="path"  @click="loadScene(null, path)">
                         {{ index + 1 + '：' + path }}
