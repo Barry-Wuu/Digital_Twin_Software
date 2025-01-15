@@ -454,12 +454,12 @@
         },
         "托盘": {
             "icon": "托盘.jpg",
-            "geometry": "new THREE.BoxGeometry(2, 0.6, 2)",
+            "geometry": "new THREE.BoxGeometry(2, 2, 0.6)",
             "label": "WIP",
             "mass": 1,
             "material": { "color": "rgb(255, 255, 128)" },
             "rigid": true,
-            "rigidShape": "RAPIER.ColliderDesc.cuboid(1, 0.3, 1)"
+            "rigidShape": "RAPIER.ColliderDesc.cuboid(1, 1, 0.3)"
         },
         "发生器": {
             "icon": "发生器.jpg",
@@ -502,7 +502,8 @@
             "material": { "color": "blue" },
             "mass": 1,
             "rigid": true,
-            "rigidShape": "RAPIER.ColliderDesc.cylinder(0.5, 0.5)"
+            "rigidShape": "RAPIER.ColliderDesc.cylinder(0.5, 0.5)",
+            "rotation": {"x": 90, "y": 0, "z": 0}
         },
         "锥体": {
             "icon": "cone.jpg",
@@ -511,7 +512,8 @@
             "material": { "color": "yellow" },
             "mass": 1,
             "rigid": true,
-            "rigidShape": "RAPIER.ColliderDesc.cone(0.5, 0.5)"
+            "rigidShape": "RAPIER.ColliderDesc.cone(0.5, 0.5)",
+            "rotation": {"x": 90, "y": 0, "z": 0}
         }
     }
 }
