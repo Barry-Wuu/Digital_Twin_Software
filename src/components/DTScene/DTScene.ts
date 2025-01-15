@@ -472,7 +472,6 @@ export default class SceneBuilder{
 
         // 更新托盘位置
         global.on("updateTrayPosition", (data: {deviceID, RFID}) => {
-            console.log(data)
             if(emulateMode != "play") return;  // 暂停时不更新
             if(data.RFID == "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
                 data.RFID = "822fbee2-1fe0-45c8-b403-8b5cdb31cb25";
@@ -661,6 +660,7 @@ export default class SceneBuilder{
         point.position.x = x;
         point.position.y = y
         point.name = "ap1";
+        point.visible = false;
         return point;
     }
     createAttachPoint2(x, y) {  // 传送带出口连接点(横坐标，纵坐标)
@@ -670,6 +670,7 @@ export default class SceneBuilder{
         point.position.x = x;
         point.position.y = y
         point.name = "ap2";
+        point.visible = false;
         return point;
     }
     createCircle(x, y, r, color="white") {  // 圆形(横坐标，纵坐标，半径)
@@ -851,9 +852,9 @@ export default class SceneBuilder{
             DT.geometry = eval(DT.geometry.join(''))();
         }
         else if(typeof DT.geometry == "string") DT.geometry = eval(DT.geometry);
-        mesh.material = new THREE.MeshPhongMaterial(DT.material);
         DT.basename = DT.name = data.title;
         mesh.geometry = DT.geometry;
+        mesh.material = new THREE.MeshPhongMaterial(DT.material);
         DT.rigidFollow = !DT.mass;
         DT.setTitle();
         DT.updateWireframes();
@@ -862,7 +863,6 @@ export default class SceneBuilder{
             attachObjects.add(mesh);
             // localStorage.setItem('attachObjects', JSON.stringify(attachObjects));
         }
-        if(DT.label == "WIP") mesh.rotateX(PI/2);
 
         for(let layer in DT.layers){  // 解析图层
             let result = DT.layers[layer];
@@ -885,14 +885,15 @@ export default class SceneBuilder{
             mesh.add(item);
         }
         mesh.castShadow = mesh.receiveShadow = true;
-        mesh.position.copy(position);
-        if(rotation) mesh.rotation.copy(rotation);
-        if(DT.scale != 1) mesh.scale.setScalar(DT.scale);
         for(let option of Object.keys(DToptions)){
             DT[option] = DToptions[option];
         }
         this.createLabel(mesh);
+
         global.SCENE.add(mesh);
+        if(position) mesh.position.copy(position);
+        if(rotation) mesh.rotation.copy(rotation);
+        if(DT.scale != 1) mesh.scale.setScalar(DT.scale);
         return mesh;
     }  
     createSkyBoxFromTexture() {
@@ -910,9 +911,9 @@ export default class SceneBuilder{
         });
         
         // 如果有较大的模型则全部加载并弹窗展示加载进度
-        let scene = JSON.parse(fs.readFileSync(jsonPath).toString()); console.log(scene)
+        let scene = JSON.parse(fs.readFileSync(jsonPath).toString());
         let mesh, loadingModel = {}, loadingProgress = {}, loadedModels = 0, loadedTotal = 0;
-        const createItem = ({title, position, rotation, length=1, prop=null}) => {  // 创建直护栏
+        const createItem = ({title, position, rotation, length=null, prop=null}) => {  // 创建直护栏
             if(model_definition[title].label == "robot"){
                 let mesh = this.createMeshFromAssets(
                     global.loadedModels[title], 
@@ -930,16 +931,19 @@ export default class SceneBuilder{
                     new THREE.Vector3(position.x, position.y, position.z),
                     new THREE.Euler(rotation.x*PI/180, rotation.y*PI/180, rotation.z*PI/180),
                 );
-                if(title.includes("直道")) {
+                if(prop?.scale){  // 若场景文件中有定义比例则采用，否则使用模型定义里的默认比例
+                    mesh.scale.setScalar(prop.scale);
+                    mesh.DT.scale = prop.scale;
+                }
+                if(title.includes("直道") && length) {
                     mesh.scale.x = length / 7.5 * mesh.DT.scale;
                     mesh.DT.updateConveyorRigidbody();
                 }
-                else if(length!=1) mesh.DT.createRigidBody(null, 1, mesh.scale.y=length/6);
-                else mesh.DT.createRigidBody();
-                if(prop && prop.scale){  // 若场景文件中有定义比例则采用，否则使用模型定义里的默认比例
-                    mesh.position.setScalar(prop.scale);
-                    mesh.DT.scale = prop.scale;
+                else if(title ==  "直护栏" && length) {
+                    mesh.scale.y = length / 6 * mesh.DT.scale;
+                    mesh.DT.updateConveyorRigidbody();
                 }
+                else mesh.DT.createRigidBody();
             }
 
             if(prop){
@@ -1210,7 +1214,8 @@ export default class SceneBuilder{
             catch(e) {}
             if(!stop && DT.basename == "发生器"){  // 未暂停时制造货物
                 if(now - DT.timer >= DT.timeInterval){  // 秒变毫秒
-                    let mesh0 = this.createMeshFromModels({title:"货物"}, mesh.position);                 
+                    let mesh0 = this.createMeshFromModels({title:"货物"}, mesh.position);   
+                    mesh0.position.copy(mesh.position);              
                     mesh0.rotation.copy(mesh.rotation);
                     global.DTObjects.value.push(mesh0.DT);
                     global.SCENE.DT.children.push(mesh0.DT);
@@ -1226,7 +1231,6 @@ export default class SceneBuilder{
                     Number.isNaN(mesh.position.y) ||
                     Number.isNaN(mesh.position.z)
                 ){
-                    console.log(mesh)
                     mesh.DT.destroy();
                 }
                 if(DT.rigidFollow){  // 强制让刚体位姿等于网格位姿
@@ -1245,7 +1249,7 @@ export default class SceneBuilder{
     }
 
     // 演示场景，1单位长度=50mm
-    // 用global.emit("demoScene")启动，用DT().traverse(dt=>dt.v0=2)改变所有传送带速度
+    // 用DT().traverse(dt=>dt.v0=2)改变所有传送带速度
     // 用global.emit("updateTrayPosition", {deviceID:'A', RFID:'a'})向托盘发送消息
     // 光电门1物理实体ID：a5197017-c560-4713-aacd-01f097dda18f
     // 光电门3物理实体ID：75292a01-6d17-4d50-bb75-d42718f75fe8

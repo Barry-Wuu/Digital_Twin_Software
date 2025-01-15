@@ -627,8 +627,7 @@
 		"title": "平行传送装置-直道",
 		"position": {"x": 97, "y": 29.4, "z": 5.6},
 		"rotation": {"x": 0, "y": 0, "z": 180},
-		"prop": {"name": "传送带6", "node": "cc29f8d0-736e-4474-a02b-f05d93a735aa"},
-		"length": 40},
+		"prop": {"name": "传送带6", "node": "cc29f8d0-736e-4474-a02b-f05d93a735aa"}, "length": 40},
 	  {
 		"title": "平行传送装置-逆时针弯道",
 		"position": {"x": 57, "y": 24.4, "z": 5.6},
@@ -639,8 +638,7 @@
 		"title": "平行传送装置-直道",
 		"position": {"x": 52, "y": 24.4, "z": 5.6},
 		"rotation": {"x": 0, "y": 0, "z": 270},
-		"prop": {"name": "传送带6", "node": "cc29f8d0-736e-4474-a02b-f05d93a735aa"},
-		"length": 15},
+		"prop": {"name": "传送带6", "node": "cc29f8d0-736e-4474-a02b-f05d93a735aa"}, "length": 15},
 	  {
 		"title": "平行传送装置-顺时针弯道",
 		"position": {"x": 47, "y": 9.4, "z": 5.6},
@@ -728,7 +726,7 @@
 	  {
 		"title": "四轴机器人",
 		"position": {"x": 33, "y": 20.5, "z": -1},
-		"rotation": {"position": {"x": 90, "y": 270, "z": 0}}
+		"rotation": {"x": 90, "y": 270, "z": 0}
 	  },
 	  {
 		"title": "四轴机器人",
