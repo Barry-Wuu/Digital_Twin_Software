@@ -345,36 +345,44 @@
       confirm(e=null, force=false){  // 按回车键确认并失焦
         if(force || e?.type == "keydown" && e?.key == "Enter") {
           e.target.blur();
-          if(this.prop == "v0"){  // 更改某传送带元件的速度时，也更改所有节点相同的元件的速度
-            global.SCENE.DT.traverse(DT0 => {
-              if(DT0 && DT0 != DT.value && DT0.node == DT.value.node){
-                DT0.v0 = DT.value.v0;
-              }
-            })
-          }
-          // 发送消息
-          if(DT.value.label == "conveyor"){
-            let DT0 = DT.value;
-            let speed = DT0.v0 / 1.5 * 200;
-            let ip = map[DT0.node] ?? '';
-            let port = "4844";
-            let uri = DT0.node + "/AAS/Static/Composition/Conveyor/AAS/Dynamic/Belt_Speed:value@Value"
-            global.emit("postRequest", {
-              url: "http://192.168.137.155:8888/NodeWrite",
-              data:{
-                writenumber: "1",
-                writerequestjson: {
-                  "1": {
-                    ip: ip,
-                    port: port,
-                    suffix: "",
-                    namspaceindex: "3",
-                    nodeID: uri,
-                    value: speed.toFixed(2),
-                    datatype: "String"
+          if(this.prop == "v0"){  // 更改某传送装置元件的速度时，也更改所有相同节点的元件的速度
+            global.emit("popup", {  // 弹窗确认修改
+                title: "确认修改传送装置速度",
+                type: "yes_no",
+                content: "要更改所有相同节点的元件的速度吗？",
+                yes: () => {  // 更改所有相同节点的元件的速度
+                  global.SCENE.DT.traverse(DT0 => {
+                    if(DT0 && DT0 != DT.value && DT0.node == DT.value.node){
+                      DT0.v0 = DT.value.v0;
+                    }
+                  });
+                  // 发送消息
+                  if(DT.value.label == "conveyor"){
+                    let DT0 = DT.value;
+                    let speed = DT0.v0 / 1.5 * 200;
+                    let ip = map[DT0.node] ?? '';
+                    let port = "4844";
+                    let uri = DT0.node + "/AAS/Static/Composition/Conveyor/AAS/Dynamic/Belt_Speed:value@Value"
+                    global.emit("postRequest", {
+                      url: "http://192.168.137.155:8888/NodeWrite",
+                      data:{
+                        writenumber: "1",
+                        writerequestjson: {
+                          "1": {
+                            ip: ip,
+                            port: port,
+                            suffix: "",
+                            namspaceindex: "3",
+                            nodeID: uri,
+                            value: speed.toFixed(2),
+                            datatype: "String"
+                          }
+                        }
+                      }
+                    });
                   }
-                }
-              }
+                },
+                no: () => {}  // 仅更改当前元件的速度
             });
           }
         }

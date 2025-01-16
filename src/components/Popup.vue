@@ -190,8 +190,8 @@
         DT.value = data.DT;
         // 显示“是否确认动作或重命名组件”窗口
         popupData.value = data.content ? data : null;
-        if(popupContent.value == data.type && data.type != "loading" || data.close == true){
-          this.closePopup();  // 加载模型时，仅全部加载完后关闭弹窗
+        if(data.close == true){  // 加载模型时，仅全部加载完后关闭弹窗
+          this.closePopup();
         }
         else {
           popupContent.value = data.type;
