@@ -88,9 +88,6 @@ export default defineComponent({
   methods: {
     alignToConveyor(dragPoint, conveyor) {
       tempModel.rotation.set(0, 0, 0);
-      if (dragModel.DT.label == "WIP") tempModel.rotateOnWorldAxis(  // 旋转在制品
-        RIGHT, Math.PI / 2
-      );
       tempTransform.alignMode = true;
       let P = new THREE.Vector3();
       let Q = new THREE.Quaternion();
@@ -283,9 +280,6 @@ export default defineComponent({
           tempModel.position.copy(intersect.point);
           tempModel.position.add(delta);
           tempModel.rotation.set(0, 0, 0);  // 重置旋转
-          if (dragModel.DT.label == "WIP") tempModel.rotateOnWorldAxis(  // 旋转在制品
-            RIGHT, Math.PI / 2
-          );
           box.setFromObject(tempModel);
           // 若被拖动物体本身不是传送带，且碰到传送带，则将物体移动到传送带中轴线上
           if (dragModel.DT.label != "conveyor" && intersect.mesh.DT.label == "conveyor") {
