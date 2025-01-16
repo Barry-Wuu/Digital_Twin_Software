@@ -18,8 +18,8 @@
       return {
         angle: Math.PI/180,
         customCodeMap:{
-          "发生碰撞时": "onCollision",
           "开始碰撞时": "onCollisionStart",
+          "碰撞进行时": "onCollision",
           "结束碰撞时": "onCollisionEnd",
         },
         DT, 
