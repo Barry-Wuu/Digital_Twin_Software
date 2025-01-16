@@ -345,12 +345,12 @@
       confirm(e=null, force=false){  // 按回车键确认并失焦
         if(force || e?.type == "keydown" && e?.key == "Enter") {
           e.target.blur();
-          if(this.prop == "v0"){  // 更改某传送装置元件的速度时，也更改所有相同节点的元件的速度
+          if(this.prop == "v0"){  // 更改某传送装置元件的速度时，也更改所有相同节点元件的速度
             global.emit("popup", {  // 弹窗确认修改
                 title: "确认修改传送装置速度",
                 type: "yes_no",
-                content: "要更改所有相同节点的元件的速度吗？",
-                yes: () => {  // 更改所有相同节点的元件的速度
+                content: "要更改所有相同节点的传送装置元件的速度吗？",
+                yes: () => {  // 更改所有相同节点元件的速度
                   global.SCENE.DT.traverse(DT0 => {
                     if(DT0 && DT0 != DT.value && DT0.node == DT.value.node){
                       DT0.v0 = DT.value.v0;

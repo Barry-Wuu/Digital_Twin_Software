@@ -768,7 +768,7 @@ export default class SceneBuilder{
         // 光源物体
         global.SCENE.add(light);
         light.position.set(x, y, z);
-        light.rotation.x = PI / 2;
+        light.rotation.set(PI/2, PI/4, PI/4);
         iconMesh.center.set( 0.5, 0.5 );  // 图标居中
         iconMesh.position.set( 0, 0, 0 );  // 图标的三维相对位置
         light.add( iconMesh );
