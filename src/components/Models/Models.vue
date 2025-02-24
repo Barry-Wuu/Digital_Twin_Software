@@ -246,6 +246,7 @@
 
 <style>
   .model-card {  
+    border: 1px solid #888;
     display: flex; 
     width: calc(100% + 20px); 
     height: 50px;
@@ -254,14 +255,16 @@
     white-space: nowrap;
   }  
   .model-collapse{
-    border: 1px solid darkgray;
-    margin: -14px; 
+    border: 1px solid black;
+    margin: -14px;
+    margin-left: 4px; 
     user-select: none;
   }
   .model-img {  
     display: flex; 
-    width: 100%; 
-    height: 100%; 
+    margin-top: 2px;
+    width: 90%; 
+    height: 90%; 
     object-fit: contain;
   }  
   .model-imgBorder {  
@@ -296,37 +299,34 @@
       <!--模型列表-->
       <div v-if="!searchValue">
         <!--内置模型-->
-        <a-collapse v-model:activeKey="activeKeys1">
-          <a-collapse-panel key="内置模型" header="内置模型" style="white-space: nowrap;">
+        <a-collapse v-model:activeKey="activeKeys1" style="margin: 2px 4px; border: 1px solid black;">
+          <a-collapse-panel v-for="c1ass of model_layout" :header="c1ass.title" 
+          :key="c1ass.title" style="white-space: nowrap;">
             <a-collapse v-model:activeKey="activeKeys1" class="model-collapse">
-              <a-collapse-panel v-for="c1ass of model_layout" :header="c1ass.title" :key="c1ass.title">
-                <a-collapse v-model:activeKey="activeKeys1" class="model-collapse">
-                  <a-collapse-panel v-for="group of c1ass.children" 
-                    :disabled="!group.children.length"
-                    :header="group.title + (group.children.length ? '' : '（无）')" 
-                    :key="group.title" 
-                    style="text-align: left;"
-                  >
-                    <a-card v-for="item of group.children" class="model-card" draggable="true" hoverable
-                      @click="onClick(item)"
-                      @contextmenu="onRightClick(item)"
-                      @dragstart="e=>{onClick(item); dragModelStart(e, item)}" 
-                      @mousedown="deselect"
-                    >
-                      <div class="model-imgBorder">
-                        <img :src="getIMG(item)" class="model-img" draggable="false"/>
-                      </div>
-                      <div class="model-title">
-                        <span v-if="dragAsset.title==item.title">
-                          <div style="color: #AAA; text-align: left;">模型加载中</div>
-                          <a-progress style="width:8em; transform:translateY(-0.6em)" 
-                          :percent="dragAsset.loading ?? 0" :show-info="false"/>
-                        </span>
-                        <span v-else>{{item.title}}</span>
-                      </div>
-                    </a-card>
-                  </a-collapse-panel>
-                </a-collapse>
+              <a-collapse-panel v-for="group of c1ass.children" 
+                :disabled="!group.children.length"
+                :header="group.title + (group.children.length ? '' : '（无）')" 
+                :key="group.title" 
+                style="text-align: left;"
+              >
+                <a-card v-for="item of group.children" class="model-card" draggable="true" hoverable
+                  @click="onClick(item)"
+                  @contextmenu="onRightClick(item)"
+                  @dragstart="e=>{onClick(item); dragModelStart(e, item)}" 
+                  @mousedown="deselect"
+                >
+                  <div class="model-imgBorder">
+                    <img :src="getIMG(item)" class="model-img" draggable="false"/>
+                  </div>
+                  <div class="model-title">
+                    <span v-if="dragAsset.title==item.title">
+                      <div style="color: #AAA; text-align: left;">模型加载中</div>
+                      <a-progress style="width:8em; transform:translateY(-0.6em)" 
+                      :percent="dragAsset.loading ?? 0" :show-info="false"/>
+                    </span>
+                    <span v-else>{{item.title}}</span>
+                  </div>
+                </a-card>
               </a-collapse-panel>
             </a-collapse>
           </a-collapse-panel>
