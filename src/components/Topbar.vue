@@ -195,12 +195,17 @@
                 if(condition) e.target.style.color = 'black';
             },
             loadScene(e=null, target=null){
-                fs.readdir("src/temp", (err, files) => {  // 清除src/temp文件夹中的文件
-                    if(err) return;
-                    for (const file of files) {
-                        fs.unlink(path.join("src/temp", file), err => {if(err) return;});
-                    }
-                });
+                let temp = "src/temp/";
+                if (!fs.existsSync(temp))   // 如果src/temp文件夹不存在则创建
+                    fs.mkdirSync(temp, { recursive: true });
+                else {
+                    fs.readdir(temp, (err, files) => {  // 清除src/temp文件夹中的文件
+                        if(err) return;
+                        for (const file of files) {
+                            fs.unlink(path.join(temp, file), err => {if(err) return;});
+                        }
+                    });
+                }
 
                 let DTFilePath;  // 选择路径
                 if(target) DTFilePath = target;  // 从指定路径导入
@@ -214,7 +219,7 @@
                 const zipFile = fs.readFileSync(DTFilePath), promises = [];  
                 zip.loadAsync(zipFile).then(() => {  // 解压  
                     zip.forEach((relativePath, zipEntry) => {  
-                        const writePath = "src/temp/" + relativePath;
+                        const writePath = temp + relativePath;
                         let promise = zipEntry.async('nodebuffer');
                         promises.push(promise);
                         promise.then((buffer) => {  
@@ -222,7 +227,7 @@
                         });  
                     });  
                     Promise.all(promises).then(()=>{  // 文件全部解压完后读取解压文件  
-                        global.emit("loadScene", "src/temp/scene.json");             
+                        global.emit("loadScene", temp + "scene.json");             
                     })
                 }) 
             },
