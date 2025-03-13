@@ -14,7 +14,7 @@
     function print(s){global.emit("print", s)};
 
     function pad(x, n=2) {return x.toString().padStart(n, '0')}
-    global.on("print", (data)=>{
+    global.on("print", data => {
       Console.innerHTML += "<br>";
       let time = new Date();
       Console.innerHTML += time.getFullYear() + '/' 
@@ -57,4 +57,4 @@
   <div id="console" class="console">
     <strong>输出：</strong>
   </div>
-</template> ./Global./Global../Global
+</template>

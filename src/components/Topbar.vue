@@ -231,7 +231,10 @@
                     })
                 }) 
             },
-            message(data){ BottomMessage.textContent = data; },
+            message(data){ 
+                global.emit("print", data);
+                BottomMessage.textContent = data; 
+            },
             newScene(){  // 清除场景中原有的模型，地面、灯光等除外
                 global.SCENE.DT.traverse(DT => {
                     if(DT.label != "protected" && !DT.mesh.isLight) DT.destroy();
