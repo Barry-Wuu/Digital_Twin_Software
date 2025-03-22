@@ -21,7 +21,7 @@ import { PointerLockControls } from "three/examples/jsm/controls/PointerLockCont
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js"
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js"
-import { ViewHelper } from "three/examples/jsm/helpers/ViewHelper.js"
+import { ViewHelper } from "./ViewHelperFixed";
 import { TransformControls } from "three/examples/jsm/controls/TransformControls.js"
 
 var attached;  // 控制器附着的物体
@@ -150,8 +150,8 @@ export default class SceneBuilder{
     composer  // 边缘高亮着色器
     controller: TransformControls
     cssRenderer: THREE.CSS2DRenderer
-    gizmoOrtho: THREE.ViewHelper
-    gizmoPersp: THREE.ViewHelper
+    gizmoPersp: ViewHelper
+    gizmoOrtho: ViewHelper
     ground
     orbitControl: OrbitControls
     outlinePass: any  // OutlinePassFixed
@@ -217,7 +217,9 @@ export default class SceneBuilder{
             this.camera = {"透视": this.cameraPersp, "正交": this.cameraOrtho} [data];
             this.camera.position.copy(position);
             this.gizmoPersp.visible = visible && data == "透视";
+            this.gizmoPersp.domContainer.style.zIndex = data == "透视" ? 999 : 1;
             this.gizmoOrtho.visible = visible && data == "正交";
+            this.gizmoOrtho.domContainer.style.zIndex = data == "正交" ? 999 : 1;
             this.orbitControl.object = this.camera;
             this.orbitControl.target.copy(target);
             renderPass.camera = this.camera;
@@ -324,12 +326,18 @@ export default class SceneBuilder{
         })
 
         // 透视和正交相机导向器（Gizmo）
-        this.gizmoPersp = new ViewHelper(this.cameraPersp, canvasDOM);
-        this.gizmoOrtho = new ViewHelper(this.cameraOrtho, canvasDOM);
+        this.gizmoPersp = new ViewHelper(this.cameraPersp, this.renderer);
+        this.gizmoPersp.setControls(this.orbitControl);
+        this.gizmoPersp.domContainer.style.zIndex = 999;
+        this.gizmoOrtho = new ViewHelper(this.cameraOrtho, this.renderer);
+        this.gizmoOrtho.domContainer.style.zIndex = 1;
+        this.gizmoOrtho.setControls(this.orbitControl);
         this.gizmoOrtho.visible = false;
         global.on("changeGizmoVisibility", visible => {
             this.gizmoPersp.visible = visible && this.camera == this.cameraPersp;
+            this.gizmoPersp.domContainer.style.zIndex = this.camera == this.cameraPersp ? 999 : 1;
             this.gizmoOrtho.visible = visible && this.camera == this.cameraOrtho;
+            this.gizmoOrtho.domContainer.style.zIndex = this.camera == this.cameraOrtho ? 999 : 1;
         });
 
         // 地面
@@ -1176,8 +1184,8 @@ export default class SceneBuilder{
         this.updatePhysics();
         this.composer.render();
         this.cssRenderer.render(global.SCENE, this.camera);
-        if(this.camera == this.cameraPersp) this.gizmoPersp.render(this.renderer);
-        if(this.camera == this.cameraOrtho) this.gizmoOrtho.render(this.renderer);
+        if(this.camera == this.cameraPersp) this.gizmoPersp.render();
+        if(this.camera == this.cameraOrtho) this.gizmoOrtho.render();
     } 
     updateFPSandTime(now, pause, stop){  // 更新帧率和用时
         if(stop){ 
