@@ -35,10 +35,20 @@
     mounted(){
       global.on("hideProperty", ()=>DT.value = "未选择物体");  // 清空属性
       global.on("showMultipleProperty", (x)=>DT.value = `已选择${x}个物体`);  // 选择多个物体
-      global.on("showProperty", (id: any)=>{  // 显示单个物体的属性
-        id = parseInt(id);  // 若id为数字字符串则转换为数字
-        DT.value = global.SCENE.DT.findDTObjectById(id);
+      global.on("showProperty", (data: any)=>{  // 显示单个物体的属性
+        if(data.mesh?.isGroup){
+          DT.value = data;
+        } else {
+          let id = parseInt(data);  // 若id为数字字符串则转换为数字
+          DT.value = global.SCENE.DT.findDTObjectById(id);
+        }
       });
+      setTimeout(() => {  // 模拟一次点击，避免使用时第一次点击属性栏没有数据
+        global.emit("showProperty", 4);
+      }, 4000,1);
+      setTimeout(() => {  // 模拟点击后恢复，间隔确保点击完成
+        global.emit("hideProperty");
+      }, 4100,1);
     },
   }
 </script>
