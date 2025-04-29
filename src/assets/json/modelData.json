@@ -1,152 +1,471 @@
 {
     "model_layout": [
-        {"title": "生产设备", "children": [
-            {"title": "机器人", "children": [
-                {"title": "四轴机器人"},
-                {"title": "Denso六轴机器人"},
-                {"title": "Keba六轴机器人"},
-                {"title": "双臂七轴机器人"}
-            ]},
-            {"title": "加工设备", "children": [
-                {"title": "CNC精雕机"},
-                {"title": "激光打标机"}
-            ]},
-            {"title": "包装设备", "children": [
-                {"title": "上盖机"},
-                {"title": "上盒机"},
-                {"title": "下盒机"}
-            ]}
-        ]},
-        {"title": "物流设备", "children": [
-            {"title": "传送装置元件", "children": [
-                {"title": "平行传送装置-直道"},
-                {"title": "平行传送装置-顺时针弯道"},
-                {"title": "平行传送装置-逆时针弯道"},
-                {"title": "滚轮传送装置-直道"},
-                {"title": "滚轮传送装置-顺时针弯道"},
-                {"title": "滚轮传送装置-逆时针弯道"},
-                {"title": "平行传送装置-岔道"},
-                {"title": "直护栏"},
-                {"title": "弯道外侧护栏"},
-                {"title": "弯道内侧护栏"},
-                {"title": "变道护栏"}
-            ]},
-            {"title": "辅助元件", "children": [
-                {"title": "光电门"},
-                {"title": "传感器"},
-                {"title": "发生器"},
-                {"title": "回收器"}
-            ]}
-        ]},
-        {"title": "在制品", "children": [
-            {"title": "工件", "children": [
-                {"title": "货物"},
-                {"title": "托盘"}
-            ]},
-            {"title": "几何体", "children": [
-                {"title": "正方体"},
-                {"title": "球"},
-                {"title": "圆柱"},
-                {"title": "锥体"}
-            ]}
-        ]}
+        {
+            "title": "生产设备",
+            "children": [
+                {
+                    "title": "机器人",
+                    "children": [
+                        {
+                            "title": "四轴机器人"
+                        },
+                        {
+                            "title": "Denso六轴机器人"
+                        },
+                        {
+                            "title": "Keba六轴机器人"
+                        },
+                        {
+                            "title": "双臂七轴机器人"
+                        }
+                    ]
+                },
+                {
+                    "title": "加工设备",
+                    "children": [
+                        {
+                            "title": "CNC精雕机"
+                        },
+                        {
+                            "title": "激光打标机"
+                        }
+                    ]
+                },
+                {
+                    "title": "包装设备",
+                    "children": [
+                        {
+                            "title": "上盖机"
+                        },
+                        {
+                            "title": "上盒机"
+                        },
+                        {
+                            "title": "下盒机"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "title": "物流设备",
+            "children": [
+                {
+                    "title": "传送装置元件",
+                    "children": [
+                        {
+                            "title": "平行传送装置-直道"
+                        },
+                        {
+                            "title": "平行传送装置-顺时针弯道"
+                        },
+                        {
+                            "title": "平行传送装置-逆时针弯道"
+                        },
+                        {
+                            "title": "滚轮传送装置-直道"
+                        },
+                        {
+                            "title": "滚轮传送装置-顺时针弯道"
+                        },
+                        {
+                            "title": "滚轮传送装置-逆时针弯道"
+                        },
+                        {
+                            "title": "平行传送装置-岔道"
+                        },
+                        {
+                            "title": "直护栏"
+                        },
+                        {
+                            "title": "弯道外侧护栏"
+                        },
+                        {
+                            "title": "弯道内侧护栏"
+                        },
+                        {
+                            "title": "变道护栏"
+                        }
+                    ]
+                },
+                {
+                    "title": "辅助元件",
+                    "children": [
+                        {
+                            "title": "光电门"
+                        },
+                        {
+                            "title": "传感器"
+                        },
+                        {
+                            "title": "发生器"
+                        },
+                        {
+                            "title": "回收器"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "title": "在制品",
+            "children": [
+                {
+                    "title": "工件",
+                    "children": [
+                        {
+                            "title": "货物"
+                        },
+                        {
+                            "title": "托盘"
+                        }
+                    ]
+                },
+                {
+                    "title": "几何体",
+                    "children": [
+                        {
+                            "title": "正方体"
+                        },
+                        {
+                            "title": "球"
+                        },
+                        {
+                            "title": "圆柱"
+                        },
+                        {
+                            "title": "锥体"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "title": "Dae模型",
+            "children": [
+                {
+                    "title": "机器人",
+                    "children": [
+                        {
+                            "title": "Dae四轴机器人"
+                        },
+                        {
+                            "title": "DaeDenso六轴机器人"
+                        },
+                        {
+                            "title": "DaeKeba六轴机器人"
+                        },
+                        {
+                            "title": "Dae双臂七轴机器人"
+                        }
+                    ]
+                },
+                {
+                    "title": "加工设备",
+                    "children": [
+                        {
+                            "title": "DaeCNC精雕机"
+                        },
+                        {
+                            "title": "Dae激光打标机"
+                        }
+                    ]
+                },
+                {
+                    "title": "包装设备",
+                    "children": [
+                        {
+                            "title": "Dae上盖机"
+                        },
+                        {
+                            "title": "Dae上盒机"
+                        },
+                        {
+                            "title": "Dae下盒机"
+                        }
+                    ]
+                }
+            ]
+        }
     ],
     "model_definition": {
         "四轴机器人": {
             "icon": "四轴机器人.jpg",
             "label": "robot",
-            "material": { "color": "lightgray" },
-            "modelPath": "src/assets/models/obj/4robot.obj", 
-            "rotation": {"x": 90, "y": 0, "z": 0},
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/obj/4robot.obj",
+            "rotation": {
+                "x": 90,
+                "y": 0,
+                "z": 0
+            },
             "scale": 30,
             "zADD": -1
         },
         "Denso六轴机器人": {
             "icon": "Denso六轴机器人.jpg",
             "label": "robot",
-            "modelPath": "src/assets/models/obj/6robot.obj", 
-            "rotation": {"x": 90, "y": 0, "z": 0},
+            "modelPath": "src/assets/models/obj/6robot.obj",
+            "rotation": {
+                "x": 90,
+                "y": 0,
+                "z": 0
+            },
             "scale": 30
         },
         "Keba六轴机器人": {
             "icon": "Keba六轴机器人.jpg",
             "label": "robot",
-            "material": { "color": "lightgray" },
-            "modelPath": "src/assets/models/obj/abb_irb52_7_120.obj", 
-            "rotation": {"x": 90, "y": 0, "z": 0},
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/obj/abb_irb52_7_120.obj",
+            "rotation": {
+                "x": 90,
+                "y": 0,
+                "z": 0
+            },
             "scale": 10
         },
         "双臂七轴机器人": {
             "icon": "双臂七轴机器人.jpg",
             "label": "robot",
-            "material": { "color": "lightgray" },
-            "modelPath": "src/assets/models/obj/double_7robot.obj", 
-            "rotation": {"x": 90, "y": 0, "z": 0},
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/obj/double_7robot.obj",
+            "rotation": {
+                "x": 90,
+                "y": 0,
+                "z": 0
+            },
             "scale": 25
         },
         "CNC精雕机": {
             "icon": "CNC精雕机.jpg",
             "label": "robot",
-            "material": { "color": "lightgray" },
-            "modelPath": "src/assets/models/obj/cnc.obj", 
-            "rotation": {"x": 90, "y": 0, "z": 0},
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/obj/cnc.obj",
+            "rotation": {
+                "x": 90,
+                "y": 0,
+                "z": 0
+            },
             "scale": 20,
             "zADD": 15
         },
         "激光打标机": {
             "icon": "激光打标机.jpg",
             "label": "robot",
-            "material": { "color": "lightgray" },
-            "modelPath": "src/assets/models/obj/laser_marking.obj", 
-            "rotation": {"x": 90, "y": 0, "z": 0},
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/obj/laser_marking.obj",
+            "rotation": {
+                "x": 90,
+                "y": 0,
+                "z": 0
+            },
             "scale": 10
         },
         "上盖机": {
             "icon": "上盖机.jpg",
             "label": "robot",
-            "material": { "color": "lightgray" },
-            "modelPath": "src/assets/models/obj/lid_install_site.obj", 
-            "rotation": {"x": 90, "y": 0, "z": 0},
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/obj/lid_install_site.obj",
+            "rotation": {
+                "x": 90,
+                "y": 0,
+                "z": 0
+            },
             "scale": 20
         },
         "上盒机": {
             "icon": "上盒机.jpg",
             "label": "robot",
-            "material": { "color": "lightgray" },
-            "modelPath": "src/assets/models/obj/box_load_site.obj", 
-            "rotation": {"x": 90, "y": 0, "z": 0},
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/obj/box_load_site.obj",
+            "rotation": {
+                "x": 90,
+                "y": 0,
+                "z": 0
+            },
             "scale": 20
         },
         "下盒机": {
             "icon": "下盒机.jpg",
             "label": "robot",
-            "material": { "color": "lightgray" },
-            "modelPath": "src/assets/models/obj/box_unload_site.obj", 
-            "rotation": {"x": 90, "y": 0, "z": 0},
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/obj/box_unload_site.obj",
+            "rotation": {
+                "x": 90,
+                "y": 0,
+                "z": 0
+            },
             "scale": 20,
             "zADD": 3.4
         },
-
+        "Dae四轴机器人": {
+            "icon": "四轴机器人.jpg",
+            "label": "robot",
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/dae/4robot.dae",
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            },
+            "scale": 30,
+            "zADD": -1
+        },
+        "DaeDenso六轴机器人": {
+            "icon": "Denso六轴机器人.jpg",
+            "label": "robot",
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/dae/6robot.dae",
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            },
+            "scale": 30
+        },
+        "DaeKeba六轴机器人": {
+            "icon": "Keba六轴机器人.jpg",
+            "label": "robot",
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/dae/abb_irb52_7_120.dae",
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            },
+            "scale": 10
+        },
+        "Dae双臂七轴机器人": {
+            "icon": "双臂七轴机器人.jpg",
+            "label": "robot",
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/dae/double_7robot.dae",
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            },
+            "scale": 25
+        },
+        "DaeCNC精雕机": {
+            "icon": "CNC精雕机.jpg",
+            "label": "robot",
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/dae/cnc.dae",
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            },
+            "scale": 20,
+            "zADD": 15
+        },
+        "Dae激光打标机": {
+            "icon": "激光打标机.jpg",
+            "label": "robot",
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/dae/laser_marking.dae",
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            },
+            "scale": 10
+        },
+        "Dae上盖机": {
+            "icon": "上盖机.jpg",
+            "label": "robot",
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/dae/lid_install_site.dae",
+            "rotation": {
+                "x": -90,
+                "y": 0,
+                "z": 0
+            },
+            "scale": 20
+        },
+        "Dae上盒机": {
+            "icon": "上盒机.jpg",
+            "label": "robot",
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/dae/box_load_site.dae",
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            },
+            "scale": 20
+        },
+        "Dae下盒机": {
+            "icon": "下盒机.jpg",
+            "label": "robot",
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/dae/box_unload_site.dae",
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            },
+            "scale": 20,
+            "zADD": 3.4
+        },
         "平行传送装置-直道": {
             "icon": "平行直道.jpg",
             "geomRigid": [
                 "()=>{",
-                    "let a = 1.5/this.scale, A = 7.5/this.scale, shape = new THREE.Shape();",
-                    "shape.lineTo(0, a);",
-                    "shape.lineTo(A, a);",
-                    "shape.lineTo(A, -a);",
-                    "shape.lineTo(0, -a);",
-                    "shape.closePath();", 
-                    "return new THREE.ExtrudeGeometry(shape, {",  
-                        "bevelEnabled: false,",  
-                        "curveSegments: 5,",  
-                        "depth: -0.6,",  
-                        "steps: 1,",  
-                    "})",
+                "let a = 1.5/this.scale, A = 7.5/this.scale, shape = new THREE.Shape();",
+                "shape.lineTo(0, a);",
+                "shape.lineTo(A, a);",
+                "shape.lineTo(A, -a);",
+                "shape.lineTo(0, -a);",
+                "shape.closePath();",
+                "return new THREE.ExtrudeGeometry(shape, {",
+                "bevelEnabled: false,",
+                "curveSegments: 5,",
+                "depth: -0.6,",
+                "steps: 1,",
+                "})",
                 "}"
             ],
-            "material": { "color": "lightgray" },
-            "modelPath": "src/assets/models/stl/平行传送装置-直道.stl", 
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/stl/平行传送装置-直道.stl",
             "rigid": true,
             "rigidShape": "geomRigid",
             "scale": 0.05,
@@ -160,26 +479,28 @@
         },
         "平行传送装置-顺时针弯道": {
             "icon": "平行弯道1.jpg",
-            "material": { "color": "lightgray" },
-            "modelPath": "src/assets/models/stl/平行传送装置-弯道.stl", 
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/stl/平行传送装置-弯道.stl",
             "rigid": true,
             "scale": 0.05,
             "v0": 1.5,
             "label": "conveyor",
             "rigidShape": [
                 "()=>{",
-                    "const PI = Math.PI;",
-                    "let r = 3.6/this.scale, R = 6.4/this.scale, shape = new THREE.Shape();",
-                    "shape.moveTo(0, R);",
-                    "shape.absarc(0, 0, R, PI/2, PI, false);",
-                    "shape.absarc(0, 0, r, PI, PI/2, true);",
-                    "shape.closePath();",  
-                    "return new THREE.ExtrudeGeometry(shape, {",
-                        "bevelEnabled: false,",
-                        "curveSegments: 5,",
-                        "depth: -12,",
-                        "steps: 1,",
-                    "})",
+                "const PI = Math.PI;",
+                "let r = 3.6/this.scale, R = 6.4/this.scale, shape = new THREE.Shape();",
+                "shape.moveTo(0, R);",
+                "shape.absarc(0, 0, R, PI/2, PI, false);",
+                "shape.absarc(0, 0, r, PI, PI/2, true);",
+                "shape.closePath();",
+                "return new THREE.ExtrudeGeometry(shape, {",
+                "bevelEnabled: false,",
+                "curveSegments: 5,",
+                "depth: -12,",
+                "steps: 1,",
+                "})",
                 "}"
             ],
             "layers": {
@@ -187,30 +508,31 @@
                 "attachPoint1": "[this.createAttachPoint1(-100, 0)]",
                 "attachPoint2": "[this.createAttachPoint2(0, 100)]"
             }
-            
         },
         "平行传送装置-逆时针弯道": {
             "icon": "平行弯道2.jpg",
-            "material": { "color": "lightgray" },
-            "modelPath": "src/assets/models/stl/平行传送装置-弯道.stl", 
-            "rigid": true, 
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/stl/平行传送装置-弯道.stl",
+            "rigid": true,
             "scale": 0.05,
             "v0": 1.5,
             "label": "conveyor",
             "rigidShape": [
                 "()=>{",
-                    "const PI = Math.PI;",
-                    "let r = 3.6/this.scale, R = 6.4/this.scale, shape = new THREE.Shape();",
-                    "shape.moveTo(0, R);",
-                    "shape.absarc(0, 0, R, PI/2, PI, false);",
-                    "shape.absarc(0, 0, r, PI, PI/2, true);",
-                    "shape.closePath();",  
-                    "return new THREE.ExtrudeGeometry(shape, {",  
-                        "bevelEnabled: false,",  
-                        "curveSegments: 5,",  
-                        "depth: -12,",  
-                        "steps: 1,",  
-                    "})",
+                "const PI = Math.PI;",
+                "let r = 3.6/this.scale, R = 6.4/this.scale, shape = new THREE.Shape();",
+                "shape.moveTo(0, R);",
+                "shape.absarc(0, 0, R, PI/2, PI, false);",
+                "shape.absarc(0, 0, r, PI, PI/2, true);",
+                "shape.closePath();",
+                "return new THREE.ExtrudeGeometry(shape, {",
+                "bevelEnabled: false,",
+                "curveSegments: 5,",
+                "depth: -12,",
+                "steps: 1,",
+                "})",
                 "}"
             ],
             "layers": {
@@ -218,11 +540,13 @@
                 "attachPoint1": "[this.createAttachPoint1(0, 100)]",
                 "attachPoint2": "[this.createAttachPoint2(-100, 0)]"
             }
-        }, 
+        },
         "滚轮传送装置-直道": {
             "icon": "滚轮直道.jpg",
-            "material": { "color": "lightgray" },
-            "modelPath": "src/assets/models/stl/滚轮传送装置-直道.stl", 
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/stl/滚轮传送装置-直道.stl",
             "rigid": true,
             "rigidShape": "convex",
             "scale": 0.05,
@@ -236,26 +560,28 @@
         },
         "滚轮传送装置-顺时针弯道": {
             "icon": "滚轮弯道1.jpg",
-            "material": { "color": "lightgray" },
-            "modelPath": "src/assets/models/stl/滚轮传送装置-弯道.stl", 
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/stl/滚轮传送装置-弯道.stl",
             "rigid": true,
             "scale": 0.05,
             "v0": 1.5,
             "label": "conveyor",
             "rigidShape": [
                 "()=>{",
-                    "const PI = Math.PI;",
-                    "let r = 3.6/this.scale, R = 6.4/this.scale, shape = new THREE.Shape();",
-                    "shape.moveTo(0, R);",
-                    "shape.absarc(0, 0, R, PI/2, PI, false);",
-                    "shape.absarc(0, 0, r, PI, PI/2, true);",
-                    "shape.closePath();",  
-                    "return new THREE.ExtrudeGeometry(shape, {",
-                        "bevelEnabled: false,",
-                        "curveSegments: 5,",
-                        "depth: -12,",
-                        "steps: 1,",
-                    "})",
+                "const PI = Math.PI;",
+                "let r = 3.6/this.scale, R = 6.4/this.scale, shape = new THREE.Shape();",
+                "shape.moveTo(0, R);",
+                "shape.absarc(0, 0, R, PI/2, PI, false);",
+                "shape.absarc(0, 0, r, PI, PI/2, true);",
+                "shape.closePath();",
+                "return new THREE.ExtrudeGeometry(shape, {",
+                "bevelEnabled: false,",
+                "curveSegments: 5,",
+                "depth: -12,",
+                "steps: 1,",
+                "})",
                 "}"
             ],
             "layers": {
@@ -263,73 +589,78 @@
                 "attachPoint1": "[this.createAttachPoint1(-100, 0)]",
                 "attachPoint2": "[this.createAttachPoint2(0, 100)]"
             }
-            
         },
         "滚轮传送装置-逆时针弯道": {
             "icon": "滚轮弯道2.jpg",
-            "material": { "color": "lightgray" },
-            "modelPath": "src/assets/models/stl/滚轮传送装置-弯道.stl", 
-            "rigid": true, 
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/stl/滚轮传送装置-弯道.stl",
+            "rigid": true,
             "scale": 0.05,
             "v0": 1.5,
             "label": "conveyor",
             "rigidShape": [
                 "()=>{",
-                    "const PI = Math.PI;",
-                    "let r = 3.6/this.scale, R = 6.4/this.scale, shape = new THREE.Shape();",
-                    "shape.moveTo(0, R);",
-                    "shape.absarc(0, 0, R, PI/2, PI, false);",
-                    "shape.absarc(0, 0, r, PI, PI/2, true);",
-                    "shape.closePath();",  
-                    "return new THREE.ExtrudeGeometry(shape, {",  
-                        "bevelEnabled: false,",  
-                        "curveSegments: 5,",  
-                        "depth: -12,",  
-                        "steps: 1,",  
-                    "})",
+                "const PI = Math.PI;",
+                "let r = 3.6/this.scale, R = 6.4/this.scale, shape = new THREE.Shape();",
+                "shape.moveTo(0, R);",
+                "shape.absarc(0, 0, R, PI/2, PI, false);",
+                "shape.absarc(0, 0, r, PI, PI/2, true);",
+                "shape.closePath();",
+                "return new THREE.ExtrudeGeometry(shape, {",
+                "bevelEnabled: false,",
+                "curveSegments: 5,",
+                "depth: -12,",
+                "steps: 1,",
+                "})",
                 "}"
             ],
-            "layers":{
+            "layers": {
                 "indicator": "[this.createArrow(0, 5, 180)]",
                 "attachPoint1": "[this.createAttachPoint1(0, 100)]",
                 "attachPoint2": "[this.createAttachPoint2(-100, 0)]"
             }
-        }, 
+        },
         "平行传送装置-岔道": {
             "icon": "滚轮弯道2.jpg",
-            "material": { "color": "lightgray" },
-            "modelPath": "src/assets/models/stl/平行传送装置-岔道.stl", 
-            "rigid": true, 
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/stl/平行传送装置-岔道.stl",
+            "rigid": true,
             "scale": 0.05,
             "v0": 1.5,
             "label": "conveyor",
             "rigidShape": [
                 "()=>{",
-                    "const PI = Math.PI;",
-                    "let r = 3.6, R = 6.4, shape = new THREE.Shape();",
-                    "shape.moveTo(0, R);",
-                    "shape.absarc(0, 0, R, PI/2, PI, false);",
-                    "shape.absarc(0, 0, r, PI, PI/2, true);",
-                    "shape.closePath();",  
-                    "return new THREE.ExtrudeGeometry(shape, {",  
-                        "bevelEnabled: false,",  
-                        "curveSegments: 5,",  
-                        "depth: -12,",  
-                        "steps: 1,",  
-                    "})",
+                "const PI = Math.PI;",
+                "let r = 3.6, R = 6.4, shape = new THREE.Shape();",
+                "shape.moveTo(0, R);",
+                "shape.absarc(0, 0, R, PI/2, PI, false);",
+                "shape.absarc(0, 0, r, PI, PI/2, true);",
+                "shape.closePath();",
+                "return new THREE.ExtrudeGeometry(shape, {",
+                "bevelEnabled: false,",
+                "curveSegments: 5,",
+                "depth: -12,",
+                "steps: 1,",
+                "})",
                 "}"
             ],
-            "layers":{
+            "layers": {
                 "indicator": "[this.createArrow(0, 5, 180)]",
                 "attachPoint1": "[this.createAttachPoint1(-30, 0)]",
                 "attachPoint2": "[this.createAttachPoint2(1.78, 30.36), this.createAttachPoint2(14.22, 0),]"
             }
-        }, 
+        },
         "弯道（凸集）": {
             "icon": "滚轮弯道1.jpg",
-            "material": { "color": "lightgray" },
-            "modelPath": "src/assets/models/stl/滚轮传送装置-弯道.stl", 
-            "rigid": true, 
+            "material": {
+                "color": "lightgray"
+            },
+            "modelPath": "src/assets/models/stl/滚轮传送装置-弯道.stl",
+            "rigid": true,
             "rigidShape": "convex",
             "scale": 0.05,
             "v0": 1.5,
@@ -340,92 +671,105 @@
                 "attachPoint2": "[this.createAttachPoint2(0, 100)]"
             }
         },
-
         "直护栏": {
             "friction0": 0,
             "icon": "直护栏.jpg",
             "geometry": "new THREE.BoxGeometry(0.4, 6, 1)",
             "label": "guardrail",
-            "material": { "color": "gray" },
-            "rigid": true, 
+            "material": {
+                "color": "gray"
+            },
+            "rigid": true,
             "rigidShape": "convex"
         },
         "弯道外侧护栏": {
             "icon": "弯道外侧护栏.jpg",
             "geometry": [
                 "()=>{",
-                    "const PI = Math.PI;",
-                    "let r = 6.4/DT.scale - 0.2, R = 6.4/DT.scale + 0.2, shape = new THREE.Shape();",
-                    "shape.absarc(0, 0, R, PI/2, PI, false);",
-                    "shape.absarc(0, 0, r, PI, PI/2, true);",
-                    "shape.closePath();", 
-                    "return new THREE.ExtrudeGeometry(shape, {",  
-                        "bevelEnabled: false,",  
-                        "curveSegments: 12,",  
-                        "depth: 1/DT.scale,",
-                        "steps: 1,",  
-                    "})",
+                "const PI = Math.PI;",
+                "let r = 6.4/DT.scale - 0.2, R = 6.4/DT.scale + 0.2, shape = new THREE.Shape();",
+                "shape.absarc(0, 0, R, PI/2, PI, false);",
+                "shape.absarc(0, 0, r, PI, PI/2, true);",
+                "shape.closePath();",
+                "return new THREE.ExtrudeGeometry(shape, {",
+                "bevelEnabled: false,",
+                "curveSegments: 12,",
+                "depth: 1/DT.scale,",
+                "steps: 1,",
+                "})",
                 "}"
             ],
             "label": "guardrail",
-            "material": { "color": "gray" },
-            "rigid": true, 
+            "material": {
+                "color": "gray"
+            },
+            "rigid": true,
             "rigidShape": "mesh"
         },
         "弯道内侧护栏": {
             "icon": "弯道内侧护栏.jpg",
             "geometry": [
                 "()=>{",
-                    "const PI = Math.PI;",
-                    "let r = 3.6/DT.scale - 0.2, R = 3.6/DT.scale + 0.2, shape = new THREE.Shape();",
-                    "shape.absarc(0, 0, R, PI/2, PI, false);",
-                    "shape.absarc(0, 0, r, PI, PI/2, true);",
-                    "shape.closePath();", 
-                    "return new THREE.ExtrudeGeometry(shape, {",  
-                        "bevelEnabled: false,",  
-                        "curveSegments: 5,",  
-                        "depth: 1/DT.scale,",  
-                        "steps: 1,",  
-                    "})",
+                "const PI = Math.PI;",
+                "let r = 3.6/DT.scale - 0.2, R = 3.6/DT.scale + 0.2, shape = new THREE.Shape();",
+                "shape.absarc(0, 0, R, PI/2, PI, false);",
+                "shape.absarc(0, 0, r, PI, PI/2, true);",
+                "shape.closePath();",
+                "return new THREE.ExtrudeGeometry(shape, {",
+                "bevelEnabled: false,",
+                "curveSegments: 5,",
+                "depth: 1/DT.scale,",
+                "steps: 1,",
+                "})",
                 "}"
             ],
             "label": "guardrail",
-            "material": { "color": "gray" },
-            "rigid": true, 
+            "material": {
+                "color": "gray"
+            },
+            "rigid": true,
             "rigidShape": "mesh"
         },
         "变道护栏": {
             "icon": "变道护栏.jpg",
             "geometry": [
                 "()=>{",
-                    "const PI = Math.PI;",
-                    "let a = 0.25/DT.scale, A = 6/DT.scale, shape = new THREE.Shape();",
-                    "shape.moveTo(-a, -a);",
-                    "shape.lineTo(A-a, -a);",
-                    "shape.lineTo(A-a, a);",
-                    "shape.lineTo(-a, a);",
-                    "shape.closePath();", 
-                    "return new THREE.ExtrudeGeometry(shape, {",  
-                        "bevelEnabled: false,",  
-                        "curveSegments: 5,",  
-                        "depth: 1/DT.scale,",  
-                        "steps: 1,",  
-                    "})",
+                "const PI = Math.PI;",
+                "let a = 0.25/DT.scale, A = 6/DT.scale, shape = new THREE.Shape();",
+                "shape.moveTo(-a, -a);",
+                "shape.lineTo(A-a, -a);",
+                "shape.lineTo(A-a, a);",
+                "shape.lineTo(-a, a);",
+                "shape.closePath();",
+                "return new THREE.ExtrudeGeometry(shape, {",
+                "bevelEnabled: false,",
+                "curveSegments: 5,",
+                "depth: 1/DT.scale,",
+                "steps: 1,",
+                "})",
                 "}"
             ],
             "label": "guardrail",
-            "layers": {"indicator": "[this.createCircle(0, 0, 0.25)]"},
-            "material": { "color": "#333" },
-            "rigid": true, 
+            "layers": {
+                "indicator": "[this.createCircle(0, 0, 0.25)]"
+            },
+            "material": {
+                "color": "#333"
+            },
+            "rigid": true,
             "rigidShape": "mesh"
         },
         "光电门": {
             "icon": "光电门.jpg",
             "geometry": "new THREE.BoxGeometry(0.2, 3, 0.8)",
             "label": "sensor",
-            "rigid": true, 
+            "rigid": true,
             "rigidShape": "RAPIER.ColliderDesc.cuboid(0.1, 1.5, 0.4)",
-            "material": { "color": "lime", "opacity": 0.5, "transparent": true },
+            "material": {
+                "color": "lime",
+                "opacity": 0.5,
+                "transparent": true
+            },
             "layers": {
                 "indicator": "[this.createArrow(0.5, 0, 0)]"
             }
@@ -434,21 +778,26 @@
             "icon": "传感器.jpg",
             "geometry": "new THREE.BoxGeometry(0.2, 3, 0.8)",
             "label": "sensor",
-            "rigid": true, 
+            "rigid": true,
             "rigidShape": "RAPIER.ColliderDesc.cuboid(0.1, 1.5, 0.4)",
             "isSensor": true,
-            "material": { "color": "red", "opacity": 0.5, "transparent": true },
+            "material": {
+                "color": "red",
+                "opacity": 0.5,
+                "transparent": true
+            },
             "layers": {
                 "indicator": "[this.createArrow(0.5, 0, 0)]"
             }
         },
-
         "货物": {
             "icon": "货物.jpg",
             "geometry": "new THREE.BoxGeometry(1, 1, 1)",
             "label": "WIP",
             "mass": 5,
-            "material": { "color": "blue" },
+            "material": {
+                "color": "blue"
+            },
             "rigid": true,
             "rigidShape": "RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5)"
         },
@@ -457,7 +806,9 @@
             "geometry": "new THREE.BoxGeometry(2, 2, 0.6)",
             "label": "WIP",
             "mass": 1,
-            "material": { "color": "rgb(255, 255, 128)" },
+            "material": {
+                "color": "rgb(255, 255, 128)"
+            },
             "rigid": true,
             "rigidShape": "RAPIER.ColliderDesc.cuboid(1, 1, 0.3)"
         },
@@ -465,23 +816,32 @@
             "icon": "发生器.jpg",
             "geometry": "new THREE.BoxGeometry(1, 1, 1)",
             "label": "special",
-            "material": { "color": "lime", "opacity": 0.5, "transparent": true },
+            "material": {
+                "color": "lime",
+                "opacity": 0.5,
+                "transparent": true
+            },
             "timeInterval": 5000
         },
         "回收器": {
             "icon": "回收器.jpg",
             "geometry": "new THREE.BoxGeometry(1, 1, 1)",
             "label": "special",
-            "material": { "color": "red", "opacity": 0.5, "transparent": true },
+            "material": {
+                "color": "red",
+                "opacity": 0.5,
+                "transparent": true
+            },
             "rigid": true,
             "rigidShape": "RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5)"
         },
-        
         "正方体": {
             "icon": "cube.jpg",
             "geometry": "new THREE.BoxGeometry(1, 1, 1)",
             "label": "WIP",
-            "material": { "color": "lime" },
+            "material": {
+                "color": "lime"
+            },
             "mass": 1,
             "rigid": true,
             "rigidShape": "RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5)"
@@ -490,30 +850,44 @@
             "icon": "sphere.jpg",
             "geometry": "new THREE.SphereGeometry(0.5)",
             "label": "WIP",
-            "material": { "color": "red" },
+            "material": {
+                "color": "red"
+            },
             "mass": 1,
             "rigid": true,
             "rigidShape": "RAPIER.ColliderDesc.ball(0.5)"
-        },      
+        },
         "圆柱": {
             "icon": "cylinder.jpg",
             "geometry": "new THREE.CylinderGeometry(0.5, 0.5, 1)",
             "label": "WIP",
-            "material": { "color": "blue" },
+            "material": {
+                "color": "blue"
+            },
             "mass": 1,
             "rigid": true,
             "rigidShape": "RAPIER.ColliderDesc.cylinder(0.5, 0.5)",
-            "rotation": {"x": 90, "y": 0, "z": 0}
+            "rotation": {
+                "x": 90,
+                "y": 0,
+                "z": 0
+            }
         },
         "锥体": {
             "icon": "cone.jpg",
             "geometry": "new THREE.ConeGeometry(0.5, 1, 12)",
             "label": "WIP",
-            "material": { "color": "yellow" },
+            "material": {
+                "color": "yellow"
+            },
             "mass": 1,
             "rigid": true,
             "rigidShape": "RAPIER.ColliderDesc.cone(0.5, 0.5)",
-            "rotation": {"x": 90, "y": 0, "z": 0}
+            "rotation": {
+                "x": 90,
+                "y": 0,
+                "z": 0
+            }
         }
     }
 }

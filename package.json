@@ -49,10 +49,10 @@
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
+    "@dimforge/rapier3d": "^0.14.0",
     "@types/fs-extra": "^9.0.13",
     "@types/glob": "^7.2.0",
     "@types/minimatch": "^5.1.2",
-    "@dimforge/rapier3d": "^0.14.0",
     "@vueuse/core": "^10.6.1",
     "ammo.js": "^0.0.10",
     "ant-design-vue": "^4.0.0-rc.6",
@@ -64,6 +64,7 @@
     "electron-squirrel-startup": "^1.0.0",
     "express": "^4.19.2",
     "jszip": "^3.10.1",
+    "kinematics-js": "^1.0.8",
     "less": "^4.2.0",
     "mitt": "^3.0.1",
     "packager": "^0.1.9",
@@ -71,6 +72,8 @@
     "three": "^0.158.0",
     "tmp": "^0.2.1",
     "tmp-promise": "^3.0.3",
+    "vite-plugin-top-level-await": "^1.5.0",
+    "vite-plugin-wasm": "^3.4.1",
     "vue3-dnd": "^2.0.4",
     "webpack": "^5.89.0"
   }
