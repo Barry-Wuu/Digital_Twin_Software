@@ -1,229 +1,401 @@
 <script lang="ts">
-  import {CloseOutlined, EditOutlined} from "@ant-design/icons-vue";  // 清除图标
-  import DTObject from "../DTScene/DTObject";
-  const fs = require("fs");
-  import global from "../../Global"
-  import modelData from "../../assets/json/modelData.json";
-  import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js";
-  import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
-  import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js"
-  import { ref } from "vue";
+import { CloseOutlined, EditOutlined } from "@ant-design/icons-vue";  // 清除图标
+import type { JointData } from '../DTScene/DTObject';
+import DTObject from "../DTScene/DTObject";
+const fs = require("fs");
+import global from "../../Global"
+import modelData from "../../assets/json/modelData.json";
+import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js";
+import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
+import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js"
+import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js';
+import { ref } from "vue";
+import * as THREE from "three"
 
-  // JSON格式的模型列表，模型路径为src/assets/models，图标路径为src/assets/icons
-  const activeKeys1 = ref([]);
-  const activeKeys2 = ref([]);
-  const currentModel = ref();
-  const customModelGroup = ref([]);
-  const customModels: any = ref([]);
-  const dragAsset = ref({title: '', loading: 0});
-  var fileOutput;
-  var modelInput;
-  const model_definition = modelData.model_definition;
-  const model_layout: any = ref(modelData.model_layout);
-  const searchResult = ref([]);
-  const searchValue = ref('');
-  var txt;
+// JSON格式的模型列表，模型路径为src/assets/models，图标路径为src/assets/icons
+const activeKeys1 = ref([]);
+const activeKeys2 = ref([]);
+const currentModel = ref();
+const customModelGroup = ref([]);
+const customModels: any = ref([]);
+const dragAsset = ref({ title: '', loading: 0 });
+var fileOutput;
+var modelInput;
+const model_definition = modelData.model_definition;
+const model_layout: any = ref(modelData.model_layout);
+const searchResult = ref([]);
+const searchValue = ref('');
+var txt;
 
-  export default {
-    components: {CloseOutlined, EditOutlined},
-    methods:{
-      action(e){  // 选择菜单选项
-        let option = e.key;
-        if(option == "全部展开"){
-          const recursive = (object, activeKeys) => {
-            if(!activeKeys.includes(object.title)) activeKeys.push(object.title);
-            if(object.children)
-              for(let child of object.children) recursive(child, activeKeys);
-          }
-          recursive({title: "内置模型", children: model_layout.value}, activeKeys1.value);
-          activeKeys2.value = Object.keys(customModels.value);
+export default {
+  components: { CloseOutlined, EditOutlined },
+  methods: {
+    action(e) {  // 选择菜单选项
+      let option = e.key;
+      if (option == "全部展开") {
+        const recursive = (object, activeKeys) => {
+          if (!activeKeys.includes(object.title)) activeKeys.push(object.title);
+          if (object.children)
+            for (let child of object.children) recursive(child, activeKeys);
         }
-        if(option == "全部折叠"){
-          activeKeys1.value = activeKeys2.value = [];
-        }
-        if(option == "添加到自定义模型"){
-          this.saveCustomModel(currentModel.value);
-        }
-        if(option == "导入自定义模型"){
-          modelInput.click();
-        }
-        if(option == "导出自定义模型"){
-          this.exportCustomModel();
-        }
-        if(option == "修改模型名称"){
-          global.emit("popup", {  // 弹窗查看名称和确认重命名
-              title: "确认重命名",
-              type: "rename",
-              content: "重命名模型：",
-              value: currentModel.value.name,
-              yes: newValue => {currentModel.value.name = newValue;},  // 确认重命名
-              // no为取消关闭
-          });
-        }
-        if(option == "修改物理实体ID"){
-          global.emit("popup", {  // 弹窗查看名称和确认重命名
-              title: "确认重命名",
-              type: "rename",
-              content: "重命名物理实体ID：",
-              value: currentModel.value.physicalID,
-              yes: newValue => {currentModel.value.physicalID = newValue;},  // 确认重命名
-              // no为取消关闭
-          });
-        }
-        if(option == "删除自定义模型"){
-          customModels.value = customModels.value.filter(item=>item != currentModel.value);
-          if(!customModels.value.length) customModelGroup.value = [];
-        }
-        if(option == "清空自定义模型"){
-          customModels.value = customModelGroup.value = [];
-        }
-      },
-      deselect(){  // 点击卡片时取消选择物体
-        global.emit("deselect");
-      },
-      dragModelStart(e, data) {  // 发送要拖动的模型
-        let obj = JSON.parse(JSON.stringify(model_definition[data.title]));
-        e.dataTransfer.setDragImage(document.createElement("img"), 0, 0); 
-        if(obj.label == "robot") {
-          if(!global.loadedModels[data.title]) return;
-          global.emit("dragModelStart", {type: "asset", data: {
+        recursive({ title: "内置模型", children: model_layout.value }, activeKeys1.value);
+        activeKeys2.value = Object.keys(customModels.value);
+      }
+      if (option == "全部折叠") {
+        activeKeys1.value = activeKeys2.value = [];
+      }
+      if (option == "添加到自定义模型") {
+        this.saveCustomModel(currentModel.value);
+      }
+      if (option == "导入自定义模型") {
+        modelInput.click();
+      }
+      if (option == "导出自定义模型") {
+        this.exportCustomModel();
+      }
+      if (option == "修改模型名称") {
+        global.emit("popup", {  // 弹窗查看名称和确认重命名
+          title: "确认重命名",
+          type: "rename",
+          content: "重命名模型：",
+          value: currentModel.value.name,
+          yes: newValue => { currentModel.value.name = newValue; },  // 确认重命名
+          // no为取消关闭
+        });
+      }
+      if (option == "修改物理实体ID") {
+        global.emit("popup", {  // 弹窗查看名称和确认重命名
+          title: "确认重命名",
+          type: "rename",
+          content: "重命名物理实体ID：",
+          value: currentModel.value.physicalID,
+          yes: newValue => { currentModel.value.physicalID = newValue; },  // 确认重命名
+          // no为取消关闭
+        });
+      }
+      if (option == "删除自定义模型") {
+        customModels.value = customModels.value.filter(item => item != currentModel.value);
+        if (!customModels.value.length) customModelGroup.value = [];
+      }
+      if (option == "清空自定义模型") {
+        customModels.value = customModelGroup.value = [];
+      }
+    },
+    deselect() {  // 点击卡片时取消选择物体
+      global.emit("deselect");
+    },
+    dragModelStart(e, data) {  // 发送要拖动的模型
+      let obj = JSON.parse(JSON.stringify(model_definition[data.title]));
+      e.dataTransfer.setDragImage(document.createElement("img"), 0, 0);
+      if (obj.label == "robot") {
+        if (!global.loadedModels[data.title]) return;
+        global.emit("dragModelStart", {
+          type: "asset", data: {
             DT: global.loadedModels[data.title],
             name: data.title,
             type: "model",
-          }});
-        }
-        else global.emit("dragModelStart", {type: "model", data: data});
-      },
-      exportCustomModel(){  // 导出自定义模型到JSON文件
-        try{
-          txt = JSON.stringify(customModels.value);
-          fs.writeFileSync("src/temp/customModels.txt", txt);
-          fileOutput.href = "src/temp/customModels.txt";  // 被下载的文件
-          fileOutput.download = "customModels.txt";  // 默认文件名
-          fileOutput.click();  
-        }
-        catch (e) {console.log(e)}
-      },
-      getIMG(item){  // src为预览时的图片根目录，public/assets为打包后对应的图片根目录
-        return new URL(`${
-          "../../assets/icons/" + modelData.model_definition[item.title].icon
+          }
+        });
+      }
+      else global.emit("dragModelStart", { type: "model", data: data });
+    },
+    exportCustomModel() {  // 导出自定义模型到JSON文件
+      try {
+        txt = JSON.stringify(customModels.value);
+        fs.writeFileSync("src/temp/customModels.txt", txt);
+        fileOutput.href = "src/temp/customModels.txt";  // 被下载的文件
+        fileOutput.download = "customModels.txt";  // 默认文件名
+        fileOutput.click();
+      }
+      catch (e) { console.log(e) }
+    },
+    getIMG(item) {  // src为预览时的图片根目录，public/assets为打包后对应的图片根目录
+      return new URL(`${"../../assets/icons/" + modelData.model_definition[item.title].icon
         }`, import.meta.url).href
-      },
-      importCustomModel(e){  // 导入自定义模型
-        try{
-          txt = fs.readFileSync(e.target.files[0].path, "utf-8");
-          customModels.value = JSON.parse(txt);
+    },
+    parseColladaKinematics(dae: ColladaModel): DTObject['kinematics'] | null {
+      const kinematicsModels = dae.dae.library_kinematics_models;
+      if (!kinematicsModels) return null;
+      const joints: DTObject['kinematics']['joints'] = [];
+      // 示例：遍历第一个 kinematics_model
+      for (const model of kinematicsModels.kinematics_model) {
+        const systemRef = model.instance_articulated_system.url.replace('#', ''); // 例如 "#ArmSystem" -> "ArmSystem"
+
+        // 在 articulated_systems 中查找对应的系统
+        const articulatedSystem = dae.dae.library_articulated_systems?.articulated_system.find(
+          sys => sys.id === systemRef
+        );
+        if (!articulatedSystem) continue;
+
+        // 遍历关节实例
+        for (const instance of articulatedSystem.instance_joint) {
+          const jointRef = instance.url.replace('#', ''); // 例如 "#ArmJoint" -> "ArmJoint"
+          const joint = dae.dae.library_joints?.joint.find(j => j.id === jointRef);
+          if (!joint) continue;
+
+          // 将 DAE 数据转换为 DTObject 需要的格式
+          joints.push({
+            name: joint.id,
+            type: joint.type,
+            axis: joint.axis.$.x ? 'X' : joint.axis.$.y ? 'Y' : 'Z', // 根据实际情况调整
+            limit: joint.limits ? {
+              lower: Number(joint.limits.$.lower),
+              upper: Number(joint.limits.$.upper)
+            } : undefined
+          });
         }
-        catch {}
-      },
-      async loadBuiltInModel(item){
-        let objPath = item.modelPath;  // 从input选择路径导入
-        let mtlPath = objPath.replace(".obj", ".mtl");
-        let MTLloader = new MTLLoader();
-        let OBJloader = new OBJLoader();
-        await MTLloader.load(mtlPath, function(material) {
-          material.preload();
-          OBJloader.setMaterials(material);
-          OBJloader.load(objPath, 
-            function loaded(mesh){  // 模型加载完成
-              setTimeout(function(){  // 过1s后隐藏进度条
-                let DT = global.loadedModels[item.title] = new DTObject(mesh, false, "model");
-                DT.name = item.title;
-                DT.scale = item.scale;
-                dragAsset.value.title = '';
-                dragAsset.value.loading = 0;
-                if(item.rotation) mesh.rotation.set(
-                  item.rotation.x * Math.PI / 180, 
-                  item.rotation.y * Math.PI / 180, 
-                  item.rotation.z * Math.PI / 180
-                );
-              }, 1000);
-            },
-            function loading(e){  // 模型加载时
-              let progress = e.loaded / e.total * 100;
-              dragAsset.value.loading = progress;
-            },
-            function err(e){  // 模型读取错误时弹窗，并删除刚创建的模型组件
-              alert("模型读取错误");
-              console.error(e);
-              this.deleteAsset(dragAsset.value);
+
+        return { joints };
+      }
+    },
+    parseColladaJoints(dae): DTObject['joints'] {
+      const joints: DTObject['joints'] = [];
+      // 检查 dae.kinematics 是否存在
+      if (!dae?.kinematics?.joints) {
+        console.warn('[Collada] 没有找到关节数据');
+        return joints; // 返回空数组
+      }
+      // 遍历关节数据时检查每个值
+      Object.values(dae.kinematics.joints as Record<string, any>).forEach((jointData: any) => {
+        if (!jointData) return; // 跳过无效项
+        // 创建关节定义
+        const jointDef: JointData = {
+          type: 'revolute', // 默认类型
+          nodeName: jointData.name || '未命名关节',
+          axis: new THREE.Vector3(1, 0, 0), // 默认轴
+          limits: undefined
+        };
+        // 动态检测类型
+        if (jointData.type.includes('revolute')) jointDef.type = 'revolute';
+        if (jointData.type.includes('prismatic')) jointDef.type = 'prismatic';
+        joints.push(jointDef);
+      });
+      // 直接从 kinematics.joints 提取基础信息
+      Object.values(dae.kinematics.joints).forEach((jointData: any) => {
+        const jointDef: JointData = {
+          type: jointData.type === 'revolute' ? 'revolute' : 'prismatic',
+          nodeName: jointData.name,
+          axis: new THREE.Vector3(1, 0, 0), // 默认 X 轴，需通过方法 2 修正
+          limits: jointData.limits ? {
+            min: jointData.limits.min,
+            max: jointData.limits.max
+          } : undefined
+        };
+        joints.push(jointDef);
+      });
+      //结合 kinematicsModels 获取精确数据 
+      const kmodel = dae.library.kinematicsModels.kmodel0;
+      if (kmodel?.joints) {
+        Object.entries(kmodel.joints).forEach(([jointName, jointDesc]: [string, any]) => {
+          const joint = joints.find(j => j.nodeName === jointName);
+          if (!joint) return;
+          // COLLADA 解析时使用的技术参数
+          const technique = jointDesc.technique_common;
+          if (technique?.axis) {
+            joint.axis = new THREE.Vector3(
+              parseFloat(technique.axis.x),
+              parseFloat(technique.axis.y),
+              parseFloat(technique.axis.z)
+            ).normalize();
+          }
+          // 获取运动范围限制
+          if (technique?.limits) {
+            joint.limits = {
+              min: parseFloat(technique.limits.lower),
+              max: parseFloat(technique.limits.upper)
+            };
+          }
+        });
+      }
+      // 通过节点层级确定父子关系
+      dae.scene.traverse((child: THREE.Object3D) => {
+        const jointDef = joints.find(j => j.nodeName === child.name);
+        if (jointDef && child.parent) {
+          jointDef.parentBodyId = child.parent.uuid;
+          jointDef.childBodyId = child.uuid;
+          child.getWorldPosition(jointDef.anchor = new THREE.Vector3());
+        }
+      });
+      return joints;
+    }
+    ,
+    importCustomModel(e) {  // 导入自定义模型
+      try {
+        txt = fs.readFileSync(e.target.files[0].path, "utf-8");
+        customModels.value = JSON.parse(txt);
+      }
+      catch { }
+    },
+    async loadBuiltInModel(item) {
+      let modelPath = item.modelPath;
+      let ext = modelPath.slice(modelPath.lastIndexOf('.')).toLowerCase();
+      if (ext === '.dae') {//新增DAE加载分支
+        let loader = new ColladaLoader();
+        try {// 加载模型 
+          let dae = await loader.loadAsync(modelPath);
+          let model = dae.scene;
+          model.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              const originalMat = child.material;
+              child.material = new THREE.MeshPhongMaterial({
+                color: originalMat.color || 0xffffff,    // 继承原始颜色
+                map: originalMat.map || null,
+                shininess: 30
+              });
+              child.castShadow = true;
+              child.receiveShadow = true;
+              if (!child.geometry.attributes.normal) {
+                child.geometry.computeVertexNormals();
+              }
+            }
+          });
+          // const kinematicsData = this.parseColladaKinematics(dae);
+          if (item.rotation) model.rotation.set(
+            item.rotation.x * Math.PI / 180,
+            item.rotation.y * Math.PI / 180,
+            item.rotation.z * Math.PI / 180
+          );
+          model.scale.set(item.scale, item.scale, item.scale);
+          let DT = new DTObject(model, false, "model");
+          DT.joints = this.parseColladaJoints(dae);
+          DT.name = item.title;
+          DT.scale = item.scale;
+          // if (kinematicsData) DT.initKinematics(kinematicsData);
+          global.loadedModels[item.title] = DT;
+          // setTimeout(() => {
+          //   if (DT.joints.length) {
+          //     DT.createPhysicalJoints(global.physicsWorld);
+          //     console.log('DAE完整结构:', dae);
+          //     console.log('运动学数据:', dae.kinematics);
+          //     console.log(`成功为 ${DT.name} 创建 ${DT.joints.length} 个约束`);
+          //   }
+          // }, 500);
+          // setTimeout(() => DT.createPhysicalJoints(global.physicsWorld), 100);
+          // setTimeout(() => {
+          //   dragAsset.value.title = '';
+          //   dragAsset.value.loading = 0;
+          // }, 1000);
+        } catch (e) {
+          alert("DAE模型读取错误");
+          console.error(e);
+          this.deleteAsset(dragAsset.value);
+          dragAsset.value.loading = 0;
+        }
+        return;
+      }
+      let objPath = item.modelPath;  // 从input选择路径导入
+      let mtlPath = objPath.replace(".obj", ".mtl");
+      let MTLloader = new MTLLoader();
+      let OBJloader = new OBJLoader();
+      await MTLloader.load(mtlPath, function (material) {
+        material.preload();
+        OBJloader.setMaterials(material);
+        OBJloader.load(objPath,
+          function loaded(mesh) {  // 模型加载完成
+            setTimeout(function () {  // 过1s后隐藏进度条
+              let DT = global.loadedModels[item.title] = new DTObject(mesh, false, "model");
+              DT.name = item.title;
+              DT.scale = item.scale;
               dragAsset.value.title = '';
               dragAsset.value.loading = 0;
-            }
-          )
-        });
-      },
-      onClick(card){
-        let item = JSON.parse(JSON.stringify(modelData.model_definition[card.title]));
-        item.title = card.title;
-        if(item.label == "robot") {
-          if(!global.loadedModels[item.title]){
-            dragAsset.value.title = item.title;
+              if (item.rotation) mesh.rotation.set(
+                item.rotation.x * Math.PI / 180,
+                item.rotation.y * Math.PI / 180,
+                item.rotation.z * Math.PI / 180
+              );
+            }, 1000);
+          },
+          function loading(e) {  // 模型加载时
+            let progress = e.loaded / e.total * 100;
+            dragAsset.value.loading = progress;
+          },
+          function err(e) {  // 模型读取错误时弹窗，并删除刚创建的模型组件
+            alert("模型读取错误");
+            console.error(e);
+            this.deleteAsset(dragAsset.value);
+            dragAsset.value.title = '';
             dragAsset.value.loading = 0;
-            this.loadBuiltInModel(item);
           }
+        )
+      });
+    },
+    onClick(card) {
+      let item = JSON.parse(JSON.stringify(modelData.model_definition[card.title]));
+      item.title = card.title;
+      if (item.label == "robot") {
+        if (!global.loadedModels[item.title]) {
+          dragAsset.value.title = item.title;
+          dragAsset.value.loading = 0;
+          this.loadBuiltInModel(item);
         }
-      },
-      onRightClick(item){  // 在自定义模型上按右键编辑物体名称、物理实体ID或删除物体
-        if(!currentModel.value) while(!currentModel.value) currentModel.value = item;
-        else this.$nextTick(()=>{currentModel.value = item; currentModel.value});
-      },
-      async preloadModels(){  // 事先载入软件src目录里的所有内置模型
-          for(let basename in model_definition){
-              let item = model_definition[basename];
-              let modelPath = item.modelPath; 
-              if(modelPath?.endsWith('.obj')){  // 读取obj模型
-                  item.title = basename;
-                  await this.loadBuiltInModel(item);   
-              }
-              else if(modelPath?.endsWith('.stl')){  // 读取stl模型
-                  let STLloader = new STLLoader();
-                  await STLloader.loadAsync(modelPath).then(
-                    geom => {global.loadedModels[basename] = geom;}
-                  );   
-              }
-          }
-      },
-      saveCustomModel(data){  // 保存自定义模型
-        // 根据title补齐basename，或者根据basename补齐title
-        data = JSON.parse(JSON.stringify(data));  // 复制data，避免ref变量被改变
-        if(!data.title) data.title = data.basename;
-        else if(!data.basename) data.basename = data.title;
-        if(!data.name) data.name = data.basename;
-        if(!data.physicalID) data.physicalID = '0';
-        customModels.value.push(data);
-        if(!customModelGroup.value.includes("自定义模型"))
-          customModelGroup.value.push("自定义模型");
-      },
-      search(){  // 搜索栏内容改变时
-        if(searchValue.value){
-          let result = [];
-          for(let c1ass of model_layout.value){
-            for(let group of c1ass.children){
-              for(let item of group.children){
-                if(item.title.indexOf(searchValue.value) > -1) {
-                  let newItem = Object.assign({group: ''}, item);
-                  newItem.group = group.title;
-                  result.push(newItem);
-                }
+      }
+    },
+    onRightClick(item) {  // 在自定义模型上按右键编辑物体名称、物理实体ID或删除物体
+      if (!currentModel.value) while (!currentModel.value) currentModel.value = item;
+      else this.$nextTick(() => { currentModel.value = item; currentModel.value });
+    },
+    async preloadModels() {  // 事先载入软件src目录里的所有内置模型
+      // this.isLoading.value = true;
+      // try{      
+        for (let basename in model_definition) {
+        let item = model_definition[basename];
+        let modelPath = item.modelPath;
+        if (modelPath?.endsWith('.obj') || modelPath?.endsWith('.dae')) {  // 读取obj与dae模型
+          item.title = basename;
+          await this.loadBuiltInModel(item);
+        }
+        else if (modelPath?.endsWith('.stl')) {  // 读取stl模型
+          let STLloader = new STLLoader();
+          await STLloader.loadAsync(modelPath).then(
+            geom => { global.loadedModels[basename] = geom; }
+          );
+        }
+      }
+    // }
+      // finally{this.isLoading.value = false;}
+    },
+    saveCustomModel(data) {  // 保存自定义模型
+      // 根据title补齐basename，或者根据basename补齐title
+      data = JSON.parse(JSON.stringify(data));  // 复制data，避免ref变量被改变
+      if (!data.title) data.title = data.basename;
+      else if (!data.basename) data.basename = data.title;
+      if (!data.name) data.name = data.basename;
+      if (!data.physicalID) data.physicalID = '0';
+      customModels.value.push(data);
+      if (!customModelGroup.value.includes("自定义模型"))
+        customModelGroup.value.push("自定义模型");
+    },
+    search() {  // 搜索栏内容改变时
+      if (searchValue.value) {
+        let result = [];
+        for (let c1ass of model_layout.value) {
+          for (let group of c1ass.children) {
+            for (let item of group.children) {
+              if (item.title.indexOf(searchValue.value) > -1) {
+                let newItem = Object.assign({ group: '' }, item);
+                newItem.group = group.title;
+                result.push(newItem);
               }
             }
           }
-          searchResult.value = result;
         }
-      },
-      searchText(item){  // 搜索匹配文字
-        let text = searchValue.value;
-        return [
-          item.title.substring(0, item.title.indexOf(text)),
-          text,
-          item.title.substring(item.title.indexOf(text) + text.length),
-        ];
-      },
+        searchResult.value = result;
+      }
     },
-    setup() {return {
-      activeKeys1, 
-      activeKeys2, 
+    searchText(item) {  // 搜索匹配文字
+      let text = searchValue.value;
+      return [
+        item.title.substring(0, item.title.indexOf(text)),
+        text,
+        item.title.substring(item.title.indexOf(text) + text.length),
+      ];
+    },
+  },
+  setup() {
+    // const isLoading = ref(false);
+    return {
+      activeKeys1,
+      activeKeys2,
       currentModel,
       customModelGroup,
       customModels,
@@ -231,67 +403,70 @@
       modelData,
       model_definition: model_definition,
       model_layout,
-      searchValue, 
-      searchResult
-    }},
-    mounted(){
-      global.on("saveCustomModel", data => this.saveCustomModel(data));
-      document.addEventListener("contextmenu", ()=>{currentModel.value = null}, true);
-      fileOutput = document.getElementById("fileOutput");
-      modelInput = document.getElementById("modelInput");
-      this.preloadModels();  // 预先载入自定义模型
+      searchValue,
+      searchResult,
+      // isLoading,
     }
+  },
+  mounted() {
+    global.on("saveCustomModel", data => this.saveCustomModel(data));
+    document.addEventListener("contextmenu", () => { currentModel.value = null }, true);
+    fileOutput = document.getElementById("fileOutput");
+    modelInput = document.getElementById("modelInput");
+    this.preloadModels();  // 预先载入自定义模型
   }
+}
 </script>
 
 <style>
-  .model-card {  
-    border: 1px solid #888;
-    display: flex; 
-    width: calc(100% + 20px); 
-    height: 50px;
-    margin-left: -10px;
-    text-align: center;
-    white-space: nowrap;
-  }  
-  .model-collapse{
-    border: 1px solid black;
-    margin: -14px;
-    margin-left: 4px; 
-    user-select: none;
-  }
-  .model-img {  
-    display: flex; 
-    margin-top: 2px;
-    width: 90%; 
-    height: 90%; 
-    object-fit: contain;
-  }  
-  .model-imgBorder {  
-    border-right: 1px solid lightgrey; 
-    width: 50px; 
-    height: 48px;
-    margin-top: -25px;
-    margin-left: -20px;
-    padding-right: 4px;
-  } 
-  .model-title {
-    font-weight: bold;
-    margin-top: -34px; 
-    margin-left: 45px;
-  }
+.model-card {
+  border: 1px solid #888;
+  display: flex;
+  width: calc(100% + 20px);
+  height: 50px;
+  margin-left: -10px;
+  text-align: center;
+  white-space: nowrap;
+}
+.model-collapse {
+  border: 1px solid black;
+  margin: -14px;
+  margin-left: 4px;
+  user-select: none;
+}
+.model-img {
+  display: flex;
+  margin-top: 2px;
+  width: 90%;
+  height: 90%;
+  object-fit: contain;
+}
+.model-imgBorder {
+  border-right: 1px solid lightgrey;
+  width: 50px;
+  height: 48px;
+  margin-top: -25px;
+  margin-left: -20px;
+  padding-right: 4px;
+}
+.model-title {
+  font-weight: bold;
+  margin-top: -34px;
+  margin-left: 45px;
+}
 </style>
 
 <template>
-  <input id="modelInput" type="file" accept=".txt" style="display: none;"
-  @change="importCustomModel"/> 
+  <input id="modelInput" type="file" accept=".txt" style="display: none;" @change="importCustomModel" />
 
   <!--搜索栏-->
-  <a-input-search v-model:value="searchValue" placeholder="搜索"
-    style="margin-bottom: 8px" @change="search()" @search="()=>{searchValue = ''}">
-      <template #enterButton>
-        <a-button :disabled="!searchValue" type="primary"><CloseOutlined/></a-button>
-      </template>
+  <a-input-search v-model:value="searchValue" placeholder="搜索" style="margin-bottom: 8px" @change="search()"
+    @search="() => { searchValue = '' }">
+    <template #enterButton>
+      <a-button :disabled="!searchValue" type="primary">
+        <CloseOutlined />
+      </a-button>
+    </template>
   </a-input-search>
   <!--模型列表-->
   <a-dropdown :trigger="['contextmenu']">
@@ -300,31 +475,25 @@
       <div v-if="!searchValue">
         <!--内置模型-->
         <a-collapse v-model:activeKey="activeKeys1" style="margin: 2px 4px; border: 1px solid black;">
-          <a-collapse-panel v-for="c1ass of model_layout" :header="c1ass.title" 
-          :key="c1ass.title" style="white-space: nowrap;">
+          <a-collapse-panel v-for="c1ass of model_layout" :header="c1ass.title" :key="c1ass.title"
+            style="white-space: nowrap;">
             <a-collapse v-model:activeKey="activeKeys1" class="model-collapse">
-              <a-collapse-panel v-for="group of c1ass.children" 
-                :disabled="!group.children.length"
-                :header="group.title + (group.children.length ? '' : '（无）')" 
-                :key="group.title" 
-                style="text-align: left;"
-              >
+              <a-collapse-panel v-for="group of c1ass.children" :disabled="!group.children.length"
+                :header="group.title + (group.children.length ? '' : '（无）')" :key="group.title"
+                style="text-align: left;">
                 <a-card v-for="item of group.children" class="model-card" draggable="true" hoverable
-                  @click="onClick(item)"
-                  @contextmenu="onRightClick(item)"
-                  @dragstart="e=>{onClick(item); dragModelStart(e, item)}" 
-                  @mousedown="deselect"
-                >
+                  @click="onClick(item)" @contextmenu="onRightClick(item)"
+                  @dragstart="e => { onClick(item); dragModelStart(e, item) }" @mousedown="deselect">
                   <div class="model-imgBorder">
-                    <img :src="getIMG(item)" class="model-img" draggable="false"/>
+                    <img :src="getIMG(item)" class="model-img" draggable="false" />
                   </div>
                   <div class="model-title">
-                    <span v-if="dragAsset.title==item.title">
+                    <span v-if="dragAsset.title == item.title">
                       <div style="color: #AAA; text-align: left;">模型加载中</div>
-                      <a-progress style="width:8em; transform:translateY(-0.6em)" 
-                      :percent="dragAsset.loading ?? 0" :show-info="false"/>
+                      <a-progress style="width:8em; transform:translateY(-0.6em)" :percent="dragAsset.loading ?? 0"
+                        :show-info="false" />
                     </span>
-                    <span v-else>{{item.title}}</span>
+                    <span v-else>{{ item.title }}</span>
                   </div>
                 </a-card>
               </a-collapse-panel>
@@ -333,27 +502,21 @@
         </a-collapse>
         <!--自定义模型-->
         <a-collapse v-model:activeKey="customModelGroup">
-          <a-collapse-panel key="自定义模型" 
-            :disabled="!Object.keys(customModels).length"
-            :header="'自定义模型' + (Object.keys(customModels).length ? '' : '（无）')"
-          >
+          <a-collapse-panel key="自定义模型" :disabled="!Object.keys(customModels).length"
+            :header="'自定义模型' + (Object.keys(customModels).length ? '' : '（无）')">
             <a-card v-for="item of customModels" class="model-card" draggable="true" hoverable
-              style="justify-content:space-between;" 
-              @click="onClick(item)"
-              @contextmenu="onRightClick(item)"
-              @dragstart="e=>{onClick(item); dragModelStart(e, item)}" 
-              @mousedown="deselect"
-            >
+              style="justify-content:space-between;" @click="onClick(item)" @contextmenu="onRightClick(item)"
+              @dragstart="e => { onClick(item); dragModelStart(e, item) }" @mousedown="deselect">
               <div class="model-imgBorder">
-                <img :src="getIMG(item)" class="model-img" draggable="false"/>
+                <img :src="getIMG(item)" class="model-img" draggable="false" />
               </div>
               <div class="model-title">
-                <span v-if="dragAsset.title==item.title">
+                <span v-if="dragAsset.title == item.title">
                   <div style="color: #AAA; text-align: left;">模型加载中</div>
-                  <a-progress style="width:8em; transform:translateY(-0.6em)" 
-                  :percent="dragAsset.loading ?? 0" :show-info="false"/>
+                  <a-progress style="width:8em; transform:translateY(-0.6em)" :percent="dragAsset.loading ?? 0"
+                    :show-info="false" />
                 </span>
-                <span v-else>{{item.title + (item.name ? `（${item.name}）` : '')}}</span>
+                <span v-else>{{ item.title + (item.name ? `（${item.name}）` : '') }}</span>
               </div>
             </a-card>
           </a-collapse-panel>
@@ -361,19 +524,15 @@
       </div>
       <!--搜索列表-->
       <div v-else>
-        <a-card v-if="searchResult.length" v-for="item of searchResult" 
-        class="model-card" draggable="true" hoverable style="margin: 0 2.5%; width: 95%"
-          @click="onClick(item)"
-          @contextmenu="onRightClick(item)"
-          @dragstart="e=>{onClick(item); dragModelStart(e, item)}" 
-          @mousedown="deselect"
-        >
+        <a-card v-if="searchResult.length" v-for="item of searchResult" class="model-card" draggable="true" hoverable
+          style="margin: 0 2.5%; width: 95%" @click="onClick(item)" @contextmenu="onRightClick(item)"
+          @dragstart="e => { onClick(item); dragModelStart(e, item) }" @mousedown="deselect">
           <div class="model-imgBorder">
-            <img :src="getIMG(item)" class="model-img" draggable="false"/>
+            <img :src="getIMG(item)" class="model-img" draggable="false" />
           </div>
           <div v-for="str of [searchText(item)]" class="model-title">
             <span>{{ str[0] }} </span>
-            <span style="color: red; margin-left: 0px;"> {{ str[1] }} </span> 
+            <span style="color: red; margin-left: 0px;"> {{ str[1] }} </span>
             <span>{{ str[2] }} </span>
           </div>
         </a-card>
@@ -390,17 +549,17 @@
       <a-menu @click="action">
         <a-menu-item key="全部展开">全部展开</a-menu-item>
         <a-menu-item key="全部折叠">全部折叠</a-menu-item>
-        <hr class="splitH"/>
+        <hr class="splitH" />
         <a-menu-item v-if="currentModel && ['sensor', 'WIP'].includes(
-          modelData.model_definition[currentModel.title].label
-        )" key="添加到自定义模型">
+    modelData.model_definition[currentModel.title].label
+  )" key="添加到自定义模型">
           添加到自定义模型
         </a-menu-item>
         <a-menu-item key="导入自定义模型">导入自定义模型</a-menu-item>
         <a-menu-item key="导出自定义模型">导出自定义模型</a-menu-item>
-        <!--编辑自定义模型--> 
+        <!--编辑自定义模型-->
         <div v-if="currentModel && currentModel.name">
-          <hr class="splitH"/>
+          <hr class="splitH" />
           <a-menu-item key="修改模型名称">修改模型名称</a-menu-item>
           <a-menu-item key="修改物理实体ID">修改物理实体ID</a-menu-item>
           <a-menu-item key="删除该模型" danger>删除自定义模型</a-menu-item>

@@ -2,11 +2,32 @@ import { ConvexGeometry } from "three/examples/jsm/geometries/ConvexGeometry.js"
 import global from "../../Global"
 import RAPIER from "@dimforge/rapier3d";
 import * as THREE from "three"
+import TWEEN from "three/examples/jsm/libs/tween.module.js"
 // 物理解算器
 const gravity = new RAPIER.Vector3(0.0, -9.81, 0.0)
 global.physicsWorld = new RAPIER.World(gravity);
+type JointType = "revolute" | "prismatic" | "ball";  // 旋转|平移|球型关节
+export interface JointData {
+    type: JointType;       // 关节类型
+    nodeName: string;      // 对应模型中的节点名称
+    axis?: THREE.Vector3;  // 旋转/平移轴（可选）
+    limits?: { min: number, max: number }; // 运动范围限制
+    parentBodyId?: string;       // 父刚体ID
+    childBodyId?: string;        // 子刚体ID
+    anchor?: THREE.Vector3;      // 关节锚点（世界坐标）
+    currentValue?: number;       // 当前驱动值（角度或位移）
+    handle?: RAPIER.ImpulseJoint
+}
 
+interface ConstraintData {
+    type: "hinge" | "slider";  // 铰链|滑动约束
+    bodyA: string;             // 连接物体A的ID
+    bodyB: string;             // 连接物体B的ID
+    pivot: THREE.Vector3;      // 约束锚点位置
+}
 export default class DTObject {  // 用DTObject类包裹场景中的对象
+    public joints: JointData[] = [];
+    public constraints: ConstraintData[] = [];
     basename: string  // 模型在模型库中的名称
     children = []  // 子物体（自动计算）
     code = {  // 自定义脚本
@@ -41,6 +62,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     name = ''  // 名称
     node = ''  // 节点名称
     physicalID = '0'  // 物理实体ID，可编辑
+    deviceUUID: string // 对应设备UUID
     rigid: false  // 是否为刚体
     rigidShape: string | string[]  // 刚体网格，设成字符串易于存取，若为convex则刚体为mesh的凸集
     rigidFollow = false  // 若为是则让刚体强制跟随网格，否则默认让网格跟随刚体
@@ -59,91 +81,119 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     }
     type: string  // 物体的网格类型
     v0: number  // 传送带中轴线速度
-    constructor(mesh=null, addToScene=false, asset=null) {  
-        if(mesh){
+    constructor(mesh = null, addToScene = false, asset = null) {
+        if (mesh) {
             this.id = this.key = this.physicalID = mesh.id;
             this.mesh = mesh;
-            if(mesh.name) this.name = mesh.name;
+            this.deviceUUID = '';
+            if (mesh.name) this.name = mesh.name;
             this.type = mesh.type;
             mesh.DT = this;
             mesh.userData.id = this.id;
-            if(asset == "model"){
+            if (asset == "model") {
                 this.geometry = mesh.geometry;
                 this.material = mesh.material;
             }
         }
-        if(addToScene) global.DTObjects.value.push(this);
+        if (addToScene) global.DTObjects.value.push(this);
         return this;
-    }  
+    }
+
+    getkinematics() {
+        return {
+            joints: this.joints.map(j => ({
+                name: j.nodeName,
+                type: j.type,
+                axis: j.axis,
+                limit: j.limits ? {
+                    lower: j.limits.min,
+                    upper: j.limits.max
+                } : null,
+                currentValue: 0 // 用于绑定滑动条的值
+            }))
+        };
+    }
+    loadKinematics(kinematics: any) {
+        this.joints = Object.values(kinematics.joints).map((j: any) => ({
+            type: j.type,
+            nodeName: j.sid,
+            axis: new THREE.Vector3(j.axis.x, j.axis.y, j.axis.z),
+            limits: j.limits,
+            parentBodyId: this.findParentBodyId(j),
+            childBodyId: this.findChildBodyId(j),
+            anchor: this.calculateAnchorPoint(j),
+            currentValue: j.zeroPosition
+        }));
+    }
     clearLoads() {  // 重置仿真动画时遍历清除所有在制品
-        if(this.label == "WIP") this.destroy();
-        for(let child of this.children){
+        if (this.label == "WIP") this.destroy();
+        for (let child of this.children) {
             child.clearLoads();
         }
     }
     clone() {  // 保存时返回去除一些属性的DTObject，以节省DTObject文件大小
         let newDTObject: any = new DTObject(null);
-        for(let prop in this){
-            if(this[prop] == undefined) continue;
-            else if(prop == "children"){
-                for(let child of this.children){
+        for (let prop in this) {
+            if (this[prop] == undefined) continue;
+            else if (prop == "children") {
+                for (let child of this.children) {
                     newDTObject.children.push(child.clone());
                 }
             }
-            else if(this[prop]["uuid"]) continue;  // 排除网格、几何体、材质等属性
+            else if (this[prop]["uuid"]) continue;  // 排除网格、几何体、材质等属性
             else newDTObject[prop] = this[prop];
         }
         return newDTObject;
     }
-    copyFrom(obj, clearDTObjects = false){  // 将读取的普通对象变回DT对象
-        if(clearDTObjects) global.DTObjects.value = [];  // 清理旧的场景
+    copyFrom(obj, clearDTObjects = false) {  // 将读取的普通对象变回DT对象
+        if (clearDTObjects) global.DTObjects.value = [];  // 清理旧的场景
         global.DTObjects.value.push(this);
-        for(let prop in obj){
-            if(prop == "children"){
+        for (let prop in obj) {
+            if (prop == "children") {
                 this.children = [];
-                for(let child of obj.children){
+                for (let child of obj.children) {
                     let childDT = new DTObject();
                     childDT.copyFrom(child);
                     this.children.push(childDT);
-                }  
+                }
             }
             else this[prop] = obj[prop];
         }
     }
-    createRigidBody(target=this.mesh, scaleX=1, scaleY=1) {  // 添加刚体
-        if(!this.rigidShape) return;
+    createRigidBody(target = this.mesh, scaleX = 1, scaleY = 1) {  // 添加刚体
+        if (!this.rigidShape) return;
         let mass = this.mass;
         let P = this.mesh.position;
         let Q = this.mesh.quaternion;
         let shape;  // 刚体形状（碰撞体描述符）
 
-        if(this.rigidShape === "box"){  // 将包围盒作为刚体形状
+        if (this.rigidShape === "box") {  // 将包围盒作为刚体形状
             let result = this.createRigidHelper();
             let box = result;
-            if(this.label == "importedModel") {
+            if (this.label == "importedModel") {
                 let root;
-                this.mesh.traverseAncestors(mesh => {root = mesh});
+                this.mesh.traverseAncestors(mesh => { root = mesh });
                 box.multiplyScalar(root.DT.scale);
             };
-            shape = RAPIER.ColliderDesc.cuboid(box.x/2, box.y/2, box.z/2);
+            shape = RAPIER.ColliderDesc.cuboid(box.x / 2, box.y / 2, box.z / 2);
         }
-        else if(this.rigidShape == "convex"){  // 将自定义几何体的凸集作为刚体形状
-            shape = this.createRigidShape({geom: this.geometry, scaleX: scaleX, scaleY: scaleY}); 
+        else if (this.rigidShape == "convex") {  // 将自定义几何体的凸集作为刚体形状
+            shape = this.createRigidShape({ geom: this.geometry, scaleX: scaleX, scaleY: scaleY });
         }
-        else if(this.rigidShape == "geomRigid"){  // 根据自定义几何体生成刚体形状
+        else if (this.rigidShape == "geomRigid") {  // 根据自定义几何体生成刚体形状
             shape = this.createRigidShape(
-                {geom: eval(this.geomRigid.join(''))(), scaleX: scaleX, scaleY: scaleY}
-            );   
+                { geom: eval(this.geomRigid.join(''))(), scaleX: scaleX, scaleY: scaleY }
+            );
         }
-        else if(this.rigidShape == "mesh"){  // 根据网格形状直接生成刚体形状
-            shape = this.createRigidShape({geom: this.geometry});   
+        else if (this.rigidShape == "mesh") {  // 根据网格形状直接生成刚体形状
+            shape = this.createRigidShape({ geom: this.geometry });
         }
-        else if(typeof this.rigidShape == "string"){  // 根据THREE的简单几何体生成CANNON刚体
-            this.createRigidHelper(); 
-            shape = eval(this.rigidShape);   
+        else if (typeof this.rigidShape == "string") {  // 根据THREE的简单几何体生成CANNON刚体
+            this.createRigidHelper();
+            shape = eval(this.rigidShape);
         }
-        else{  // 由回调函数产生的网格形状自定义刚体形状，回调函数储存为字符串数组，其中每个元素代表一行
-            shape = this.createRigidShape({geom: eval(this.rigidShape.join(''))()}); 
+        else {  // 由回调函数产生的网格形状自定义刚体形状，回调函数储存为字符串数组，其中每个元素代表一行
+            shape = this.createRigidShape({ geom: eval(this.rigidShape.join(''))() });
         }
 
         shape.setFriction(this.friction0);
@@ -158,44 +208,44 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         const rb = global.physicsWorld.createRigidBody(rbDesc);
         global.physicsWorld.createCollider(shape, rb);  // 将形状添加到刚体中
 
-        if(target == "rigidHelper") target = this.layers.rigidHelper[0];
-        if(this.label == "sensor") rb.collisionFilterGroup = 2;
+        if (target == "rigidHelper") target = this.layers.rigidHelper[0];
+        if (this.label == "sensor") rb.collisionFilterGroup = 2;
         global.mesh2rb[this.mesh.uuid] = rb;
         global.rb2mesh[rb.handle] = this.mesh;
     }
 
-    createRigidHelper(geom=null, scale=1){  // 根据刚体形状添加可视化碰撞体网格
-        try{if(this.layers.rigidHelper.length) return;}  // 防止选择物体时重复添加可视化碰撞体
-        catch{}
+    createRigidHelper(geom = null, scale = 1) {  // 根据刚体形状添加可视化碰撞体网格
+        try { if (this.layers.rigidHelper.length) return; }  // 防止选择物体时重复添加可视化碰撞体
+        catch { }
         const material = new THREE.LineBasicMaterial({  // 红色网状材质
-            color: "red", 
+            color: "red",
         });
         let boundingBox, result, rule;
-        if(!geom){
+        if (!geom) {
             rule = /\(([^]*)\)/;
-            if(typeof this.rigidShape != "string"){  // 自定义刚体形状
+            if (typeof this.rigidShape != "string") {  // 自定义刚体形状
                 geom = this.rigidShape;
             }
-            else if(this.rigidShape == "box"){  // 方型刚体
+            else if (this.rigidShape == "box") {  // 方型刚体
                 this.mesh.geometry.computeBoundingBox();
                 boundingBox = this.mesh.geometry.boundingBox;
                 result = boundingBox.max.clone().sub(boundingBox.min);
                 result.multiplyScalar(scale);
                 geom = new THREE.BoxGeometry(result.x, result.y, result.z);
             }
-            else if(this.rigidShape.includes("btBoxShape")){  // 简单几何体刚体
+            else if (this.rigidShape.includes("btBoxShape")) {  // 简单几何体刚体
                 result = eval(this.rigidShape.match(rule)[1]);
-                geom = new THREE.BoxGeometry(result.x()*2, result.y()*2, result.z()*2);
+                geom = new THREE.BoxGeometry(result.x() * 2, result.y() * 2, result.z() * 2);
             }
-            else if(this.rigidShape.includes("btConeShape")){
+            else if (this.rigidShape.includes("btConeShape")) {
                 result = this.rigidShape.match(rule)[1];
                 geom = eval(`new THREE.ConeGeometry(${result})`);
             }
-            else if(this.rigidShape.includes("btCylinderShape")){
+            else if (this.rigidShape.includes("btCylinderShape")) {
                 result = eval(this.rigidShape.match(rule)[1]);
                 geom = new THREE.CylinderGeometry(result.x(), result.z(), result.y());
             }
-            else if(this.rigidShape.includes("btSphereShape")){
+            else if (this.rigidShape.includes("btSphereShape")) {
                 result = eval(this.rigidShape.match(rule)[1]);
                 geom = new THREE.SphereGeometry(result);
             }
@@ -204,44 +254,44 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         geom = new THREE.WireframeGeometry(geom);
         const rigidHelper = new THREE.LineSegments(geom, material);  // 可视化碰撞体网格
         rigidHelper.visible = global.layers.includes("rigidHelper");
-        if(this.rigidShape == "box") {
+        if (this.rigidShape == "box") {
             let center = new THREE.Vector3();
-            boundingBox.getCenter( center );
+            boundingBox.getCenter(center);
             center.multiplyScalar(scale)
-            this.mesh.add( rigidHelper );
-            rigidHelper.position.copy( center );
+            this.mesh.add(rigidHelper);
+            rigidHelper.position.copy(center);
             this.layers.rigidHelper = [rigidHelper];
             return result;
         }
         this.mesh.add(rigidHelper);
         this.layers.rigidHelper = [rigidHelper];
     }
-    createRigidShape({geom, x0=0, y0=0, scaleX=1, scaleY=1}){  // 从几何形状建立刚体形状
+    createRigidShape({ geom, x0 = 0, y0 = 0, scaleX = 1, scaleY = 1 }) {  // 从几何形状建立刚体形状
         // points里每三个连续的点定义了一个三角形面
         let newVertices: any = [], newIndexes: any = [];
         let scale = this.scale;
         let threeVertices = [];
         let points = geom.attributes.position.array;
-        for (let i=0; i < points.length; i+=9) {
+        for (let i = 0; i < points.length; i += 9) {
             newVertices.push(
-                points[i]*scale*scaleX + x0, 
-                points[i+1]*scale*scaleY + y0,
-                points[i+2]*scale, 
-                points[i+3]*scale*scaleX + x0, 
-                points[i+4]*scale*scaleY + y0, 
-                points[i+5]*scale, 
-                points[i+6]*scale*scaleX + x0, 
-                points[i+7]*scale*scaleY + y0,
-                points[i+8]*scale
+                points[i] * scale * scaleX + x0,
+                points[i + 1] * scale * scaleY + y0,
+                points[i + 2] * scale,
+                points[i + 3] * scale * scaleX + x0,
+                points[i + 4] * scale * scaleY + y0,
+                points[i + 5] * scale,
+                points[i + 6] * scale * scaleX + x0,
+                points[i + 7] * scale * scaleY + y0,
+                points[i + 8] * scale
             );
-            newIndexes.push(i/3, i/3+1, i/3+2);
+            newIndexes.push(i / 3, i / 3 + 1, i / 3 + 2);
             threeVertices.push(
-                new THREE.Vector3(points[i], points[i+1], points[i+2]), 
-                new THREE.Vector3(points[i+3], points[i+4], points[i+5]), 
-                new THREE.Vector3(points[i+6], points[i+7], points[i+8])
+                new THREE.Vector3(points[i], points[i + 1], points[i + 2]),
+                new THREE.Vector3(points[i + 3], points[i + 4], points[i + 5]),
+                new THREE.Vector3(points[i + 6], points[i + 7], points[i + 8])
             );
-        } 
-        if(this.rigidShape == "convex"){  // 凸刚体形状
+        }
+        if (this.rigidShape == "convex") {  // 凸刚体形状
             this.createRigidHelper(new ConvexGeometry(threeVertices));
             return RAPIER.ColliderDesc.convexHull(newVertices);
         }
@@ -249,45 +299,154 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         newIndexes = geom.index?.array ?? newIndexes;
         return RAPIER.ColliderDesc.trimesh(newVertices, newIndexes);
     }
+    addConstraint(constraint: ConstraintData) {
+        this.constraints.push(constraint);
+    }
+    getJointsByType(type: JointType): JointData[] {
+        return this.joints.filter(j => j.type === type);
+    }
+    initKinematics(kinematicsData: any) {
+        this.kinematics = kinematicsData;
+    }
+    createPhysicalJoints(world: RAPIER.World) {
+        this.joints.forEach(joint => {
+            const parentRb = global.mesh2rb[joint.parentBodyId!];
+            const childRb = global.mesh2rb[joint.childBodyId!];
+            if (!parentRb || !childRb) return;
+            const params = new RAPIER.JointData()
+                .setBody1(parentRb)
+                .setBody2(childRb)
+                .setContactsEnabled(true);
+            // 设置锚点坐标（转换为Rapier向量）
+            const anchorVec = new RAPIER.Vector3(
+                joint.anchor!.x,
+                joint.anchor!.y,
+                joint.anchor!.z
+            );
+            params.setLocalAnchor1(
+                parentRb.translation().sub(anchorVec)
+            );
+            params.setLocalAnchor2(
+                childRb.translation().sub(anchorVec)
+            );
+            // // 计算本地坐标系锚点
+            // const worldAnchor = new THREE.Vector3().copy(joint.anchor!);
+            // const parentPos = parentRb.translation();
+            // const childPos = childRb.translation();
+            // // 创建基础关节描述符
+            // let jointDesc: RAPIER.RevoluteJointDesc | RAPIER.PrismaticJointDesc;
+            // if (joint.type === 'revolute') {
+            //     jointDesc = RAPIER.RevoluteJointDesc.new()
+            //         .setLocalAxis1(
+            //             new RAPIER.Vector3(...joint.axis!.toArray())
+            //         );
+            // } else {
+            //     jointDesc = RAPIER.PrismaticJointDesc.new()
+            //         .setLocalAxis1(
+            //             new RAPIER.Vector3(...joint.axis!.toArray())
+            //         );
+            // }
+            // // 设置锚点
+            // jointDesc
+            //     .setLocalAnchor1(
+            //         new RAPIER.Vector3(
+            //             worldAnchor.x - parentPos.x,
+            //             worldAnchor.y - parentPos.y,
+            //             worldAnchor.z - parentPos.z
+            //         )
+            //     )
+            //     .setLocalAnchor2(
+            //         new RAPIER.Vector3(
+            //             worldAnchor.x - childPos.x,
+            //             worldAnchor.y - childPos.y,
+            //             worldAnchor.z - childPos.z
+            //         )
+            //     );
+            // 设置关节类型（旋转关节）
+            if (joint.type === 'revolute') {
+                const axis = new RAPIER.Vector3(
+                    joint.axis!.x,
+                    joint.axis!.y,
+                    joint.axis!.z
+                ).normalized();
+                params.setRevolute(axis);
+
+                // 设置角度限制
+                if (joint.limits) {
+                    params.limitsEnabled = true;
+                    params.limits = [
+                        THREE.MathUtils.degToRad(joint.limits.min),
+                        THREE.MathUtils.degToRad(joint.limits.max)
+                    ];
+                }
+            }
+            // 创建物理关节（使用ImpulseJoint）
+            joint.handle = world.createImpulseJoint(params, parentRb, childRb, true);
+            console.log('Created joint:', joint.handle);
+        });
+        //   // 设置限制
+        //   if (joint.limits) {
+        //     if (joint.type === 'revolute') {
+        //       (jointDesc as RAPIER.RevoluteJointDesc).limits([
+        //         THREE.MathUtils.degToRad(joint.limits.min),
+        //         THREE.MathUtils.degToRad(joint.limits.max)
+        //       ]);
+        //     } else {
+        //       (jointDesc as RAPIER.PrismaticJointDesc).limits([
+        //         joint.limits.min, 
+        //         joint.limits.max
+        //       ]);
+        //     }
+        //   }
+        //   // 创建物理关节
+        //   const jointHandle = world.createImpulseJoint(
+        //     jointDesc,
+        //     parentRb,
+        //     childRb,
+        //     true
+        //   );
+        //   joint.handle = jointHandle;
+        // });
+    }
     destroy() {  // 清除自身及其网格和刚体
-        if(this.label == "protected") return;  // 不能删除场景和地面
+        if (this.label == "protected") return;  // 不能删除场景和地面
         // 如果子物体中有CSS2DObject，则先删除相应的DOM，以免其残留在屏幕上
         let css2d = this.mesh.children.filter(child => child.isCSS2DObject);
-        if(css2d.length){
-            for(let child of css2d) child.element?.remove();
+        if (css2d.length) {
+            for (let child of css2d) child.element?.remove();
         }
         global.emit("controlEnd");  // 如果控制器绑定了该物体，则先解绑
         delete global.physicalIDMap[this.physicalID];
         this.removeRigidBody();
-        try {this.mesh.removeFromParent()} catch {}
+        try { this.mesh.removeFromParent() } catch { }
         let index = global.DTObjects.value.indexOf(this);
-        if(index != -1) global.DTObjects.value.splice(index, 1);  // 原地修改DTObject.value，以防监听不到其变化
+        if (index != -1) global.DTObjects.value.splice(index, 1);  // 原地修改DTObject.value，以防监听不到其变化
     }
-    findDTObjectById(id, loadingFile=false) {  // 根据id寻找物体 
+    findDTObjectById(id, loadingFile = false) {  // 根据id寻找物体 
         id = parseInt(id);  // 若id为数字字符串则转换为数字
-        if(!loadingFile){
+        if (!loadingFile) {
             let mesh = global.SCENE.getObjectById(id);
             return mesh ? mesh.DT : null;
         }
-        if(this.id==id) return this;
+        if (this.id == id) return this;
         let result;
-        for(let child of this.children){
+        for (let child of this.children) {
             result = child.findDTObjectById(id, loadingFile);
-            if(result) return result;
+            if (result) return result;
         }
         return null;
     }
-    getDTObjects() {return global.DTObjects.value;}
-    newScene(){  // 新的场景
+    getDTObjects() { return global.DTObjects.value; }
+    newScene() {  // 新的场景
         global.emit("loading");
         // 相机绑定的global.SCENE是Three.Scene，导入的场景this.mesh是Three.Group
         // 将Group克隆到global.SCENE中
         let group = this.mesh;
         let controller = global.SCENE.children.filter(child => child.isTransformControls)[0];
-        for(let prop in group){
-            try{ global.SCENE[prop] = group[prop] }
-            catch(e){
-                if(e instanceof TypeError) global.SCENE[prop].copy(group[prop]);
+        for (let prop in group) {
+            try { global.SCENE[prop] = group[prop] }
+            catch (e) {
+                if (e instanceof TypeError) global.SCENE[prop].copy(group[prop]);
             }
         }
         global.SCENE.add(controller);
@@ -295,41 +454,41 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         this.updateWireframes(true);
         global.emit("init");
     }
-    rb(){
+    rb() {
         return global.mesh2rb[this.mesh.uuid];
     }
-    resizeRigidBody(){  // 改变物体尺寸的同时改变刚体尺寸 
-        this.traverse(()=>{  // 对该物体及其所有子物体
+    resizeRigidBody() {  // 改变物体尺寸的同时改变刚体尺寸 
+        this.traverse(() => {  // 对该物体及其所有子物体
             this.removeRigidBody();  // 移除原有的刚体
             this.createRigidBody("rigidHelper");  // 根据尺寸改变后的rigidHelper创建新的刚体
         });
     }
-    removeRigidBody(){  // 移除刚体
-        if(this.rb()){
+    removeRigidBody() {  // 移除刚体
+        if (this.rb()) {
             global.physicsWorld.removeRigidBody(this.rb());
             delete global.rb2mesh[this.rb().handle];
             delete global.mesh2rb[this.mesh.uuid];
         }
     }
-    setProp(prop=null, newValue=null) {  // 修改物体属性，同时更新刚体中相应的属性
-        if(prop){
+    setProp(prop = null, newValue = null) {  // 修改物体属性，同时更新刚体中相应的属性
+        if (prop) {
             let node = this, split = prop.split('.');
             let last = split.splice(-1);
-            for(let p of split) node = node[p];
+            for (let p of split) node = node[p];
             node[last] = newValue;
         }
         this.updateRigidbodyTransform();  // 强制更新刚体位姿
     }
-    setRow(expanded){  // 设置物体在树中的行数
+    setRow(expanded) {  // 设置物体在树中的行数
         let children = this.children, lastRow = 0;
         this.tree.expanded = expanded.includes(this.key);
-        if(this.tree.expanded){
+        if (this.tree.expanded) {
             this.tree.row = children.length;
-            for(let i=0; i<children.length; i++){
-                if(i<children.length-1) this.tree.row += children[i].setRow(expanded);
-                else{
-                    try{lastRow = children[children.length-1].setRow(expanded);}
-                    catch{}
+            for (let i = 0; i < children.length; i++) {
+                if (i < children.length - 1) this.tree.row += children[i].setRow(expanded);
+                else {
+                    try { lastRow = children[children.length - 1].setRow(expanded); }
+                    catch { }
                 }
             }
         }
@@ -388,45 +547,75 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         });
 
         let skyboxMesh = new THREE.Mesh(skyGeo, skyMat);
-        skyboxMesh.rotation.x = (Math.PI/2);
+        skyboxMesh.rotation.x = (Math.PI / 2);
         this.mesh.add(skyboxMesh);
     }
-    setTitle(name=null) {  // 物体在树中的标题 = 类型 + 名称 
+    setTitle(name = null) {  // 物体在树中的标题 = 类型 + 名称 
         let title = '';
-        if(this.type == "AmbientLight") title = "环境光";
-        else if(this.type == "DirectionalLight") title = "平行光";
-        else if(this.type == "Group") title = this.name ? this.name : "群组";
-        else if(this.type == "Scene") title = this.name ? this.name : "场景";
-        else if(this.mesh.userData.ground) title = "地面";
-        else if(this.name) {  // 若标题太长则截取20个字符
-            if(this.name.length <= 20) title = this.name;
+        if (this.type == "AmbientLight") title = "环境光";
+        else if (this.type == "DirectionalLight") title = "平行光";
+        else if (this.type == "Group") title = this.name ? this.name : "群组";
+        else if (this.type == "Scene") title = this.name ? this.name : "场景";
+        else if (this.mesh.userData.ground) title = "地面";
+        else if (this.name) {  // 若标题太长则截取20个字符
+            if (this.name.length <= 20) title = this.name;
             else title = this.name.slice(0, 20) + "...";
         }
-        else if(this.mesh.name){
-            if(this.label == "WIP") this.mesh.name += this.id  // 创建货物时为物体名称添加id
-            if(this.mesh.name.length <= 20) title = this.mesh.name;  // 物体名称太长则省略
+        else if (this.mesh.name) {
+            if (this.label == "WIP") this.mesh.name += this.id  // 创建货物时为物体名称添加id
+            if (this.mesh.name.length <= 20) title = this.mesh.name;  // 物体名称太长则省略
             else title = this.mesh.name.slice(0, 20) + "...";
-        } 
-        else if(name) title = this.name = name;
+        }
+        else if (name) title = this.name = name;
         this.title = `(${this.type}) ` + title;
     }
-    traverse(callback: Function){  // 递归执行回调函数
+    traverse(callback: Function) {  // 递归执行回调函数
         callback(this);
-        for(let child of this.children){
+        for (let child of this.children) {
             child.traverse(callback);
         }
     }
-    updateChildren(loadingFile=false) {  // 更新DTObject的父子关系
+
+    updateJoint(jointName: string, angle: number, duration: number = 1000) {
+        const joint = this.joints.find(j => j.nodeName === jointName);
+        if (!joint) return;
+        const targetRotation = THREE.MathUtils.degToRad(angle);
+        new TWEEN.Tween(joint.currentValue ? { value: joint.currentValue } : { value: 0 })
+            .to({ value: targetRotation }, duration)
+            .easing(TWEEN.Easing.Quadratic.Out)
+            .onUpdate((obj) => {
+                joint.currentValue = obj.value;
+                this.applyJointRotation(joint);
+            })
+            .start();
+    }
+    private applyJointRotation(joint: JointData) {
+        const targetMesh = this.mesh.getObjectByName(joint.nodeName);
+        if (!targetMesh) return;
+        // 根据关节轴类型应用旋转
+        switch (joint.axis.toString()) {
+            case 'X':
+                targetMesh.rotation.x = joint.currentValue;
+                break;
+            case 'Y':
+                targetMesh.rotation.y = joint.currentValue;
+                break;
+            case 'Z':
+                targetMesh.rotation.z = joint.currentValue;
+                break;
+        }
+    }
+    updateChildren(loadingFile = false) {  // 更新DTObject的父子关系
         let newChildren = [];
         this.setTitle();
-        for(let childMesh of this.mesh.children){  // 刷新时
-            if(!childMesh.userData.id) continue;
+        for (let childMesh of this.mesh.children) {  // 刷新时
+            if (!childMesh.userData.id) continue;
             let childDT = global.SCENE.DT.findDTObjectById(childMesh.userData.id, loadingFile);
-            if(!childDT) continue;
+            if (!childDT) continue;
             childDT.geometry = childMesh.geometry;
             childDT.material = childMesh.material;
             childDT.mesh = childMesh;
-            if(loadingFile){  // 读取文件时  
+            if (loadingFile) {  // 读取文件时  
                 childMesh.DT = childDT;
                 childDT.id = childDT.key = childMesh.userData.id = childMesh.id;
                 childDT.createRigidBody();
@@ -436,42 +625,42 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         }
         this.children = newChildren;
     }
-    updateConveyorArrow(value = null){  // 更新传送带刚体的箭头
-        if(!value){
+    updateConveyorArrow(value = null) {  // 更新传送带刚体的箭头
+        if (!value) {
             value = new THREE.Vector3();
             this.mesh.getWorldScale(value);
             value = value.x / this.scale * 7.5;  // 获取传送带直道的长度缩放比
         }
-        try{
-            if(value >= 3) this.layers.indicator[0].scale.x = 7.5 / value / this.scale;
-            else this.layers.indicator[0].scale.x =  2.5 / this.scale;
+        try {
+            if (value >= 3) this.layers.indicator[0].scale.x = 7.5 / value / this.scale;
+            else this.layers.indicator[0].scale.x = 2.5 / this.scale;
         }
-        catch {}
+        catch { }
     }
-    updateConveyorAttachPoint(value = null){  // 更新传送带刚体的吸附点
-        if(this.layers.attachPoint1[0]) 
+    updateConveyorAttachPoint(value = null) {  // 更新传送带刚体的吸附点
+        if (this.layers.attachPoint1[0])
             this.layers.attachPoint1[0].scale.x = 7.5 / value / this.scale;
-        if(this.layers.attachPoint2[0]) 
+        if (this.layers.attachPoint2[0])
             this.layers.attachPoint2[0].scale.x = 7.5 / value / this.scale;
     }
-    updateConveyorRigidbody(length = null){  // 更新传送带刚体的长度
-        this.updateConveyorArrow(length);      
+    updateConveyorRigidbody(length = null) {  // 更新传送带刚体的长度
+        this.updateConveyorArrow(length);
         this.updateConveyorAttachPoint(length);
         this.removeRigidBody();  // 移除刚体
         let L = new THREE.Vector3();
         this.mesh.getWorldScale(L);
-        if(length){
+        if (length) {
             L = length / 7.5;
         }
         else L = L.x / this.scale;  // 获取传送带直道的长度缩放比
         this.createRigidBody(this.mesh, L);  // 重建刚体 
         this.updateRigidbodyTransform();
     }
-    updateGuardRail(length = null){  // 更新直护栏刚体的长度
+    updateGuardRail(length = null) {  // 更新直护栏刚体的长度
         this.removeRigidBody();  // 移除刚体
         let L = new THREE.Vector3();
         this.mesh.getWorldScale(L);
-        if(length){
+        if (length) {
             this.mesh.scale.y = length * this.scale;
             L = length;
         }
@@ -479,59 +668,13 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         this.createRigidBody(this.mesh, 1, L);  // 重建刚体 
         this.updateRigidbodyTransform();
     }
-    updateGroupWireframes(){  // 更新群组的线框
-        this.traverse(DT => {
-            if(DT.type != "Group") return;
-            const [wireframe, box, boxMesh] = DT.layers.wireframe;
-            if(!wireframe.parent) DT.mesh.add(wireframe);
-            box.makeEmpty();  // 更新线框 
-            for(let child of DT.children) box.expandByObject(
-                child.mesh
-            );  
-            box.getCenter(boxMesh.position); 
-            let localCenter = DT.mesh.worldToLocal(boxMesh.position)
-            boxMesh.position.copy(localCenter);
-            if(DT.label == "importedModel"){
-                boxMesh.scale.set(
-                    (box.max.x - box.min.x)/20,
-                    (box.max.z - box.min.z)/20,
-                    (box.max.y - box.min.y)/20 
-                );
-            } else {
-                boxMesh.scale.set(
-                    (box.max.x - box.min.x),
-                    (box.max.y - box.min.y),
-                    (box.max.z - box.min.z)
-                );
-            }            
-            wireframe.update();
-        })
-    }
-    updatePhysicalIDMap(){  // 更新物理实体ID到物体的映射关系
-        global.physicalIDMap = {};
-        global.SCENE.DT.traverse(DT => {
-            if(DT && DT.physicalID) global.physicalIDMap[DT.physicalID] = DT;
-        });
-    }
-    updateRigidbodyTransform(){  // 强制更新刚体位姿
-        let mesh = this.mesh;
-        let rb = global.mesh2rb[mesh.DT ? mesh.uuid : mesh.parent.uuid];
-        if(!rb) return;
-        // 将物体的速度和角速度清零
-        rb.setLinvel(new RAPIER.Vector3(0, 0, 0));
-        rb.setAngvel(new RAPIER.Vector3(0, 0, 0));
-        // 根据物体位姿强制设置其刚体位姿
-        let P = mesh.position, Q = mesh.quaternion;  // P为位移，Q为四元数旋转
-        rb.setTranslation(new RAPIER.Vector3(P.x, P.y, P.z));
-        rb.setRotation(new RAPIER.Quaternion(Q.x, Q.y, Q.z, Q.w));
-    }
-    updateWireframes(loadingFile = false){  // 更新线框
+    updateWireframes(loadingFile = false) {  // 更新线框
         this.traverse(DT => {
             let wireframe;
-            if(loadingFile){  // 读取场景时重新绑定原有的线框
-                wireframe = DT.mesh.children.filter(child=>child.DT.layers.wireframe.length)[0];  
+            if (loadingFile) {  // 读取场景时重新绑定原有的线框
+                wireframe = DT.mesh.children.filter(child => child.DT.layers.wireframe.length)[0];
             } else {  // 创建物体时新建线框
-                if(DT.mesh.isGroup) {  // 创建群组
+                if (DT.mesh.isGroup) {  // 创建群组
                     DT.layers.wireframe[1] = new THREE.Box3();  // 为群组创建包围盒 
                     DT.layers.wireframe[2] = new THREE.Mesh(  // 控制该包围盒线框的物体
                         new THREE.BoxGeometry(),
@@ -543,10 +686,92 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
                 else wireframe = new THREE.BoxHelper(DT.mesh, "cyan");
                 DT.mesh.add(wireframe);
             }
-            if(wireframe){
+            if (wireframe) {
                 wireframe.visible = false;
                 DT.layers.wireframe = [wireframe];
             }
         })
+    }
+    updateGroupWireframes() {  // 更新群组的线框
+        this.traverse(DT => {
+            if (DT.type != "Group") return;
+            const [wireframe, box, boxMesh] = DT.layers.wireframe;
+            if (!wireframe.parent) DT.mesh.add(wireframe);
+            box.makeEmpty();  // 更新线框 
+            for (let child of DT.children) box.expandByObject(
+                child.mesh
+            );
+            box.getCenter(boxMesh.position);
+            let localCenter = DT.mesh.worldToLocal(boxMesh.position)
+            boxMesh.position.copy(localCenter);
+            if (DT.label == "importedModel" && !DT.basename?.toLowerCase().includes("dae")) {
+                boxMesh.scale.set(
+                    (box.max.x - box.min.x) / DT.mesh.scale.x,
+                    (box.max.z - box.min.z) / DT.mesh.scale.z,
+                    (box.max.y - box.min.y) / DT.mesh.scale.y
+                );
+            }
+            else if (DT.label == "importedModel" && DT.basename?.toLowerCase().includes("dae")) {
+                boxMesh.scale.set(
+                    (box.max.x - box.min.x) / DT.mesh.scale.x,
+                    (box.max.y - box.min.y) / DT.mesh.scale.z,
+                    (box.max.z - box.min.z) / DT.mesh.scale.y
+                );
+            }
+            else {
+                boxMesh.scale.set(
+                    (box.max.x - box.min.x),
+                    (box.max.y - box.min.y),
+                    (box.max.z - box.min.z)
+                );
+            }
+            wireframe.update();
+        })
+    }
+    updatePhysicalIDMap() {  // 更新物理实体ID到物体的映射关系
+        global.physicalIDMap = {};
+        global.SCENE.DT.traverse(DT => {
+            if (DT && DT.physicalID) global.physicalIDMap[DT.physicalID] = DT;
+        });
+    }
+    updateRigidbodyTransform() {  // 强制更新刚体位姿
+        let mesh = this.mesh;
+        let rb = global.mesh2rb[mesh.DT ? mesh.uuid : mesh.parent.uuid];
+        if (!rb) return;
+        // 将物体的速度和角速度清零
+        rb.setLinvel(new RAPIER.Vector3(0, 0, 0));
+        rb.setAngvel(new RAPIER.Vector3(0, 0, 0));
+        // 根据物体位姿强制设置其刚体位姿
+        const worldPosition = new THREE.Vector3();
+        const worldQuaternion = new THREE.Quaternion();
+        mesh.getWorldPosition(worldPosition);
+        mesh.getWorldQuaternion(worldQuaternion);
+        // let P = mesh.position, Q = mesh.quaternion;  // P为位移，Q为四元数旋转
+        // rb.setTranslation(new RAPIER.Vector3(P.x, P.y, P.z));
+        // rb.setRotation(new RAPIER.Quaternion(Q.x, Q.y, Q.z, Q.w));
+        rb.setTranslation(new RAPIER.Vector3(worldPosition.x, worldPosition.y, worldPosition.z));
+        rb.setRotation(new RAPIER.Quaternion(
+            worldQuaternion.x,
+            worldQuaternion.y,
+            worldQuaternion.z,
+            worldQuaternion.w
+        ));
+    }
+    setWorldPosition(worldPos: THREE.Vector3): void {        // 将全局坐标逆向转换到本地坐标系
+        if (!this.mesh.parent) return;
+        const localPos = new THREE.Vector3();
+        this.mesh.parent.worldToLocal(localPos.copy(worldPos));
+        this.mesh.position.copy(localPos);        // 更新本地坐标
+        this.updateRigidbodyTransform();
+    }
+    setWorldRotation(worldRotation: THREE.Euler): void {
+        if (!this.mesh.parent) return;
+        const parentWorldQuat = new THREE.Quaternion();        // 计算父级的世界旋转差
+        this.mesh.parent.getWorldQuaternion(parentWorldQuat);
+        const targetWorldQuat = new THREE.Quaternion()        // 计算目标本地旋转 (targetWorldQuat = parentWorldQuat^-1 * desiredWorldQuat)
+            .setFromEuler(worldRotation)
+            .premultiply(parentWorldQuat.invert());
+        this.mesh.quaternion.copy(targetWorldQuat);        // 更新本地旋转
+        this.updateRigidbodyTransform();
     }
 }  
