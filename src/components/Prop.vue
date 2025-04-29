@@ -602,6 +602,44 @@
       :style="{width: width}" :title="help.input" v-model:value="computedProp"
       @blur="e=>changeValue({e:e, type:'string'})" 
       @click="startEdit" @dblclick="selectAll" @keydown="confirm"/>
+      <a-popconfirm v-if="prop=='mesh.material.color'" :draggable="false" icon="" style="user-select: none;">
+        <template #cancelButton></template>
+        <template #okButton>
+          <!--调色圆环-->
+          <img :src="colorRing" id="color-ring" @click="onClickRing" @mousedown.prevent
+          @mousemove="e=>{if (e.buttons==1) onClickRing(e)}"/>
+          <!--调色方块-->
+          <div id="color-square" @click="onClickSquare" @mousedown.prevent
+          :style="{background: `
+            linear-gradient(to right, white, hsl(${(
+              tempAngle == -1 ? this.getHSL('h') : tempAngle
+            )*360}, 100%, 50%)),
+            linear-gradient(to top, black, white)
+          `}"/>
+          <!--外侧指示圆-->
+          <div class="colorHelper" :draggable="false"  @click="onClickRing" @mousedown.prevent
+          @mousemove="e=>{if (e.buttons==1) onClickRing(e)}"
+          :style="{
+            left: 82 + 70*Math.cos(
+              (tempAngle == -1 ? this.getHSL('h') : tempAngle)
+            *2*Math.PI) + 'px',
+            top: 90 - 70*Math.sin(
+              (tempAngle == -1 ? this.getHSL('h') : tempAngle)
+            *2*Math.PI) + 'px'
+          }"/>    
+          <!--内侧指示圆-->
+          <div class="colorHelper" :draggable="false" @click="onClickSquare" @mousedown.prevent
+          @mousemove="e=>{if (e.buttons==1) onClickSquare(e)}"
+          :style="{
+            left: 122 - 80*getHSLpos()[0] + 'px',
+            top: 130 - 80*getHSLpos()[1] + 'px'
+          }"/>  
+        </template>
+        <div class="editColor" :title="help.color"
+        :style="{backgroundColor: '#' + getProp().getHexString()}"> &emsp; </div>
+      </a-popconfirm>
+      <img :src="tubeIcon" class="tube" @click="getColor" :draggable="false"
+      :title="help.tube"/>
     </span> 
 
     <!--编辑数值属性-->
@@ -621,6 +659,7 @@
       @blur="e=>changeValue(getOptions(e))"
       @click="startEdit" @dblclick="selectAll" @keydown="confirm"
       @wheel="e=>changeValue(getOptions(e))" @wheel.prevent/>
+      <!--预览与编辑颜色-->
     </span> 
 
     <!--编辑三维向量属性，chosenProp=prop代表正在编辑-->
@@ -675,45 +714,6 @@
         @blur="e=>changeColor(e, 'b')" 
         @click="e=>startEdit(e, 'b')" @dblclick="selectAll" @keydown="confirm"
         @wheel="e=>changeColor(e, 'b')" @wheel.prevent/>
-        <!--预览与编辑颜色-->
-        <a-popconfirm :draggable="false" icon="" style="user-select: none;">
-          <template #cancelButton></template>
-          <template #okButton>
-            <!--调色圆环-->
-            <img :src="colorRing" id="color-ring" @click="onClickRing" @mousedown.prevent
-            @mousemove="e=>{if (e.buttons==1) onClickRing(e)}"/>
-            <!--调色方块-->
-            <div id="color-square" @click="onClickSquare" @mousedown.prevent
-            :style="{background: `
-              linear-gradient(to right, white, hsl(${(
-                tempAngle == -1 ? this.getHSL('h') : tempAngle
-              )*360}, 100%, 50%)),
-              linear-gradient(to top, black, white)
-            `}"/>
-            <!--外侧指示圆-->
-            <div class="colorHelper" :draggable="false"  @click="onClickRing" @mousedown.prevent
-            @mousemove="e=>{if (e.buttons==1) onClickRing(e)}"
-            :style="{
-              left: 82 + 70*Math.cos(
-                (tempAngle == -1 ? this.getHSL('h') : tempAngle)
-              *2*Math.PI) + 'px',
-              top: 90 - 70*Math.sin(
-                (tempAngle == -1 ? this.getHSL('h') : tempAngle)
-              *2*Math.PI) + 'px'
-            }"/>    
-            <!--内侧指示圆-->
-            <div class="colorHelper" :draggable="false" @click="onClickSquare" @mousedown.prevent
-            @mousemove="e=>{if (e.buttons==1) onClickSquare(e)}"
-            :style="{
-              left: 122 - 80*getHSLpos()[0] + 'px',
-              top: 130 - 80*getHSLpos()[1] + 'px'
-            }"/>  
-          </template>
-          <div class="editColor" :title="help.color"
-          :style="{backgroundColor: '#' + getProp().getHexString()}"> &emsp; </div>
-        </a-popconfirm>
-        <img :src="tubeIcon" class="tube" @click="getColor" :draggable="false"
-        :title="help.tube"/>
       </span>
     </span> 
 
