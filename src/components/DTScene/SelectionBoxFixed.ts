@@ -66,7 +66,7 @@ export class SelectionBoxFixed {
   }
 
   searchChildInFrustum(object) {
-    if (object.isMesh && object.id != 191) {
+    if (object.isMesh && object.id != 188) {
       const meshBox = new Box3().copy(object.geometry.boundingBox).applyMatrix4(object.matrixWorld);
       if (this.frustum.intersectsBox(meshBox)) {
         if (object.parent.type == "Group") {

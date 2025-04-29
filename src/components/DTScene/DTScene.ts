@@ -21,7 +21,7 @@ import { PointerLockControls } from "three/examples/jsm/controls/PointerLockCont
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js"
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js"
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js"
-import { ViewHelper } from "three/examples/jsm/helpers/ViewHelper.js"
+import { ViewHelper } from "./ViewHelperFixed";
 import { TransformControls } from "three/examples/jsm/controls/TransformControls.js"
 import { nodeManager } from "../../utils/nodeManager"
 
@@ -151,8 +151,8 @@ export default class SceneBuilder {
     composer  // 边缘高亮着色器
     controller: TransformControls
     cssRenderer: THREE.CSS2DRenderer
-    gizmoOrtho: THREE.ViewHelper
-    gizmoPersp: THREE.ViewHelper
+    gizmoPersp: ViewHelper
+    gizmoOrtho: ViewHelper
     ground
     orbitControl: OrbitControls
     outlinePass: any  // OutlinePassFixed
@@ -219,7 +219,9 @@ export default class SceneBuilder {
             this.camera = { "透视": this.cameraPersp, "正交": this.cameraOrtho }[data];
             this.camera.position.copy(position);
             this.gizmoPersp.visible = visible && data == "透视";
+            this.gizmoPersp.domContainer.style.zIndex = data == "透视" ? 999 : 1;
             this.gizmoOrtho.visible = visible && data == "正交";
+            this.gizmoOrtho.domContainer.style.zIndex = data == "正交" ? 999 : 1;
             this.orbitControl.object = this.camera;
             this.orbitControl.target.copy(target);
             renderPass.camera = this.camera;
@@ -294,6 +296,9 @@ export default class SceneBuilder {
             if (attached?.DT.label != "protected") {
                 this.controller.space = "local";  // 开始控制时控制器的坐标系为世界坐标系
                 this.controller.attach(attached);
+                this.controller.showX = true;
+                this.controller.showY = true;
+                this.controller.showZ = true;
                 // 将控制器移动到被控制物体的包围盒中心
                 if (!attached.isLight) {
                     let POS = new THREE.Vector3();
@@ -323,12 +328,18 @@ export default class SceneBuilder {
         })
 
         // 透视和正交相机导向器（Gizmo）
-        this.gizmoPersp = new ViewHelper(this.cameraPersp, canvasDOM);
-        this.gizmoOrtho = new ViewHelper(this.cameraOrtho, canvasDOM);
+        this.gizmoPersp = new ViewHelper(this.cameraPersp, this.renderer);
+        this.gizmoPersp.setControls(this.orbitControl);
+        this.gizmoPersp.domContainer.style.zIndex = 999;
+        this.gizmoOrtho = new ViewHelper(this.cameraOrtho, this.renderer);
+        this.gizmoOrtho.domContainer.style.zIndex = 1;
+        this.gizmoOrtho.setControls(this.orbitControl);
         this.gizmoOrtho.visible = false;
         global.on("changeGizmoVisibility", visible => {
             this.gizmoPersp.visible = visible && this.camera == this.cameraPersp;
+            this.gizmoPersp.domContainer.style.zIndex = this.camera == this.cameraPersp ? 999 : 1;
             this.gizmoOrtho.visible = visible && this.camera == this.cameraOrtho;
+            this.gizmoOrtho.domContainer.style.zIndex = this.camera == this.cameraOrtho ? 999 : 1;
         });
 
         // 地面
@@ -899,27 +910,46 @@ export default class SceneBuilder {
                 // 光电门3：75292a01-6d17-4d50-bb75-d42718f75fe8
                 // 光电门5：7f698a28-d9d4-456a-9814-19d6c9b2f1a1
                 // 调试发送虚拟光电门信号
-                if (e.code == "Digit1") global.emit("updateTrayPosition", { deviceID: "a5197017-c560-4713-aacd-01f097dda18f", RFID: "822fbee2-1fe0-45c8-b403-8b5cdb31cb25" });
-                if (e.code == "Digit3") global.emit("updateTrayPosition", { deviceID: "75292a01-6d17-4d50-bb75-d42718f75fe8", RFID: "822fbee2-1fe0-45c8-b403-8b5cdb31cb25" });
-                if (e.code == "Digit5") global.emit("updateTrayPosition", { deviceID: "7f698a28-d9d4-456a-9814-19d6c9b2f1a1", RFID: "822fbee2-1fe0-45c8-b403-8b5cdb31cb25" });
-                if (e.code == "KeyQ") this.controller.setMode("translate");  // 按Q平移
-                else if (e.code == "KeyW") this.controller.setMode("rotate");  // 按W旋转
-                else if (e.code == "KeyE") {  // 按R切换全局坐标系和局部坐标系
-                    if (this.controller.space == "world") this.controller.setSpace("local");
-                    else this.controller.setSpace("world"); this.updateRigidBodies();
+                if(e.code == "Digit1") global.emit("updateTrayPosition", {deviceID: "a5197017-c560-4713-aacd-01f097dda18f", RFID: "822fbee2-1fe0-45c8-b403-8b5cdb31cb25"});
+                if(e.code == "Digit3") global.emit("updateTrayPosition", {deviceID: "75292a01-6d17-4d50-bb75-d42718f75fe8", RFID: "822fbee2-1fe0-45c8-b403-8b5cdb31cb25"});
+                if(e.code == "Digit5") global.emit("updateTrayPosition", {deviceID: "7f698a28-d9d4-456a-9814-19d6c9b2f1a1", RFID: "822fbee2-1fe0-45c8-b403-8b5cdb31cb25"}); 
+                if(e.code == "KeyQ") this.controller.setMode("translate");  // 按Q平移
+                if(e.code == "KeyW") this.controller.setMode("rotate");  // 按W旋转
+                if(e.code == "KeyE") {  // 按R切换全局坐标系和局部坐标系
+                    if(this.controller.space == "world") this.controller.setSpace("local");
+                    else this.controller.setSpace("world");this.updateRigidBodies();
                 }
-                else if (e.code == "KeyA") {  // 按A拉伸直道传送带
+                if(e.code == "KeyA") {  // 按A拉伸直道传送带
                     let target = this.controller.object;
                     if (target.DT.basename.includes("直道") || target.DT.basename == "直护栏") {
                         this.controller.setMode("scale");
                     }
+                    if(attached.DT.basename == "平行传送装置-直道"){
+                        if(this.controller.mode == "scale"){
+                            this.controller.showX = true;
+                            this.controller.showY = false;
+                            this.controller.showZ = false;
+                        }
+                    }
+                    if(attached.DT.basename == "直护栏"){
+                        if(this.controller.mode == "scale"){
+                            this.controller.showX = false;
+                            this.controller.showY = true;
+                            this.controller.showZ = false;
+                        }
+                    }
                 }
-                else if (e.code == "Escape") this.controller.reset();  // 按ESC恢复
-                else if (e.ctrlKey) {  // 按Ctrl将移动间距离散化
-                    if (e.code == "KeyZ") this.controller.reset();  // 按Ctrl+Z恢复
-                    this.controller.setTranslationSnap(1);
-                    this.controller.setRotationSnap(THREE.MathUtils.degToRad(15));
-                    this.controller.setScaleSnap(0.25);
+                else {
+                    this.controller.showX = true;
+                    this.controller.showY = true;
+                    this.controller.showZ = true;
+                }
+                if(e.code == "Escape") this.controller.reset();  // 按ESC恢复
+                if(e.ctrlKey) {  // 按Ctrl将移动间距离散化
+                    if(e.code == "KeyZ") this.controller.reset();  // 按Ctrl+Z恢复
+                    this.controller.setTranslationSnap( 1 );
+                    this.controller.setRotationSnap( THREE.MathUtils.degToRad( 15 ) );
+                    this.controller.setScaleSnap( 0.25 );
                 }
             }
             if (global.mode == "view") {  // 在浏览模式下
@@ -1535,6 +1565,11 @@ export default class SceneBuilder {
     }
     updateFPSandTime(now, pause, stop) {  // 更新帧率和用时
         if (stop) {
+        if(this.camera == this.cameraPersp) this.gizmoPersp.render();
+        if(this.camera == this.cameraOrtho) this.gizmoOrtho.render();
+    } 
+    updateFPSandTime(now, pause, stop){  // 更新帧率和用时
+        if(stop){ 
             BottomTimer.textContent = "00:00:00.000"
         } else {
             let totalTime = new Date(now - T0);
