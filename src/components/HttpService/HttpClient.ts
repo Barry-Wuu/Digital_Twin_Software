@@ -78,3 +78,10 @@ export default class HttpClient {
 //         }
 //     }
 // });
+// 演示场景，1单位长度=50mm
+// 用DT().traverse(dt=>dt.v0=2)改变所有传送带速度
+// 用global.emit("updateTrayPosition", {deviceID:'A', RFID:'a'})向托盘发送消息
+// 光电门1物理实体ID：a5197017-c560-4713-aacd-01f097dda18f
+// 光电门3物理实体ID：75292a01-6d17-4d50-bb75-d42718f75fe8
+// 光电门5物理实体ID：7f698a28-d9d4-456a-9814-19d6c9b2f1a1
+// 托盘16物理实体ID：822fbee2-1fe0-45c8-b403-8b5cdb31cb25  

@@ -159,6 +159,11 @@ export default class SceneBuilder {
     pointerControl: PointerLockControls
     renderer: THREE.WebGLRenderer
     private deviceHandlers = new Map<string, Function>();  // 设备事件监听器
+    private logEntries: string[] = []; // 存储日志条目
+    private logInterval = 1000;       // 记录间隔（1秒）
+    private pad(x: number, n: number = 2): string {
+        return x.toString().padStart(n, '0');
+    }
     constructor(canvas: HTMLElement) {
         // 初始化
         BottomFPS = document.getElementById("BottomFPS");
@@ -975,6 +980,7 @@ export default class SceneBuilder {
             }
         })
         global.on("init", () => this.init());
+        global.on("saveLog", () => this.saveLog());
         // this.initDeviceListeners();
     }
     private handleDenso(state: string) {
@@ -1565,12 +1571,7 @@ export default class SceneBuilder {
     }
     updateFPSandTime(now, pause, stop) {  // 更新帧率和用时
         if (stop) {
-        if(this.camera == this.cameraPersp) this.gizmoPersp.render();
-        if(this.camera == this.cameraOrtho) this.gizmoOrtho.render();
-    } 
-    updateFPSandTime(now, pause, stop){  // 更新帧率和用时
-        if(stop){ 
-            BottomTimer.textContent = "00:00:00.000"
+                    BottomTimer.textContent = "00:00:00.000"
         } else {
             let totalTime = new Date(now - T0);
             function pad(x, n = 2) { return x.toString().padStart(n, '0') };
@@ -1585,9 +1586,41 @@ export default class SceneBuilder {
         }
         else {  // 到一秒时更新帧率显示          
             BottomFPS.textContent = fps = frames;
+            const currentTime = new Date();
+            const timestamp = 
+                `${currentTime.getFullYear()}/` +
+                `${this.pad(currentTime.getMonth() + 1)}/` +
+                `${this.pad(currentTime.getDate())} ` +
+                `${this.pad(currentTime.getHours())}:` +
+                `${this.pad(currentTime.getMinutes())}:` +
+                `${this.pad(currentTime.getSeconds())}.` +
+                `${this.pad(currentTime.getMilliseconds(), 3)}`;
+            
+            let memoryUsage = 'N/A';
+            if (window.performance?.memory) {
+                memoryUsage = `${Math.round(window.performance.memory.usedJSHeapSize / (1024 * 1024))}MB`;
+            }   
+            const logLine = `${timestamp} —— FPS: ${frames}, Memory: ${memoryUsage}`;
+            this.logEntries.push(logLine);
             frames = 0;
             timeUpdateFPS = time;
         }
+    }
+    saveLog() {
+        if (this.logEntries.length === 0) return;
+        
+        const content = this.logEntries.join('\n');
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        
+        // 创建下载链接并触发下载
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `performance_log_${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
     updateRigidBodies() {  // 改变物体的父子关系后，将刚体位置更新为物体的全局坐标
         Object.values(global.rb2mesh).forEach((mesh: any) => {

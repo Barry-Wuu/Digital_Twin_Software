@@ -159,6 +159,15 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             }
             else this[prop] = obj[prop];
         }
+        if (obj.prop?.code) {  // 现在code在prop内
+            this.code = {
+                update: obj.prop.code.update || "",
+                onCollision: obj.prop.code.onCollision || "",
+                onCollisionStart: obj.prop.code.onCollisionStart || "",
+                onCollisionEnd: obj.prop.code.onCollisionEnd || "",
+            };
+            delete obj.prop.code; // 删除冗余数据
+        }
     }
     createRigidBody(target = this.mesh, scaleX = 1, scaleY = 1) {  // 添加刚体
         if (!this.rigidShape) return;
