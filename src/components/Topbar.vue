@@ -29,6 +29,7 @@ import {
     SettingOutlined,
     StepForwardOutlined,
     VideoCameraOutlined,
+    SaveOutlined,
 } from "@ant-design/icons-vue";
 
 var BottomMessage;
@@ -71,225 +72,6 @@ const speed = ref(0);
 const tab = ref("主要功能");  // 栏目
 const viewName = ref('');  // 自定义视角名称
 const wireframe = ref("包围盒");  // 物体边框
-
-    export default defineComponent({
-        components: {
-            global, 
-            AppstoreAddOutlined,
-            BlockOutlined,
-            CameraOutlined,
-            CaretDownOutlined,
-            CaretRightOutlined,
-            CheckOutlined,
-            CloseOutlined,
-            CodepenOutlined,
-            CodeSandboxOutlined,
-            DeleteTwoTone, 
-            FormOutlined,
-            ForwardOutlined,
-            FullscreenOutlined,
-            MinusOutlined,
-            PauseOutlined,
-            PlusOutlined,
-            QuestionCircleOutlined,
-            ReloadOutlined,
-            SettingOutlined,
-            StepForwardOutlined,
-            VideoCameraOutlined,
-        },
-        methods:{
-            action(option){  // 场景操作
-                if(option == "新建场景"){
-                    global.emit("popup", {  // 弹窗确认修改
-                        title: "确认新建场景",
-                        type: "yes_no",
-                        content: "在新建场景之前要保存场景吗？（按×取消）",
-                        yes: () => {  // 先保存场景再新建场景
-                            this.saveScene();
-                            this.newScene();
-                        },
-                        no: () => this.newScene()  // 直接新建场景
-                    });
-                }
-                else if(option == "保存场景") this.saveScene();
-                else if(option == "载入场景") fileInput.click();
-                else if(option == "退出") this.closeConfirm();
-            },
-            changeCamera(e){  // 切换相机类型（投影/正交）
-                cameraMode.value = e.key;
-                global.emit("changeCamera", e.key);
-            },
-            changeFullscreen(){  // 切换全屏显示
-                global.emit("changeFullscreen");
-            },
-            changeEmulateMode(mode){  // 切换仿真状态
-                emulateMode.value = mode;
-                global.emit("changeEmulateMode", mode);
-                if(mode == "stop") this.message("仿真停止");
-                if(mode == "play") this.message("仿真开始");
-                if(mode == "step") this.message("仿真步进");
-                if(mode == "fast") this.message("仿真快进");
-                speed.value = mode == "fast" ? fast.value : 0;
-                global.emit("changeSpeed", marks[speed.value]);
-                BottomSpeed.textContent = marks[speed.value];
-            },
-            changeLayers(e){  // 更改各类物体的显隐性
-                let layer = e.target.value;  // 更改的图层中文名
-                let layers = layersActive.value;  // 显示的图层，其用中文名表示
-                let show = !layers.includes(layer);  // 显示或隐藏
-                layers = show ? [...layers, layer] : layers.filter(item => item!=layer);  // 更改显示图层
-                global.layers = layers;
-                if(layer == "controller") global.emit("changeControllerVisibility", show);
-                else if(layer == "gizmo") global.emit("changeGizmoVisibility", show);
-                else{
-                    for(let DT of global.SCENE.DT.getDTObjects()){
-                        if(layer in DT.layers){
-                            for(let mesh of DT.layers[layer]){
-                                mesh.visible = show;
-                            }
-                        }
-                        else if(layer == DT.label){
-                            DT.mesh.visible = show;
-                        }
-                    }
-                }
-            },
-            changeSpeed(value){  // 更改速度，value为滑动条百分比，marks[value]为实际速度倍率
-                if(value.key) value = value.key;
-                emulateMode.value = value==0 ? "play" : "fast";
-                this.message(value==0 ? "仿真开始" : "仿真快进"); 
-                speed.value = value;
-                global.emit("changeSpeed", marks[value]);
-                BottomSpeed.textContent = marks[value];
-            },
-            changeTab(key){  // 切换顶部栏目及其标题颜色
-                tab.value = key;
-            },
-            changeView(e){  // 切换视角
-                global.emit("changeView", e.key)
-            },
-            changeWireframe(e){  // 切换物体边框
-                wireframe.value = e.key;
-                global.emit("changeWireframe", e.key);
-            },
-            clearViewName(){
-                this.$nextTick(()=>{viewName.value = ''});
-            },
-            clearLoads(){global.emit("clearLoads")},  // 清除所有货物
-            closeConfirm(){
-                global.emit("popup", {  // 弹窗询问是否关闭
-                    title: "关闭窗口",
-                    type: "yes_no",
-                    content: "确定要关闭窗口吗？",
-                    yes: ()=>{  // 确认关闭
-                        global.emit("closeWindow");
-                        ipc.send("closeWindow");
-                    },
-                    // no为取消关闭
-                });
-            },
-            lightON(e, condition = true){  // 鼠标移入图标时将其点亮
-                if(condition) e.target.style.color = 'dodgerblue';
-            },
-            lightOFF(e, condition = true){  // 鼠标移入图标时将其熄灭
-                if(condition) e.target.style.color = 'black';
-            },
-            loadScene(e=null, target=null){
-                let temp = "src/temp/";
-                if (!fs.existsSync(temp))   // 如果src/temp文件夹不存在则创建
-                    fs.mkdirSync(temp, { recursive: true });
-                else {
-                    fs.readdir(temp, (err, files) => {  // 清除src/temp文件夹中的文件
-                        if(err) return;
-                        for (const file of files) {
-                            fs.unlink(path.join(temp, file), err => {if(err) return;});
-                        }
-                    });
-                }
-
-                let DTFilePath;  // 选择路径
-                if(target) DTFilePath = target;  // 从指定路径导入
-                else {
-                    DTFilePath = e.target.files[0].path;  // 从input选择路径导入
-                    e.target.value = '';  // 清空input的值，以免选择和上次相同的文件时不触发事件
-                }
-                this.setHistory(DTFilePath);  // 更新文件打开记录
-
-                let zip = new JSZip();
-                const zipFile = fs.readFileSync(DTFilePath), promises = [];  
-                zip.loadAsync(zipFile).then(() => {  // 解压  
-                    zip.forEach((relativePath, zipEntry) => {  
-                        const writePath = temp + relativePath;
-                        let promise = zipEntry.async('nodebuffer');
-                        promises.push(promise);
-                        promise.then((buffer) => {  
-                            fs.writeFileSync(writePath, buffer);
-                        });  
-                    });  
-                    Promise.all(promises).then(()=>{  // 文件全部解压完后读取解压文件  
-                        global.emit("loadScene", temp + "scene.json");             
-                    })
-                }) 
-            },
-            message(data){ 
-                global.emit("print", data);
-                BottomMessage.textContent = data; 
-            },
-            newScene(){  // 清除场景中原有的模型，地面、灯光等除外
-                global.SCENE.DT.traverse(DT => {
-                    if(DT.label != "protected" && !DT.mesh.isLight) DT.destroy();
-                });
-            },
-            reload(){  // 重新加载
-                global.emit("popup", {  // 弹窗询问是否重新加载页面
-                    title: "重新加载页面",
-                    type: "yes_no",
-                    content: "确定要重载界面吗？",
-                    yes: ()=>{ipc.send("reload")},  // 确认重命名
-                    // no为取消关闭
-                });
-            },
-            saveScene(){
-                let DTScene = global.SCENE.DT;
-                let json = {exported: []};
-                for(let DT of DTScene.children){
-                    if(!DT.basename) continue;  // 若为灯光、地面等则跳过
-                    let mesh = DT.mesh;
-                    let title = DT.basename;
-                    let item = {
-                        title: title,
-                        position: {x: mesh.position.x, y: mesh.position.y, z: mesh.position.z},
-                        rotation: {
-                            x: mesh.rotation.x * 180 / Math.PI, 
-                            y: mesh.rotation.y * 180 / Math.PI, 
-                            z: mesh.rotation.z * 180 / Math.PI
-                        },
-                        prop: {}
-                    };
-                    for(let key in DT){  // 将DT中有定义的、基本属性类型的、除id和key以外的属性保存到json中
-                        if(DT[key] !== undefined && typeof DT[key] != "object" 
-                        && key != "id" && key != "key"){
-                            item.prop[key] = DT[key];
-                        }
-                    }
-                    // 计算并输出直道和直护栏的长度
-                    if(title.includes("直道")) {
-                        item["length"] = mesh.scale.x * 7.5 / mesh.DT.scale;
-                    }
-                    else if(title == "直护栏") {
-                        item["length"] = mesh.scale.y * 6 / mesh.DT.scale;
-                    }
-                    json.exported.push(item);
-                }
-                try {fs.readdirSync("src/temp");}  // 无临时文件夹则创建临时文件夹
-                catch {fs.mkdirSync("src/temp");}
-                // 保存临时json文件
-                const path = "src/temp/scene.json";  // 临时保存路径
-                fs.writeFileSync(path, JSON.stringify(json));
-                // 压缩
-                const zip = new JSZip(), outputPath = "src/temp/DTScene.zip";  
-                zip.file("scene.json", fs.readFileSync(path));
-                zip.generateAsync({type: "nodebuffer"})
 export default defineComponent({
     components: {
         global,
@@ -314,6 +96,7 @@ export default defineComponent({
         SettingOutlined,
         StepForwardOutlined,
         VideoCameraOutlined,
+        SaveOutlined,
     },
     methods: {
         action(option) {  // 场景操作
@@ -477,12 +260,6 @@ export default defineComponent({
                         y: mesh.rotation.y * 180 / Math.PI,
                         z: mesh.rotation.z * 180 / Math.PI
                     },
-                    code :{  // 自定义脚本
-                        update: '',  // 每帧更新
-                        onCollision: '',  // 碰撞事件
-                        onCollisionStart: '',  // 碰撞开始事件
-                        onCollisionEnd: '',  // 碰撞结束事件
-                    },
                     prop: {}
                 };
                 for (let key in DT) {  // 将DT中有定义的、基本属性类型的、除id和key以外的属性保存到json中
@@ -490,13 +267,13 @@ export default defineComponent({
                         && key != "id" && key != "key") {
                         item.prop[key] = DT[key];
                     }
-                }89
+                } 89
                 if (DT.code) {
-                    item.code = {
-                        update: DT.code.update?.replace(/[^\x20-\x7E]/g, "") || "", // 过滤非法字符
+                    item.prop.code = {  // 存放到prop分支下
+                        update: DT.code.update?.replace(/[^\x20-\x7E]/g, "") || "",
                         onCollision: DT.code.onCollision?.replace(/[^\x20-\x7E]/g, "") || "",
                         onCollisionStart: DT.code.onCollisionStart?.replace(/[^\x20-\x7E]/g, "") || "",
-                        onCollisionEnd: DT.code.onCollisionEnd?.replace(/[^\x20-\x7E]/g, "") || "",
+                        onCollisionEnd: DT.code.onCollisionEnd?.replace(/[^\x20-\x7E]/g, "") || ""
                     };
                 }
                 // 计算并输出直道和直护栏的长度
@@ -523,6 +300,9 @@ export default defineComponent({
                     fileOutput.download = "场景.DTScene";  // 默认文件名
                     fileOutput.click();
                 });
+        },
+        saveLog() {
+            global.emit("saveLog"); // 触发 SceneBuilder 中的日志保存逻辑
         },
         sendData() {  // 设置发送数据
             global.emit("popup", { type: "sendData", title: "数据发送设置" });
@@ -854,6 +634,12 @@ export default defineComponent({
                     @mousedown.prevent @mouseenter="lightON" @mouseleave="lightOFF">
                     <QuestionCircleOutlined class="logoBig" />
                     <br>帮助
+                </div>
+
+                <div class="logo marginLR10 top16" @click="saveLog" @mousedown.prevent @mouseenter="lightON"
+                    @mouseleave="lightOFF">
+                    <SaveOutlined class="logoBig" />
+                    <br>保存日志
                 </div>
             </span>
             <div class="bottomBorder">系统操作</div>
