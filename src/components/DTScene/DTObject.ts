@@ -148,25 +148,33 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     copyFrom(obj, clearDTObjects = false) {  // 将读取的普通对象变回DT对象
         if (clearDTObjects) global.DTObjects.value = [];  // 清理旧的场景
         global.DTObjects.value.push(this);
-        for (let prop in obj) {
-            if (prop == "children") {
-                this.children = [];
-                for (let child of obj.children) {
-                    let childDT = new DTObject();
-                    childDT.copyFrom(child);
-                    this.children.push(childDT);
-                }
-            }
-            else this[prop] = obj[prop];
-        }
-        if (obj.prop?.code) {  // 现在code在prop内
-            this.code = {
+        if (obj.prop && obj.prop.code) {
+            this.code = {  // 将 code 从 prop 提取到顶级属性中
                 update: obj.prop.code.update || "",
                 onCollision: obj.prop.code.onCollision || "",
                 onCollisionStart: obj.prop.code.onCollisionStart || "",
                 onCollisionEnd: obj.prop.code.onCollisionEnd || "",
             };
-            delete obj.prop.code; // 删除冗余数据
+            delete obj.prop.code;  //防止后续赋值覆盖
+        }
+        for (let prop in obj) {
+            if (prop === "children") {
+                this.children = [];
+                for (const child of obj.children) {
+                    const childDT = new DTObject();
+                    childDT.copyFrom(child);
+                    this.children.push(childDT);
+                }
+            }
+            else if (prop === "prop") {  // 🚨 特殊处理prop中的其他属性
+                for (const propKey in obj.prop) {
+                    // this[propKey] = obj.prop[propKey];  //  若prop下其他属性需要映射到DTObject顶级字段
+                    this[propKey] = obj.prop[propKey];  // 依需调整
+                }
+            } 
+            else {
+                this[prop] = obj[prop];  // 常规属性赋值
+            }
         }
     }
     createRigidBody(target = this.mesh, scaleX = 1, scaleY = 1) {  // 添加刚体

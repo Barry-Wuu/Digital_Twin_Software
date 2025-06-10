@@ -157,6 +157,18 @@ onMounted(() => {  // 加载完成时
           { timeout: deviceClient.TIMEOUT }
         );
         const nodeData = result.data;
+        const currentTimestamp = Date.now();
+        const commandTimestamp = nodeData.timestamp; // 提取发送端自带的时间戳
+        // console.log("接收时间：", currentTimestamp);
+        const date = new Date(currentTimestamp);
+        console.log(date.toISOString());
+        //   if (commandTimestamp) {//添加延迟计算
+        //   const currentTimestamp = Date.now();
+        //   const latency = currentTimestamp - commandTimestamp;
+        //   console.log(`[指令延迟] ${latency}ms`);
+        //   // 如果需要可以触发全局事件（例如在界面显示延迟）
+        //   global.emit("commandLatency", latency); 
+        // }
         const normalizedNodeID = nodeData.nodeID
           .replace(/"/g, '') // 去除可能存在的非法引号
           .replace(/(Capability)[ _]+(Pick)/gi, '$1_$2')

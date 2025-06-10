@@ -1,7 +1,7 @@
 {
   "name": "electron-vue-vite",
   "version": "2.0.0",
-  "main": "dist-electron/main/index.js",
+  "main": "C:/Users/Administrator/Desktop/DT副本/DT-FrontEnd/src/main.ts",
   "description": "Really simple Electron + Vue + Vite boilerplate.",
   "author": "1",
   "license": "SCUT",
@@ -27,7 +27,8 @@
     "preview": "vite preview",
     "start": "electron-forge start",
     "package": "electron-forge package",
-    "make": "electron-forge make"
+    "make": "electron-forge make",
+    "dist": "electron-builder --win --publish never"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.1.0",
@@ -38,6 +39,7 @@
     "@electron-forge/plugin-auto-unpack-natives": "^7.1.0",
     "@vitejs/plugin-vue": "^4.5.0",
     "electron": "^26.6.0",
+    "electron-builder": "^24.13.3",
     "sass": "^1.69.5",
     "tree-kill": "^1.2.2",
     "typescript": "^5.2.2",
