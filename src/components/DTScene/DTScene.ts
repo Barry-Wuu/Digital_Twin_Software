@@ -1359,7 +1359,8 @@ export default class SceneBuilder {
             }
 
             if (prop) {
-                for (let key in prop) mesh.DT[key] = prop[key];
+                // for (let key in prop) mesh.DT[key] = prop[key];
+                mesh.DT.copyFrom(prop);
             }
             global.SCENE.DT.children.push(mesh.DT);
         }
