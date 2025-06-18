@@ -1,4 +1,5 @@
 import { Box3, Frustum, Vector3 } from "three";
+import { ref } from "vue";
 
 const tmpPoint = new Vector3();
 
@@ -19,16 +20,14 @@ const temp3 = new Vector3();
 
 export class SelectionBoxFixed {
   camera;
-  collection = []; // 存放框选模型的id
-  collectionMesh = [];
+  collection = ref([]); // 存放框选模型的id
+  collectionMesh = ref([]); // 存放框选模型
   deep = Number.MAX_VALUE;
   endPoint = new Vector3();
   frustum = new Frustum();
-  initialPosition = []; // 存放其他模型相对于被选中模型的位置、姿态和缩放比例
-  //initialQuaternion = [];
-  //initialScale = [];
+  groundId; // 地面模型的id
   mainObject; // 框选后选中的模型
-  //mainObjectScale;
+  positionDiff = []; // 存放其他模型相对于被选中模型的世界位置差值
   requestId;
   scene;
   startPoint = new Vector3();
@@ -36,29 +35,31 @@ export class SelectionBoxFixed {
   constructor(camera, scene) {
     this.camera = camera;
     this.scene = scene;
+    for (let i = 0; i < this.scene.children.length; i++) {
+      const child = this.scene.children[i];
+      if (child.DT?.title === "(Mesh) 地面") {
+        this.groundId = child.id;
+        break;
+      }
+    }
   }
 
   initialStatus(mesh) { // 控制器附着模型mesh
     this.reset();
     this.mainObject = mesh;
-    //this.mainObjectScale = mesh.scale;
-    for (let i = 0; i < this.collection.length; i++) {
-      this.collectionMesh[i] = this.scene.DT.findDTObjectById(this.collection[i]).mesh;
-      this.initialPosition[i] = this.collectionMesh[i].position.clone().sub(this.mainObject.position);
-      //this.initialQuaternion[i] = this.collectionMesh[i].quaternion.clone().multiplyQuaternions(this.mainObject.quaternion.invert());
-      //this.initialScale[i] = this.collectionMesh[i].scale.clone();
+    const mainWorldPosition = new Vector3();
+    mesh.getWorldPosition(mainWorldPosition);
+    for (let i = 0; i < this.collection.value.length; i++) {
+      const worldPosition = new Vector3();
+      this.collectionMesh.value[i].getWorldPosition(worldPosition);
+      this.positionDiff.push(worldPosition.sub(mainWorldPosition));
     }
     this.updateStatus();
   }
 
   reset() {
-    //this.collection = [];
-    this.collectionMesh = [];
     this.mainObject = null;
-    //this.mainObjectScale = null;
-    this.initialPosition = [];
-    //this.initialQuaternion = [];
-    //this.initialScale = [];
+    this.positionDiff = [];
     if (this.requestId) {  // 终止requestAnimationFrame
       cancelAnimationFrame(this.requestId);
       this.requestId = null;
@@ -66,15 +67,21 @@ export class SelectionBoxFixed {
   }
 
   searchChildInFrustum(object) {
-    if (object.isMesh && object.id != 188) {
+    if (object.isMesh && object.id != this.groundId) {
       const meshBox = new Box3().copy(object.geometry.boundingBox).applyMatrix4(object.matrixWorld);
       if (this.frustum.intersectsBox(meshBox)) {
-        if (object.parent.type == "Group") {
-          if (!this.collection.includes(object.parent.id)) {
-            this.collection.push(object.parent.id);
+        if (object.parent.type != "Scene") {
+          let parent = object.parent;
+          while (parent.parent.type != "Scene") {
+            parent = parent.parent;
+          }
+          if (!this.collection.value.includes(parent.id)) {
+            this.collection.value.push(parent.id);
+            this.collectionMesh.value.push(parent);
           }
         } else {
-          this.collection.push(object.id);
+          this.collection.value.push(object.id);
+          this.collectionMesh.value.push(object);
         }
       }
     }
@@ -181,10 +188,13 @@ export class SelectionBoxFixed {
 
   updateStatus = () => {
     this.requestId = requestAnimationFrame(this.updateStatus);
-    for (let i = 0; i < this.collection.length; i++) {
-      this.collectionMesh[i].position.copy(this.mainObject.position).add(this.initialPosition[i]);
-      //this.collectionMesh.quaternion.copy(this.mainObject.quaternion).multiply(this.initialQuaternion[i]);
-      //this.collectionMesh.scale.copy(this.initialScale.clone().divide(this.mainObjectScale).multiply(this.mainObject.scale));
+    const worldPosition = new Vector3();
+    this.mainObject.getWorldPosition(worldPosition);
+    for (let i = 0; i < this.collection.value.length; i++) {
+      let targetPosition = worldPosition.clone().add(this.positionDiff[i]);
+      const parent = this.scene.DT.findDTObjectById(this.collection.value[i]).mesh.parent
+      if (!parent.isScene) parent.worldToLocal(targetPosition);
+      this.collectionMesh.value[i].position.copy(targetPosition);
     }
   }
 }

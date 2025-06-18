@@ -134,6 +134,16 @@ export default defineComponent({
             global.emit("changeSpeed", marks[speed.value]);
             BottomSpeed.textContent = marks[speed.value];
         },
+            changeLabelVisible(object,flag){
+                if(object.isCSS2DObject){
+                    object.visible = flag;
+                    return;
+                }
+                if(!object.DT) return;
+                for(let child of object.children){
+                    this.changeLabelVisible(child,flag);
+                }
+            },
         changeLayers(e) {  // 更改各类物体的显隐性
             let layer = e.target.value;  // 更改的图层中文名
             let layers = layersActive.value;  // 显示的图层，其用中文名表示
@@ -327,6 +337,7 @@ export default defineComponent({
         setMode(newMode) {  // 切换编辑/浏览模式
             global.mode = newMode;
             mode.value = newMode;
+                this.changeLabelVisible(global.SCENE, mode.value == 'edit' ? false : true);
         },
         viewAdd() {  // 新建视角
             customViews.value.push({
