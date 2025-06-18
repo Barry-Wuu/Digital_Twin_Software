@@ -308,12 +308,18 @@ export default class SceneBuilder {
                 if (!attached.isLight) {
                     let POS = new THREE.Vector3();
                     attached.getWorldPosition(POS);
-                    let wireframe = attached.DT.layers.wireframe[0];
-                    let center = new THREE.Vector3();
-                    wireframe.geometry.computeBoundingBox();
-                    wireframe.geometry.boundingBox.getCenter(center);
-                    center = attached.localToWorld(center);
-                    this.controller.position.copy(center.sub(POS));
+                    if(attached.isGroup){
+                        const worldCenter = attached.DT.layers.wireframe[1].getCenter(new THREE.Vector3());
+                        this.controller.position.copy(worldCenter.sub(POS))
+                    } else {
+                        let wireframe = attached.DT.layers.wireframe[0];
+                        let center = new THREE.Vector3();
+                        wireframe.geometry.computeBoundingBox();
+                        wireframe.geometry.boundingBox.getCenter(center);
+                        center = attached.localToWorld(center);
+                        this.controller.position.copy(center.sub(POS));
+                    }
+                    
                 }
             }
             else if (left_click) global.emit("controlEnd");  // 点击地面等则移除控制器
@@ -1100,6 +1106,7 @@ export default class SceneBuilder {
         labelDOM.style.paddingLeft = "3px";
         labelDOM.style.paddingRight = "3px";
         const label = new CSS2DObject(labelDOM);
+        label.visible = global.mode == "edit" ? false : true;
         mesh.add(label);
         mesh.DT.layers.label = [label];
         const mesh0 = mesh.clone();

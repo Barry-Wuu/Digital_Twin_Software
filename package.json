@@ -1,7 +1,7 @@
 {
   "name": "electron-vue-vite",
   "version": "2.0.0",
-  "main": "C:/Users/Administrator/Desktop/DT副本/DT-FrontEnd/src/main.ts",
+  "main": "dist-electron/main/index.js",
   "description": "Really simple Electron + Vue + Vite boilerplate.",
   "author": "1",
   "license": "SCUT",
