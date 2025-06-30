@@ -85,6 +85,9 @@
                         },
                         {
                             "title": "变道护栏"
+                        },
+                        {
+                            "title": "支撑柱"
                         }
                     ]
                 },
@@ -759,6 +762,18 @@
             "rigid": true,
             "rigidShape": "mesh"
         },
+        "支撑柱": {
+            "friction0": 0,
+            "icon": "直护栏.jpg",
+            "geometry": "new THREE.BoxGeometry(1, 1, 12)",
+            "label": "guardrail",
+            "material": {
+                "color": "gray"
+            },
+            "rigid": true,
+            "rigidShape": "convex"
+        },
+
         "光电门": {
             "icon": "光电门.jpg",
             "geometry": "new THREE.BoxGeometry(0.2, 3, 0.8)",
@@ -803,7 +818,7 @@
         },
         "托盘": {
             "icon": "托盘.jpg",
-            "geometry": "new THREE.BoxGeometry(2, 2, 0.6)",
+            "geometry": "new THREE.BoxGeometry(2, 1.6, 0.6)",
             "label": "WIP",
             "mass": 1,
             "material": {

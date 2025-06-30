@@ -164,25 +164,22 @@ onMounted(() => {  // 加载完成时
         const splitIndex = normalizedNodeID.indexOf('/');
         const uuid = normalizedNodeID.slice(0, splitIndex);
         const fullPath = normalizedNodeID.slice(splitIndex + 1);
-        // const unifiedFullPath = fullPath
-        //   .replace(/@[vV]alue/gi, '@Value') // 统一@Value结尾
-        //   .replace(/Inputcmd/gi, 'InputCmd'); // 修正命令路径
         const unifiedFullPath = fullPath
           .replace(/(Input|Output)cmd/gi, '$1Cmd')   // 修正大小写
           .replace(/:([a-z]+)@/gi, (_, p1) => `_${p1.toLowerCase()}@`); // 标准化属性符
         // 添加调试日志
-        console.log('[路径处理]', {
-          uuid: uuid,
-          rawPath: fullPath,
-          normalized: unifiedFullPath,
-          value: nodeData.value
-        });
+        // console.log('[路径处理]', {
+        //   uuid: uuid,
+        //   rawPath: fullPath,
+        //   normalized: unifiedFullPath,
+        //   value: nodeData.value
+        // });
         nodeManager.update(uuid, unifiedFullPath, nodeData.value);
         const handleUpdate = () => {
           Promise.resolve().then(() => { // 微任务队列保证触发时机
-            console.log("进入Promise");
+            // console.log("进入Promise");
             if (unifiedFullPath === 'AAS/Capability_Pick/Output/Information_value@Value' && nodeData.value.toLowerCase() === '') {
-              global.emit("Denso1", { ID1: 1860 });
+              global.emit("Denso1", { ID1: 1794 });
             }
             else if (unifiedFullPath === 'AAS/Capability_Pick/Output/Information_value@Value' && nodeData.value.toLowerCase() === 'working') {
               const commandPath = 'AAS/Capability_Pick/Input/InputCmd_value@Value';
@@ -190,41 +187,35 @@ onMounted(() => {  // 加载完成时
               const commandNode = nodeManager.getDeviceData(uuid)?.get('AAS/Capability_Pick/Input');
               const commandNode1 = nodeManager.getDeviceData(uuid);
               const commandValue = commandNode?.['InputCmd_value@Value'];
-              console.log('Command Value:', {
+              /* console.log('Command Value:', {
                 exists: !!commandNode,  // 验证此节点是否存在
                 value: commandValue,
                 1: commandNode1
-              });
-              // const targetPath = 'AAS/Capability_Pick/Input/InputCmd:value@Value';
-              // const commandNode = nodeManager.getDeviceData(uuid)
-              // // ?.get('AAS/Capability_Pick/Input');
-              // const commandValue = nodeManager.getDeviceData(uuid)
-              //   ?.get('AAS/Capability_Pick/Input')?.['InputCmd:value@Value'];
-              // const commandValue = commandNode?.['InputCmd:value@Value'];
+              }); */
               console.log('当前命令状态:', { uuid, commandValue });
-              console.log('完整命令节点:', commandNode);
-              // global.emit("DensoPutCNC", { ID1: 1860 });
+              // console.log('完整命令节点:', commandNode);
+              // global.emit("DensoPutCNC", { ID1: 1794 });
               if (typeof commandValue === 'string') {
                 const normalizedCmd = commandValue.toLowerCase();
                 console.log('匹配工作状态:', nodeData.value);
                 if (normalizedCmd.includes('pickcnc')) {
                   setTimeout(() => {
-                    global.emit("DensoPickCNC", { ID1: 1860 });
+                    global.emit("DensoPickCNC", { ID1: 1794 });
                   }, 1200);
                   console.log('发出PickCNC命令');
                 } else if (normalizedCmd.includes('putcnc')) {
                   setTimeout(() => {
-                    global.emit("DensoPutCNC", { ID1: 1860 });
+                    global.emit("DensoPutCNC", { ID1: 1794 });
                   }, 1200);
                   console.log('发出PutCNC命令');
                 } else if (normalizedCmd.includes('putplate')) {
                   setTimeout(() => {
-                    global.emit("DensoPutPlate", { ID1: 1860 });
+                    global.emit("DensoPutPlate", { ID1: 1794 });
                   }, 1200);
                   console.log('发出PutPlate命令');
                 } else if (normalizedCmd.includes('pickplate')) {
                   setTimeout(() => {
-                    global.emit("DensoPickPlate", { ID1: 1860 });
+                    global.emit("DensoPickPlate", { ID1: 1794 });
                   }, 1200);
                   console.log('发出PickPlate命令');
                 } else {
@@ -236,13 +227,12 @@ onMounted(() => {  // 加载完成时
               console.log(unifiedFullPath, nodeData.value + '未匹配到命令');
             }
           });
-        }
-        // nodeManager.update(uuid, fullPath, nodeData.value);
+        };
         setTimeout(() => {
           handleUpdate();
         }, 20);
         // console.log("设备状态更新：", nodeData);
-        console.log('完整设备数据:', nodeManager.getSnapshot());
+        // console.log('完整设备数据:', nodeManager.getSnapshot());
         // 转换为JSON格式（处理嵌套Map）
         const jsonData = nodeManager.getSnapshot().map(([uuid, paths]) => ({
           uuid,
@@ -263,6 +253,36 @@ onMounted(() => {  // 加载完成时
     // client.kill();
     deviceClient.kill();
   })
+  global.on("postResponseSuccess", (data) => {
+    console.log("收到POST响应:", data);
+    // 解析原始请求中的设备ID和RFID
+    const { deviceID, rFID } = data.originalData;
+    if (data.url.includes("simulateActivateJob")) {
+      // 根据rFID找到对应的托盘对象
+      const trayMesh = global.uuid2mesh.get(rFID);
+      if (trayMesh && trayMesh.DT?.playAnimation) {
+        // 启动托盘运送动画
+        trayMesh.DT.playAnimation("conveyorTransport");
+        global.emit("print",
+          `托盘 ${trayMesh.name} 开始沿 ${deviceID} 传送`);
+      }
+      // 检查响应数据是否包含机械臂任务
+      if (data.response && data.response.includes("ROBOT_TASK")) {
+        // 找到对应设备的机械臂
+        const robotMesh = global.uuid2mesh.get(deviceID);
+
+        if (robotMesh && robotMesh.DT?.playRobotAnimation) {
+          // 启动机械臂动画
+          setTimeout(() => {
+            robotMesh.DT.playRobotAnimation("pickAndPlace");
+          }, 3000);
+        }
+      }
+    }
+  });
+  global.on("postResponseError", (errorData) => {
+        console.error("请求失败:", errorData);
+    });
   window.addEventListener("drop", () => {
     document.body.style.userSelect = '';  // 恢复文本选择功能
     draggedSpliter = null;

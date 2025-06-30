@@ -1,0 +1,18 @@
+global.emit("postRequest", { //发送请求任务信息
+    url: "http://192.168.137.155:8888/SimulateActivateJob",
+    data: {
+        "deviceID": selfmesh.DT.deviceUUID,
+        "serviceType":"Denso",
+        "rFID": othermesh[0].DT.deviceUUID,
+        "maxJobsToActivate": 1
+    }
+});
+设备uuid表：
+denso机器人1：bfe9f24e-dff1-494f-abfd-3394153449d0
+denso机器人2：1f43e0e9-6fab-421a-a064-0783bd1b5747
+激光打标机：d0c5ee32-cf35-412d-abc9-6fc91d5b2c6a
+cnc1：186d26db-4957-46ec-b559-ec8ccf96fd07
+cnc2：d6da4cb3-b3cb-4690-bc62-3e5d7b2811f3
+上盖机：f1b2de58-d087-4725-aba4-6c481a0c1560
+上盒机：597fba84-63dd-42d3-918d-3efec79543ce
+下盒机：4c1c583d-6ee1-460b-a6d7-73e5a7eac7bd
