@@ -645,6 +645,35 @@ export default defineComponent({
             <div class="bottomBorder">系统操作</div>
         </div>
         <vr class="splitV" /><!--分隔符-->
+
+        <!-- 仿真模拟 -->
+        <div style="align-items:center; display:inline; height:100%" class="bottom marginLR5">
+            <span style="align-items:center; display:flex; 
+    height: calc(100% - 35px); justify-content:space-evenly;" class="bottom">
+                <!-- 监控模式 -->
+                <div class="logo marginLR10 top16" @click="global.emit('popup', { title: '监控模式', content: '切换至监控模式，工作流部署将反应至实际产线' })"
+                    @mousedown.prevent @mouseenter="lightON" @mouseleave="lightOFF">
+                    <CaretDownOutlined class="logoBig" />
+                    <br>监控模式
+                </div>
+
+                <!-- 仿真模式 -->
+                <div class="logo marginLR10 top16" @click="global.emit('popup', { title: '仿真模式', content: '切换至仿真模式，工作流部署将反应至虚拟服务器' })"
+                    @mousedown.prevent @mouseenter="lightON" @mouseleave="lightOFF">
+                    <CaretRightOutlined class="logoBig" />
+                    <br>仿真模式
+                </div>
+
+                <!-- 工作流部署 -->
+                <div class="logo marginLR10 top16" @click="global.emit('popup', { title: '工作流部署', content: '该功能暂未实现' })"
+                    @mousedown.prevent @mouseenter="lightON" @mouseleave="lightOFF">
+                    <AppstoreAddOutlined class="logoBig" />
+                    <br>工作流部署
+                </div>
+            </span>
+            <div class="bottomBorder">控制模式</div>
+        </div>
+        <vr class="splitV" /><!--分隔符-->
     </span>
 
     <!--可视化-->

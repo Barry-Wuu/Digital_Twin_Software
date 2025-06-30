@@ -67,6 +67,23 @@ export default {
       );
     }
   },
+  watch: {
+    // 当选中物体变化时，自动加载其deviceUUID对应的数据
+    DT: {
+      deep: true,
+      immediate: true, // 初始化时立即执行
+      handler(newDT) {
+        // 类型验证：DT必须是DT对象而非字符串
+        if (typeof newDT === 'string') return;
+
+        // 当deviceUUID存在且有效时
+        if (newDT?.deviceUUID && this.validateUUID(newDT.deviceUUID)) {
+          this.inputUUID = newDT.deviceUUID;
+          this.loadDeviceData();
+        }
+      }
+    }
+  },
   methods: {
     changeFogColor() {  // 更改雾的颜色
       global.emit("changeFogColor", DT.value.mesh.userData.ground)
@@ -80,31 +97,22 @@ export default {
       joint.currentValue = value;
       this.$forceUpdate();
     },
-    //   handleWorldPositionInput(newVal, axis) {
-    //   // 获取当前物体的世界坐标
-    //   const currentWorldPos = this.DT.mesh.getWorldPosition(new THREE.Vector3());
-    //   // 计算新世界坐标（仅修改目标轴）
-    //   const newWorldPos = currentWorldPos.clone();
-    //   newWorldPos[axis] = newVal;
-    //   // 将新世界坐标转换到父物体的局部坐标
-    //   const parent = this.DT.mesh.parent;
-    //   const localPos = parent ? 
-    //     parent.worldToLocal(newWorldPos) : 
-    //     newWorldPos;
-    //   // 更新本地坐标而不影响缩放属性
-    //   this.DT.mesh.position.copy(localPos);
-    //   this.DT.updateRigidbodyTransform();
-    // },
     loadDeviceData() {
-      this.inputUUID = this.DT.deviceUUID;
+      // 确保UUID有效
       if (!this.validateUUID(this.inputUUID)) {
-        this.$message.error('格式错误：应为标准UUID');
+        this.$message.error('请输入有效的UUID格式');
         return;
       }
+      this.updateDeviceData();
+    },
+    // 新增更新设备数据的方法
+    updateDeviceData() {
+      if (!this.inputUUID) return;
 
-      this.deviceData = Array.from(
-        nodeManager.getDeviceData(this.inputUUID)?.entries() ?? []
-      );
+      const deviceMap = nodeManager.getDeviceData(this.inputUUID);
+      this.deviceData = deviceMap
+        ? Array.from(deviceMap.entries())
+        : [];
     },
     validateUUID(uuid: string) {
       this.deviceUUIDInvalid = !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
@@ -130,7 +138,24 @@ export default {
       id = parseInt(id);  // 若id为数字字符串则转换为数字
       DT.value = global.SCENE.DT.findDTObjectById(id);
     });
+    if (this.DT?.deviceUUID) {
+      this.inputUUID = this.DT.deviceUUID;
+      this.$nextTick(this.loadDeviceData);
+    }
+    this.unsubscribe = nodeManager.subscribe((updatedUUID) => {
+      // 仅在当前展示的UUID更新时刷新
+      if (updatedUUID === this.inputUUID) {
+        this.updateDeviceData();
+      }
+    });
   },
+  beforeUnmount() {
+    // 组件销毁时取消订阅
+    if (this.unsubscribe) {
+      this.unsubscribe();
+    }
+  },
+
 }
 </script>
 
@@ -193,7 +218,7 @@ export default {
   <!--属性栏内容-->
   <div v-else-if="DT" style="text-align:left;">
     <a-collapse :default-active-key="[
-      '基本属性', '几何属性', '物理属性', '材质属性', '代码属性', '自定义属性', '自定义脚本'
+      '基本属性', '几何属性', '物理属性', '设备属性','材质属性', '代码属性', '自定义属性', '自定义脚本'
     ]">
 
       <!--基本属性-->
@@ -258,18 +283,6 @@ export default {
 
       <!--物理属性-->
       <a-collapse-panel v-if="DT.rb" header="物理属性" key="物理属性">
-        <!-- <template #extra>
-          <a-button size="small" @click.stop="global.emit('popup', {
-            DT: DT,
-            title: '逆运动学计算',
-            type: 'kinematics',
-            initialValues: {
-              x: 0,
-              y: 0,
-              z: 0
-            }
-          })" title="逆解计算">🤖</a-button>
-        </template> -->
         <Prop prop="rigid" title="刚体" />
         <Prop prop="rigidFollow" title="运动位姿跟随" type="follow" />
         <Prop prop="mass" title="质量" type="inputNumber" :options="{ delta: 0.1, min: 0.1, max: 20 }" />
@@ -300,13 +313,16 @@ export default {
       <a-collapse-panel v-else disabled header="约束信息（无）" />
 
       <!--设备节点信息-->
-      <a-collapse-panel header="设备数据" key="deviceData" :force-render="true">
+      <a-collapse-panel header="设备数据" key="设备属性" :force-render="true">
         <template #extra>
           <a-button @click="toggleRemark" type="link" size="small" class="remark-toggle-button">
             {{ showRemark ? '隐藏备注' : '显示备注' }}
           </a-button>
         </template>
-        <a-alert :message="`当前设备UUID: ${DT.deviceUUID || '未绑定'}`" type="info" show-icon />
+        <a-alert :type="deviceData.length > 0 ? 'success' : 'info'" :showIcon="true"
+          :message="`UUID: ${inputUUID || '未选择'}`" :description="deviceData.length > 0
+            ? `已加载 ${deviceData.length} 个数据节点 `
+            : '暂无匹配数据'" />
         <a-table :columns="deviceColumns" :data-source="processedDeviceData" :pagination="false" size="small" bordered>
           <!-- 动态备注列渲染 -->
           <template #remark="{ record }">

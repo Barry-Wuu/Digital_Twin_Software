@@ -1,10 +1,11 @@
 type DeviceValue = {
   [valueKey: string]: any;
 };
+type UpdateHandler = (uuid: string) => void;
 class NodeManager {
   // 存储结构：Map<UUID, Map<NodePath>>
   private dataMap = new Map<string, Map<string, Record<string, any>>>();
-  // private listeners = new Map<string, Map<string, Set<(val: any) => void>>>();
+  private updateListeners = new Set<UpdateHandler>();
   // 更新节点值（自动拆分路径）
   update(uuid: string, rawPath: string, value: any) {
     const [nodePath, valueKey] = this.parsePath(rawPath);
@@ -18,35 +19,10 @@ class NodeManager {
       ...currentValue,
       [valueKey]: value,
     });
-    // this.triggerListeners(uuid, nodePath);
-    // console.log(`存储路径 => uuid:${uuid}, path:${nodePath}, key:${valueKey}`);
+    this.notifyUpdate(uuid);
     console.log('更新后数据:', deviceMap.get(nodePath));
   }
   // 解析路径  24461a2c.../AAS/Capability/Input:value@Value → [AAS/Capability/Input, Input:value@Value]
-  // private parsePath(rawPath: string): [string, string] {
-  //   if (!rawPath || typeof rawPath !== 'string') {  // 前置校验
-  //     return ['', ''];
-  //   }
-  //   // 优先尝试按/分割方式
-  //   const parts = rawPath.split('/');
-  //   if (parts.length < 1) {
-  //     console.warn("空路径解析请求", rawPath);
-  //     return ['', ''];
-  //   }
-  //   // 取出最后一个子路径作为属性名
-  //   const lastSegment = parts.pop()!;  // 非空断言
-  //   return [parts.join('/'), lastSegment];
-  // }
-  // private parsePath(rawPath: string): [string, string] {
-  //   // 新路径拆分逻辑（支持带@Value和不带的情况）
-  //   const pathRegex = /(.+\/)?([^/]+@Value)$/; 
-  //   if (!pathRegex.test(rawPath)) {
-  //     console.warn("非法路径格式:", rawPath);
-  //     return [rawPath, 'default']; // 确保基本路径保存
-  //   }
-  //   const [, pathPart, valuePart] = rawPath.match(pathRegex)!;
-  //   return [pathPart?.replace(/\/$/, '') || rawPath, valuePart];
-  // }
   private parsePath(rawPath: string): [string, string] {
     // 强制规范路径：替换非法分隔符并标准化结构
     const normalizedPath = rawPath
@@ -61,6 +37,16 @@ class NodeManager {
     // 组合有效路径段
     const nodePath = segments.join('/');
     return [nodePath, propSegment];
+  }
+  private notifyUpdate(uuid: string) {
+    for (const handler of this.updateListeners) {
+      handler(uuid);
+    }
+  }
+  subscribe(handler: UpdateHandler) {
+    this.updateListeners.add(handler);
+    // 返回取消订阅函数
+    return () => this.updateListeners.delete(handler);
   }
   public getSnapshot(): Array<[string, Map<string, DeviceValue>]> {
     return Array.from(this.dataMap).map(([uuid, paths]) => [

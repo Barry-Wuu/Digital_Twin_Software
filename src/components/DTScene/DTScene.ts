@@ -47,6 +47,11 @@ var speed = 1;
 var temp = false;
 var tempGuardrails = [];
 var UP = new THREE.Vector3(0, 0, 1);  // z轴朝上
+const taskManager = {//任务动画控制
+    currentTask: null,
+    isAnimating: false,
+    firstRequestDone: false
+};
 
 // 物理量
 var animate;
@@ -455,7 +460,7 @@ export default class SceneBuilder {
         //global.emit("consolebyid", {id: 220})
         global.on("consolebyid", (data: any) => {  // 输出检索id物体
             let mesh = global.SCENE.getObjectById(data.id);
-            console.log(mesh, mesh.material);
+            console.log(mesh);
         });
         // global.emit("rotateMesh", {mesh: global.SCENE.getObjectById(220), angle: 45})
         global.on("rotateMesh", (data: any) => {  // 让变道护栏接收到消息时旋转
@@ -482,7 +487,144 @@ export default class SceneBuilder {
                 }
             };
         });
-        //global.emit("Denso1",{ID1: 1860})
+        function executeAnimation(command: string, task: any) {
+            console.log(`执行指令: ${command}`);
+            const hasRFIDFlag = /RFID/i.test(task.serviceType);
+            if (hasRFIDFlag) {
+                console.log(`检测到RFID标记的服务类型(${task.serviceType})，跳过动画执行`);
+                completeTaskAfterAnimation(task); // 有RFID标记时立即完成任务
+                return; // 提前退出函数
+            }
+            switch (true) {
+                case command === "PickPlate1" && task.deviceID === "1f43e0e9-6fab-421a-a064-0783bd1b5747":
+                    global.emit("DensoPickPlate", { ID1: 1794 });
+                    let sensor2 = global.physicalIDMap[2475]
+                    let collider2 = global.physicsWorld.colliders.get(sensor2.rb().handle);
+                    setTimeout(() => {
+                        completeTaskAfterAnimation(task),
+                            collider2.setEnabled(false)
+                    }, 16400);
+                    setTimeout(() => {
+                        collider2.setEnabled(true)
+                    }, 19400);
+                    break;
+                case command === "PutPlate1" && task.deviceID === "1f43e0e9-6fab-421a-a064-0783bd1b5747":
+                    global.emit("DensoPutPlate", { ID1: 1794 });
+                    let sensor1 = global.physicalIDMap[2475]
+                    let collider1 = global.physicsWorld.colliders.get(sensor1.rb().handle);
+                    setTimeout(() => {
+                        completeTaskAfterAnimation(task),
+                            collider1.setEnabled(false)
+                    }, 16400);
+                    setTimeout(() => {
+                        collider1.setEnabled(true)
+                    }, 19400);
+                    break;
+                case command === "PutCNC1" && task.deviceID === "1f43e0e9-6fab-421a-a064-0783bd1b5747":
+                    global.emit("DensoPutCNC", { ID1: 1794 });
+                    setTimeout(() => {
+                        global.emit("CNC1", { ID1: 2057 });
+                        setTimeout(() => {
+                            global.emit("DensoPickCNC", { ID1: 1794 });
+                            setTimeout(() => completeTaskAfterAnimation(task), 16000); // 所有动作完成后
+                        }, 13000);
+                    }, 16000);
+                    break;
+                case command === "LoadBox" && task.deviceID === "94ff8fb3-3ef6-4ab9-91ec-e3028effb07c":
+                    global.emit("LBJ", { ID1: 2162 });
+                    let sensor3 = global.physicalIDMap[2593]
+                    let collider3 = global.physicsWorld.colliders.get(sensor3.rb().handle);
+                    setTimeout(() => {
+                        completeTaskAfterAnimation(task),
+                            collider3.setEnabled(false)
+                    }, 8000);
+                    setTimeout(() => {
+                        collider3.setEnabled(true)
+                    }, 11000);
+                    break;
+                case command === "UnloadBox" && task.deviceID === "4c1c583d-6ee1-460b-a6d7-73e5a7eac7bd":
+                    global.emit("RBJ", { ID1: 2243 })
+                    let sensor4 = global.physicalIDMap[2477]
+                    let collider4 = global.physicsWorld.colliders.get(sensor4.rb().handle);
+                    setTimeout(() => {
+                        completeTaskAfterAnimation(task),
+                            collider4.setEnabled(false)
+                    }, 4000);
+                    setTimeout(() => {
+                        collider4.setEnabled(true)
+                    }, 7000);
+                    break;
+                case command === "LoadCover" && task.deviceID === "f1b2de58-d087-4725-aba4-6c481a0c1560":
+                    global.emit("LoadCover", { ID1: 2092 })
+                    let sensor5 = global.physicalIDMap[2507]
+                    let collider5 = global.physicsWorld.colliders.get(sensor5.rb().handle);
+                    setTimeout(() => {
+                        completeTaskAfterAnimation(task),
+                            collider5.setEnabled(false)
+                    }, 4000);
+                    setTimeout(() => {
+                        collider5.setEnabled(true)
+                    }, 7000);
+                    break;
+                default:
+                    console.warn("未识别指令:", command);
+                    completeTaskAfterAnimation(task); // 没有动画立即完成
+            }
+        }
+        function completeTaskAfterAnimation(task: any) {
+            const transformServiceType = (serviceType: string): string => {
+                const rfidRegex = /RFID/i;
+                return rfidRegex.test(serviceType)
+                    ? serviceType.replace(rfidRegex, '')  // 移除RFID后缀
+                    : serviceType;  // 保持原样
+            };
+            // 生成下一个服务类型
+            const nextServiceType = transformServiceType(task.serviceType);
+            global.emit("postRequest", {
+                url: "http://192.168.137.155:8888/CompleteJob",
+                data: {
+                    "jobKey": task.key,
+                }
+            });
+            taskManager.isAnimating = false;
+            setTimeout(() => {
+                console.log("重新请求新任务");
+                global.emit("postRequest", {
+                    url: "http://192.168.137.155:8888/SimulateActivateJob",
+                    data: {
+                        "deviceID": task.deviceID,
+                        "serviceType": nextServiceType,
+                        "rFID": task.rFID,
+                        "maxJobsToActivate": 1
+                    }
+                });
+            }, 1000); // 1秒延迟保证服务端处理
+        }
+        global.on("postSuccess", (data: any) => {
+            if (taskManager.isAnimating) {
+                console.warn("系统繁忙：已有动画执行中，拒绝新任务");
+                return; // 防止新任务干扰当前执行
+            }
+            // 提取任务数据
+            const response = data.response
+            const job = response.data["1"];
+            const customHeaders = job.customHeaders;
+            const key = job.key;
+            const processInstanceKey = job.processInstanceKey;
+            // 解析自定义指令
+            const parsedHeaders = JSON.parse(customHeaders);
+            const command = parsedHeaders["1"]; // 提取指令值
+            taskManager.isAnimating = true;
+            taskManager.currentTask = {
+                command, key, processInstanceKey,
+                deviceID: data.deviceID,
+                rFID: data.rFID,
+                serviceType: data.serviceType
+            };
+            // 执行对应的动画指令
+            executeAnimation(command, taskManager.currentTask);
+        });
+        //global.emit("Denso1",{ID1: 1775}) Denso2机器人ID1787-1768
         global.on("Denso1", (data: any) => {//Denso机器人进入待机状态1
             const ID1 = data.ID1;
             const ID2 = ID1 - 1;
@@ -501,8 +643,8 @@ export default class SceneBuilder {
             global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: -10, axis: 'y', T: 2.2 })
             global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID3), angle: -20, axis: 'x', T: 2.2 })
             setTimeout(() => {
-                global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: -30, axis: 'y' ,T:1})
-                global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID3), angle: -10, axis: 'x' ,T:1})
+                global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: -30, axis: 'y', T: 1 })
+                global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID3), angle: -10, axis: 'x', T: 1 })
             }, 2200);
             setTimeout(() => {
                 global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: 30, axis: 'y' })
@@ -578,10 +720,10 @@ export default class SceneBuilder {
                 global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID5), angle: -20, axis: 'x', T: 2 })
             }, 8000);
             setTimeout(() => {
-                global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: -5, axis: 'y' ,T:1})
+                global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: -5, axis: 'y', T: 1 })
             }, 10000);
             setTimeout(() => {
-                global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: 5, axis: 'y' ,T:1})
+                global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: 5, axis: 'y', T: 1 })
             }, 12000);
             setTimeout(() => {
                 global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: 50, axis: 'y', T: 2 })
@@ -594,14 +736,14 @@ export default class SceneBuilder {
             const ID2 = ID1 - 1;
             const ID3 = ID1 - 2;
             const ID5 = ID1 - 4;
-            global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: -50, axis: 'y',T:2 })
-            global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID3), angle: -95, axis: 'x' ,T:2})
-            global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID5), angle: -20, axis: 'x' ,T:2})
+            global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: -50, axis: 'y', T: 2 })
+            global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID3), angle: -95, axis: 'x', T: 2 })
+            global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID5), angle: -20, axis: 'x', T: 2 })
             setTimeout(() => {
-                global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: -5, axis: 'y' ,T:1})
+                global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: -5, axis: 'y', T: 1 })
             }, 2000);
             setTimeout(() => {
-                global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: 5, axis: 'y' ,T:1})
+                global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: 5, axis: 'y', T: 1 })
             }, 4500);
             setTimeout(() => {
                 global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: 50, axis: 'y', T: 2 })
@@ -612,10 +754,10 @@ export default class SceneBuilder {
                 global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID1), angle: 120, axis: 'y', T: 2 })
             }, 7500);
             setTimeout(() => {
-                global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: -10, axis: 'y' ,T:2})
+                global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: -10, axis: 'y', T: 2 })
             }, 9500);
             setTimeout(() => {
-                global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: 10, axis: 'y' ,T:2})
+                global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: 10, axis: 'y', T: 2 })
             }, 11500);
             setTimeout(() => {
                 global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID1), angle: -120, axis: 'y', T: 2 })
@@ -679,7 +821,7 @@ export default class SceneBuilder {
                 global.emit("Daerotate", { mesh: global.SCENE.getObjectById(ID2), angle: -40, axis: 'z' })
             }, 6000);
         })
-        //global.emit("CNC1",{ID1: 2092})
+        //global.emit("CNC1",{ID1: 2063}) CNC机ID：2056
         global.on("CNC1", (data: any) => {
             const ID1 = data.ID1;
             const ID2 = ID1 - 1;
@@ -698,8 +840,8 @@ export default class SceneBuilder {
                 global.emit("Daetranslate", { mesh: global.SCENE.getObjectById(ID1), distance: -0.17, axis: 'x' })
             }, 11000);
         })
-        //global.emit("install",{ID1: 2158})  上盖机
-        global.on("install", (data: any) => {
+        //global.emit("LoadCover",{ID1: 2092})  上盖机ID：2081
+        global.on("LoadCover", (data: any) => {
             const ID1 = data.ID1;
             const ID2 = ID1 - 2;
             global.emit("Daetranslate", { mesh: global.SCENE.getObjectById(ID1), distance: -0.305, axis: 'x' })
@@ -719,20 +861,35 @@ export default class SceneBuilder {
                 global.emit("Daetranslate", { mesh: global.SCENE.getObjectById(ID2), distance: 0.05, axis: 'y', T: 0.5 })
             }, 3500);
         })
-        //global.emit("RBJ",{ID1: 2309})  下盒机
+        //global.emit("RBJ",{ID1: 2243})  下盒机ID：2234
         global.on("RBJ", (data: any) => {
             const ID1 = data.ID1;
             const ID2 = ID1 - 1;
             global.emit("Daetranslate", { mesh: global.SCENE.getObjectById(ID1), distance: 0.27, axis: 'z' })
             setTimeout(() => {
-                global.emit("Daetranslate", { mesh: global.SCENE.getObjectById(ID2), distance: -0.1, axis: 'y', T: 0.5 })
+                global.emit("Daetranslate", { mesh: global.SCENE.getObjectById(ID2), distance: -0.1, axis: 'y', T: 1 })
             }, 1000);
             setTimeout(() => {
-                global.emit("Daetranslate", { mesh: global.SCENE.getObjectById(ID2), distance: 0.1, axis: 'y', T: 0.5 })
-            }, 1500);
+                global.emit("Daetranslate", { mesh: global.SCENE.getObjectById(ID2), distance: 0.1, axis: 'y', T: 1 })
+            }, 200);
             setTimeout(() => {
                 global.emit("Daetranslate", { mesh: global.SCENE.getObjectById(ID1), distance: -0.27, axis: 'z' })
+            }, 3000);
+        })
+        //global.emit("LBJ",{ID1: 2168})  上盒机ID：2152
+        global.on("LBJ", (data: any) => {
+            const ID1 = data.ID1;
+            const ID2 = ID1 - 1;
+            global.emit("Daetranslate", { mesh: global.SCENE.getObjectById(ID1), distance: 0.28, axis: 'z', T: 2 })
+            setTimeout(() => {
+                global.emit("Daetranslate", { mesh: global.SCENE.getObjectById(ID2), distance: 0.07, axis: 'z', T: 2 })
             }, 2000);
+            setTimeout(() => {
+                global.emit("Daetranslate", { mesh: global.SCENE.getObjectById(ID2), distance: -0.07, axis: 'z', T: 2 })
+            }, 4000);
+            setTimeout(() => {
+                global.emit("Daetranslate", { mesh: global.SCENE.getObjectById(ID1), distance: -0.28, axis: 'z', T: 2 })
+            }, 6000);
         })
         // global.emit("Daerotate", {mesh: global.SCENE.getObjectById(493), angle: 45,axis: 'z'})
         global.on("Daerotate", (data: any) => {
@@ -915,29 +1072,29 @@ export default class SceneBuilder {
                 // 光电门3：75292a01-6d17-4d50-bb75-d42718f75fe8
                 // 光电门5：7f698a28-d9d4-456a-9814-19d6c9b2f1a1
                 // 调试发送虚拟光电门信号
-                if(e.code == "Digit1") global.emit("updateTrayPosition", {deviceID: "a5197017-c560-4713-aacd-01f097dda18f", RFID: "822fbee2-1fe0-45c8-b403-8b5cdb31cb25"});
-                if(e.code == "Digit3") global.emit("updateTrayPosition", {deviceID: "75292a01-6d17-4d50-bb75-d42718f75fe8", RFID: "822fbee2-1fe0-45c8-b403-8b5cdb31cb25"});
-                if(e.code == "Digit5") global.emit("updateTrayPosition", {deviceID: "7f698a28-d9d4-456a-9814-19d6c9b2f1a1", RFID: "822fbee2-1fe0-45c8-b403-8b5cdb31cb25"}); 
-                if(e.code == "KeyQ") this.controller.setMode("translate");  // 按Q平移
-                if(e.code == "KeyW") this.controller.setMode("rotate");  // 按W旋转
-                if(e.code == "KeyE") {  // 按R切换全局坐标系和局部坐标系
-                    if(this.controller.space == "world") this.controller.setSpace("local");
-                    else this.controller.setSpace("world");this.updateRigidBodies();
+                if (e.code == "Digit1") global.emit("updateTrayPosition", { deviceID: "a5197017-c560-4713-aacd-01f097dda18f", RFID: "822fbee2-1fe0-45c8-b403-8b5cdb31cb25" });
+                if (e.code == "Digit3") global.emit("updateTrayPosition", { deviceID: "75292a01-6d17-4d50-bb75-d42718f75fe8", RFID: "822fbee2-1fe0-45c8-b403-8b5cdb31cb25" });
+                if (e.code == "Digit5") global.emit("updateTrayPosition", { deviceID: "7f698a28-d9d4-456a-9814-19d6c9b2f1a1", RFID: "822fbee2-1fe0-45c8-b403-8b5cdb31cb25" });
+                if (e.code == "KeyQ") this.controller.setMode("translate");  // 按Q平移
+                if (e.code == "KeyW") this.controller.setMode("rotate");  // 按W旋转
+                if (e.code == "KeyE") {  // 按R切换全局坐标系和局部坐标系
+                    if (this.controller.space == "world") this.controller.setSpace("local");
+                    else this.controller.setSpace("world"); this.updateRigidBodies();
                 }
-                if(e.code == "KeyA") {  // 按A拉伸直道传送带
+                if (e.code == "KeyA") {  // 按A拉伸直道传送带
                     let target = this.controller.object;
                     if (target.DT.basename.includes("直道") || target.DT.basename == "直护栏") {
                         this.controller.setMode("scale");
                     }
-                    if(attached.DT.basename == "平行传送装置-直道"){
-                        if(this.controller.mode == "scale"){
+                    if (attached.DT.basename == "平行传送装置-直道") {
+                        if (this.controller.mode == "scale") {
                             this.controller.showX = true;
                             this.controller.showY = false;
                             this.controller.showZ = false;
                         }
                     }
-                    if(attached.DT.basename == "直护栏"){
-                        if(this.controller.mode == "scale"){
+                    if (attached.DT.basename == "直护栏") {
+                        if (this.controller.mode == "scale") {
                             this.controller.showX = false;
                             this.controller.showY = true;
                             this.controller.showZ = false;
@@ -949,12 +1106,12 @@ export default class SceneBuilder {
                     this.controller.showY = true;
                     this.controller.showZ = true;
                 }
-                if(e.code == "Escape") this.controller.reset();  // 按ESC恢复
-                if(e.ctrlKey) {  // 按Ctrl将移动间距离散化
-                    if(e.code == "KeyZ") this.controller.reset();  // 按Ctrl+Z恢复
-                    this.controller.setTranslationSnap( 1 );
-                    this.controller.setRotationSnap( THREE.MathUtils.degToRad( 15 ) );
-                    this.controller.setScaleSnap( 0.25 );
+                if (e.code == "Escape") this.controller.reset();  // 按ESC恢复
+                if (e.ctrlKey) {  // 按Ctrl将移动间距离散化
+                    if (e.code == "KeyZ") this.controller.reset();  // 按Ctrl+Z恢复
+                    this.controller.setTranslationSnap(1);
+                    this.controller.setRotationSnap(THREE.MathUtils.degToRad(15));
+                    this.controller.setScaleSnap(0.25);
                 }
             }
             if (global.mode == "view") {  // 在浏览模式下
@@ -1436,54 +1593,57 @@ export default class SceneBuilder {
             });
         }
     }
-    onCollision() {  // 检测物理世界中的物体是否与传送带碰撞，若有则施力
+    onCollision() {  // 检测物理世界中的物体是否与传送带碰撞，若有则施力  mesh0/mesh1=此物体/与之碰撞的物体；DT=对应的DTObject；DTs=与此物体碰撞的所有物体；rb0/rb1=对应的刚体；collider0/collider1=对应的碰撞体
         global.physicsWorld.forEachCollider(collider => {
-            let rb = collider._parent;
-            let mesh = global.rb2mesh[rb.handle];
-            if (!mesh) return;
-            let DT = mesh.DT;
+            let rb0 = collider._parent;
+            let selfmesh = global.rb2mesh[rb0.handle];
+            if (!selfmesh) return;
+            let DT = selfmesh.DT;
+            DT.selfmesh = selfmesh;
             DT.touchObject = [];
 
-            // 让在制品排在前面，即等于mesh0
-            let label = global.rb2mesh[collider._parent.handle].DT.label;
+            // 让在制品排在前面，即等于othermesh
+            let label = selfmesh.DT.label;
             let onConveyor = false;  // 记录在制品是否在传送带上，若不在则清空施力
-            global.physicsWorld.contactPairsWith(collider, collider0 => {
+            global.physicsWorld.contactPairsWith(collider, collider1 => {
                 // 寻找对应的刚体和网格
-                let rb0 = collider0._parent;
-                let mesh0 = global.rb2mesh[rb0.handle];
-                let DT0 = mesh0.DT;
-                DT.touchObject.push(DT0);
+                let otherMesh = global.rb2mesh[collider1._parent.handle]; // 碰撞的对方对象
+                let otherDT = otherMesh.DT; // 对方数据对象
+                DT.touchObject.push(otherDT);
+                let rb1 = collider1._parent;
+                let mesh1 = global.rb2mesh[rb1.handle];
+                let DT1 = mesh1.DT;
 
                 if (label == "WIP" || collider.isSensor()) {
-                    if (DT0.label == "conveyor") {  // 让在制品遇到货物时受摩擦力作用
-                        rb.resetForces();
-                        rb.resetTorques();
+                    if (DT1.label == "conveyor") {  // 让在制品遇到货物时受摩擦力作用
+                        rb0.resetForces();
+                        rb0.resetTorques();
                         onConveyor = true;
                         let J = 10;  // 转动惯量J
-                        let k = Math.min(DT.friction, DT0.friction);  // 滑动摩擦系数k
+                        let k = Math.min(DT.friction, DT1.friction);  // 滑动摩擦系数k
                         let kw = k;  // 转动摩擦系数kw
                         let m = DT.mass;  // 质量m
                         let P = new THREE.Vector3(), Q = new THREE.Quaternion(), R = new THREE.Euler();
-                        mesh0.getWorldPosition(P);
-                        mesh0.getWorldQuaternion(Q);
+                        mesh1.getWorldPosition(P);
+                        mesh1.getWorldQuaternion(Q);
                         R.setFromQuaternion(Q);
                         let v;  // 货物速度v
-                        let v0 = DT0.v0 * 2 * 60 / fps;  // 传送带中轴线速度v0，运行时根据帧率进行调整
+                        let v0 = DT1.v0 * 2 * 60 / fps;  // 传送带中轴线速度v0，运行时根据帧率进行调整
                         let theta = R.z;  //传送带旋转角θ 
                         R = 5;  // 传送带中轴线半径R
-                        if (DT0.basename?.includes("直道")) {  // 摩擦力 F = kmg(v0-v)/||v0-v||，v和v0为向量
+                        if (DT1.basename?.includes("直道")) {  // 摩擦力 F = kmg(v0-v)/||v0-v||，v和v0为向量
                             let v0_vec = new THREE.Vector3(v0 * Math.cos(theta), v0 * Math.sin(theta), 0);  // 将v0从标量转换为货物处的速度矢量v0_vec
-                            v = rb.linvel();
+                            v = rb0.linvel();
                             v = new THREE.Vector3(v.x, v.y, v.z);
                             let F = v0_vec.clone();
                             F.sub(v);
                             F.normalize();
                             F.multiplyScalar(2 * k * m * g);
-                            rb.addForce(new RAPIER.Vector3(F.x, F.y, F.z));
-                        } else if (DT0.basename?.includes("弯道")) {
-                            let dir = DT0.basename.includes("逆时针弯道") ? -1 : 1;  // 传送带移动方向（顺/逆时针）
+                            rb0.addForce(new RAPIER.Vector3(F.x, F.y, F.z));
+                        } else if (DT1.basename?.includes("弯道")) {
+                            let dir = DT1.basename.includes("逆时针弯道") ? -1 : 1;  // 传送带移动方向（顺/逆时针）
                             let r = new THREE.Vector3();
-                            r.add(mesh.position).sub(P);
+                            r.add(selfmesh.position).sub(P);
                             r.setZ(0);
                             let ra = r.length();  // 周向矢量r=v0-v，模ra=||v0-v||
                             if (ra >= 3.2 && ra <= 6.4) {  // 当货物到弯道的半径为3.2≤ra≤6.4时向其质心施力
@@ -1491,27 +1651,27 @@ export default class SceneBuilder {
                                 let v0_vec = new THREE.Vector3(r.y, -r.x, 0);  // 旋转v0
                                 v0_vec.normalize();
                                 v0_vec.multiplyScalar(dir * v0 * ra / R, v0_vec);  // 将传送带上r=R处的速度转换为r=ra处的速度
-                                v = rb.linvel();
+                                v = rb0.linvel();
                                 let F = v0_vec.clone();  // 周向摩擦力F = μmg(v0-v)/||v0-v||，v和v0为向量
                                 F.sub(v, F);
                                 F.normalize();
                                 F.multiplyScalar(2 * k * m * g, F);
-                                rb.addForce(new RAPIER.Vector3(F.x, F.y, F.z));
+                                rb0.addForce(new RAPIER.Vector3(F.x, F.y, F.z));
                                 // 然后施加转矩，使在制品尽量对准中轴线
                                 let w0 = -dir * v0_vec.length() / ra;  //传送带角速度ω0 
-                                let w = rb.angvel().z;  //货物角速度ω0
+                                let w = rb0.angvel().z;  //货物角速度ω0
                                 let M = new RAPIER.Vector3(0, 0, 1.5 * kw * J * (w0 - w));
-                                rb.addTorque(M);  // 同理，摩擦力矩 M = kw*J*(ω0-ω)
+                                rb0.addTorque(M);  // 同理，摩擦力矩 M = kw*J*(ω0-ω)
                             }
                         }
                     }
-                    else if (DT0.label == "sensor") {
-                        DT.touchSensor = DT0;
+                    else if (DT1.label == "sensor") {
+                        DT.touchSensor = DT1;
                     }
-                    else if (DT0.label == "special") {
-                        if (DT0.basename == "回收器") {
+                    else if (DT1.label == "special") {
+                        if (DT1.basename == "回收器") {
                             DT.destroy();
-                            global.emit("print", `【${DT.name}${mesh.id}】被【${DT0.name}${DT0.id}】回收`);
+                            global.emit("print", `【${DT.name}${selfmesh.id}】被【${DT1.name}${DT1.id}】回收`);
                         }
                     }
 
@@ -1536,13 +1696,21 @@ export default class SceneBuilder {
             let DTs = DT.touchObject;
 
             try {  // 刚体与物体碰撞时运行的脚本
-                if (DT.code.onCollision) eval(DT.code.onCollision);
+                if (DT.code.onCollision) {
+                    // 当前帧所有碰撞对象的数组
+                    let othermesh = DT.touchObject.map(dt => dt.mesh);
+                    eval(DT.code.onCollision);
+                }
+
             }
             catch (err) { console.log(err); }
 
             if (!DT.touchObjectBefore?.length && DT.touchObject?.length) {  // 触发开始碰撞事件
                 try {  // 开始碰撞时运行的脚本
-                    if (DT.code.onCollisionStart) eval(DT.code.onCollisionStart);
+                    if (DT.code.onCollisionStart) {
+                        let othermesh = DT.touchObject.map(dt => dt.mesh);
+                        eval(DT.code.onCollisionStart);
+                    }
                 }
                 catch (err) { console.log(err); }
             }
@@ -1571,7 +1739,7 @@ export default class SceneBuilder {
     }
     updateFPSandTime(now, pause, stop) {  // 更新帧率和用时
         if (stop) {
-                    BottomTimer.textContent = "00:00:00.000"
+            BottomTimer.textContent = "00:00:00.000"
         } else {
             let totalTime = new Date(now - T0);
             function pad(x, n = 2) { return x.toString().padStart(n, '0') };
@@ -1587,7 +1755,7 @@ export default class SceneBuilder {
         else {  // 到一秒时更新帧率显示          
             BottomFPS.textContent = fps = frames;
             const currentTime = new Date();
-            const timestamp = 
+            const timestamp =
                 `${currentTime.getFullYear()}/` +
                 `${this.pad(currentTime.getMonth() + 1)}/` +
                 `${this.pad(currentTime.getDate())} ` +
@@ -1595,11 +1763,11 @@ export default class SceneBuilder {
                 `${this.pad(currentTime.getMinutes())}:` +
                 `${this.pad(currentTime.getSeconds())}.` +
                 `${this.pad(currentTime.getMilliseconds(), 3)}`;
-            
+
             let memoryUsage = 'N/A';
             if (window.performance?.memory) {
                 memoryUsage = `${Math.round(window.performance.memory.usedJSHeapSize / (1024 * 1024))}MB`;
-            }   
+            }
             const logLine = `${timestamp} —— FPS: ${frames}, Memory: ${memoryUsage}`;
             this.logEntries.push(logLine);
             frames = 0;
@@ -1608,11 +1776,11 @@ export default class SceneBuilder {
     }
     saveLog() {
         if (this.logEntries.length === 0) return;
-        
+
         const content = this.logEntries.join('\n');
         const blob = new Blob([content], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
-        
+
         // 创建下载链接并触发下载
         const a = document.createElement('a');
         a.href = url;
