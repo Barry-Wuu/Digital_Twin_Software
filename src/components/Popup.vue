@@ -1,6 +1,6 @@
 <script lang="ts">
 import global from "../Global"
-import { ref } from 'vue'
+import { ref ,watch} from 'vue'
 import * as THREE from "three"
 import { ArmKinematics, UR5_DH_PARAMS } from '../utils/KinematicsSolver';
 import {
@@ -45,6 +45,19 @@ export default {
       angle: 90,
       duration: 2
     });
+    const tempServerIp = ref(global.serverIp?.value.value || "192.168.137.155:8888");
+    watch(() => global.serverIp?.value.value, (newValue) => {
+      tempServerIp.value = newValue;
+    });
+    // const globalServerIp = "192.168.137.155:8888";
+    // // 创建全局服务 IP 对象
+    // global.serverIp = {
+    //   value: ref(globalServerIp),
+    //   splitServerIp() {
+    //     const [host, port] = this.value.value.split(':');
+    //     return { host, port: parseInt(port) || 8888 };
+    //   }
+    // };
     return {
       rotationParams,
       addCustomProp,
@@ -65,6 +78,15 @@ export default {
       popupTitle,
       rename,
       popupData,
+      // serverIp: "192.168.137.155:8888",
+      serverIp: global.serverIp.value,
+      tempServerIp,
+      updateServerIp() {
+        if (global.serverIp) {
+          global.serverIp.value.value = tempServerIp.value;
+          global.emit('message', '服务器地址已更新');
+        }
+      },
     }
   },
   data() {
@@ -102,6 +124,10 @@ export default {
     }
   },
   methods: {
+    applyServerIp() {
+      this.updateServerIp();
+      this.alignWindow();
+    },
     applyRotation() {
       console.log(this.rotationParams); // 检查是否有值
       console.log(this.DT?.value?.mesh); // 确认是否有可操作的网格
@@ -597,14 +623,23 @@ export default {
         text-align: left; 
         margin: 10px; 
         overflow-y: hidden;
-        width: 500px;
+        width: 700px;
       ">
         <div class="row">
           <span class="text">允许连接服务器：</span>
           <a-checkbox style="width:100px" v-model:checked="allowConnect"
             @change="global.emit(allowConnect ? 'startConnect' : 'stopConnect'); alignWindow()">
             {{ allowConnect ? '是' : '否' }}
-          </a-checkbox><br>
+          </a-checkbox>
+          <div style="margin-left: 10px; display: flex; align-items: center;">
+            <span>服务器地址：</span>
+            <a-input v-model:value="tempServerIp" style="width:200px; margin-left: 5px;" placeholder="IP:端口"
+              :disabled="!allowConnect" />
+            <a-button style="margin-left: 5px;" type="primary" @click="applyServerIp"
+              :disabled="!allowConnect">
+              确认
+            </a-button>
+          </div>
         </div>
         <div class="row">
           <span class="text">允许发送请求：</span>

@@ -99,6 +99,22 @@ export default class HttpClient {
       this.allowConnect = false;
     });
   }
+  reinitialize() {
+    console.log("HTTP客户端重新初始化", this.SITE, this.PORT);
+    if (this.polling) {
+      clearInterval(this.polling);
+      this.startPolling();
+    }
+    return this; // 支持链式调用
+  }
+  // 添加轮询启动方法
+  startPolling() {
+    if (this.allowConnect) {
+      this.polling = setInterval(() => {
+        this.callback();
+      }, this.INTERVAL);
+    }
+  }
 }
 // 演示场景，1单位长度=50mm
 // 用DT().traverse(dt=>dt.v0=2)改变所有传送带速度

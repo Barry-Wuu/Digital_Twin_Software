@@ -257,7 +257,10 @@ export default {
           );
           model.scale.set(item.scale, item.scale, item.scale);
           let DT = new DTObject(model, false, "model");
-          DT.joints = this.parseColladaJoints(dae);
+          // DT.joints = this.parseColladaJoints(dae);
+          // DT.originOffset = new THREE.Vector3();
+          // const boundingBox = new THREE.Box3().setFromObject(model);
+          // boundingBox.getCenter(DT.originOffset);
           DT.name = item.title;
           DT.scale = item.scale;
           // if (kinematicsData) DT.initKinematics(kinematicsData);
@@ -337,7 +340,7 @@ export default {
     async preloadModels() {  // 事先载入软件src目录里的所有内置模型
       // this.isLoading.value = true;
       // try{      
-        for (let basename in model_definition) {
+      for (let basename in model_definition) {
         let item = model_definition[basename];
         let modelPath = item.modelPath;
         if (modelPath?.endsWith('.obj') || modelPath?.endsWith('.dae')) {  // 读取obj与dae模型
@@ -351,7 +354,7 @@ export default {
           );
         }
       }
-    // }
+      // }
       // finally{this.isLoading.value = false;}
     },
     saveCustomModel(data) {  // 保存自定义模型
@@ -428,12 +431,14 @@ export default {
   text-align: center;
   white-space: nowrap;
 }
+
 .model-collapse {
   border: 1px solid black;
   margin: -14px;
   margin-left: 4px;
   user-select: none;
 }
+
 .model-img {
   display: flex;
   margin-top: 2px;
@@ -441,6 +446,7 @@ export default {
   height: 90%;
   object-fit: contain;
 }
+
 .model-imgBorder {
   border-right: 1px solid lightgrey;
   width: 50px;
@@ -449,6 +455,7 @@ export default {
   margin-left: -20px;
   padding-right: 4px;
 }
+
 .model-title {
   font-weight: bold;
   margin-top: -34px;
@@ -479,8 +486,7 @@ export default {
             style="white-space: nowrap;">
             <a-collapse v-model:activeKey="activeKeys1" class="model-collapse">
               <a-collapse-panel v-for="group of c1ass.children" :disabled="!group.children.length"
-                :header="group.title + (group.children.length ? '' : '（无）')" :key="group.title"
-                style="text-align: left;">
+                :header="group.title + (group.children.length ? '' : '（无）')" :key="group.title" style="text-align: left;">
                 <a-card v-for="item of group.children" class="model-card" draggable="true" hoverable
                   @click="onClick(item)" @contextmenu="onRightClick(item)"
                   @dragstart="e => { onClick(item); dragModelStart(e, item) }" @mousedown="deselect">
@@ -551,8 +557,8 @@ export default {
         <a-menu-item key="全部折叠">全部折叠</a-menu-item>
         <hr class="splitH" />
         <a-menu-item v-if="currentModel && ['sensor', 'WIP'].includes(
-    modelData.model_definition[currentModel.title].label
-  )" key="添加到自定义模型">
+          modelData.model_definition[currentModel.title].label
+        )" key="添加到自定义模型">
           添加到自定义模型
         </a-menu-item>
         <a-menu-item key="导入自定义模型">导入自定义模型</a-menu-item>

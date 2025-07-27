@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue"
+import { onMounted, watch,ref } from "vue"
 import BottomBar from "./components/BottomBar.vue"
 import Layout from "./Layout.vue"
 import Popup from "./components/Popup.vue"
@@ -105,6 +105,32 @@ function addSplitMover(layout) {  // 拖动分隔模块以改变相邻模块的�
 }
 
 addId(layout.value);
+// 响应式获取服务器信息
+const getServerInfo = () => {
+  if (global.serverIp) {
+    return global.serverIp.splitServerIp();
+  }
+  return {
+    host: "192.168.137.155",
+    port: 8888
+  };
+};
+ 
+let serverInfo = getServerInfo();
+ 
+// 监听服务器IP变化
+watch(
+  () => global.serverIp?.value.value, 
+  () => {
+    console.log("检测到服务器地址变化");
+    serverInfo = getServerInfo();
+    if (deviceClient) {
+      deviceClient.SITE = serverInfo.host;
+      deviceClient.PORT = serverInfo.port;
+      deviceClient.reinitialize(); // 如果HttpClient中有这个方法
+    }
+  }
+);
 onMounted(() => {  // 加载完成时
   addSplitMover(layout.value);
   // client = new HttpClient({  // 启动http服务
@@ -139,10 +165,13 @@ onMounted(() => {  // 加载完成时
   //     };
   //   }
   // });
+  // 如果全局配置了服务器 IP，使用全局配置
+  let serverInfo;
+  serverInfo = getServerInfo();
   deviceClient = new HttpClient({
     max_thread_num: 3,
-    site: "192.168.137.155",
-    port: 8888,
+    site: serverInfo.host,
+    port: serverInfo.port,
     path: "nodedatafeedback", // 设备信息接口
     interval: 100,  // ms
     timeout: 50000000,  // ms
@@ -151,7 +180,7 @@ onMounted(() => {  // 加载完成时
         if (!deviceClient.allowConnect) return;
         if (deviceClient.thread_num >= deviceClient.max_thread_num) return;
         deviceClient.thread_num++;
-        console.log("设备信息线程数：", deviceClient.thread_num);
+        console.log("设备信息线程数：", deviceClient.thread_num, "ip地址及端口：", deviceClient.SITE, deviceClient.PORT);
         const result = await deviceClient.axios.get(
           `http://${deviceClient.SITE}:${deviceClient.PORT}/${deviceClient.PATH}`,
           { timeout: deviceClient.TIMEOUT }
@@ -159,16 +188,8 @@ onMounted(() => {  // 加载完成时
         const nodeData = result.data;
         const currentTimestamp = Date.now();
         const commandTimestamp = nodeData.timestamp; // 提取发送端自带的时间戳
-        // console.log("接收时间：", currentTimestamp);
         const date = new Date(currentTimestamp);
         console.log(date.toISOString());
-        //   if (commandTimestamp) {//添加延迟计算
-        //   const currentTimestamp = Date.now();
-        //   const latency = currentTimestamp - commandTimestamp;
-        //   console.log(`[指令延迟] ${latency}ms`);
-        //   // 如果需要可以触发全局事件（例如在界面显示延迟）
-        //   global.emit("commandLatency", latency); 
-        // }
         const normalizedNodeID = nodeData.nodeID
           .replace(/"/g, '') // 去除可能存在的非法引号
           .replace(/(Capability)[ _]+(Pick)/gi, '$1_$2')
@@ -179,13 +200,6 @@ onMounted(() => {  // 加载完成时
         const unifiedFullPath = fullPath
           .replace(/(Input|Output)cmd/gi, '$1Cmd')   // 修正大小写
           .replace(/:([a-z]+)@/gi, (_, p1) => `_${p1.toLowerCase()}@`); // 标准化属性符
-        // 添加调试日志
-        // console.log('[路径处理]', {
-        //   uuid: uuid,
-        //   rawPath: fullPath,
-        //   normalized: unifiedFullPath,
-        //   value: nodeData.value
-        // });
         nodeManager.update(uuid, unifiedFullPath, nodeData.value);
         const handleUpdate = () => {
           Promise.resolve().then(() => { // 微任务队列保证触发时机
@@ -199,14 +213,7 @@ onMounted(() => {  // 加载完成时
               const commandNode = nodeManager.getDeviceData(uuid)?.get('AAS/Capability_Pick/Input');
               const commandNode1 = nodeManager.getDeviceData(uuid);
               const commandValue = commandNode?.['InputCmd_value@Value'];
-              /* console.log('Command Value:', {
-                exists: !!commandNode,  // 验证此节点是否存在
-                value: commandValue,
-                1: commandNode1
-              }); */
               console.log('当前命令状态:', { uuid, commandValue });
-              // console.log('完整命令节点:', commandNode);
-              // global.emit("DensoPutCNC", { ID1: 1794 });
               if (typeof commandValue === 'string') {
                 const normalizedCmd = commandValue.toLowerCase();
                 console.log('匹配工作状态:', nodeData.value);
@@ -243,14 +250,11 @@ onMounted(() => {  // 加载完成时
         setTimeout(() => {
           handleUpdate();
         }, 20);
-        // console.log("设备状态更新：", nodeData);
-        // console.log('完整设备数据:', nodeManager.getSnapshot());
         // 转换为JSON格式（处理嵌套Map）
         const jsonData = nodeManager.getSnapshot().map(([uuid, paths]) => ({
           uuid,
           paths: Array.from(paths).map(([path, value]) => ({ path, ...value }))
         }));
-        // console.log('JSON格式:', JSON.stringify(jsonData, null, 2));
       } catch (error) {
         console.error("设备错误：", error.message);
       } finally {
@@ -293,8 +297,8 @@ onMounted(() => {  // 加载完成时
     }
   });
   global.on("postResponseError", (errorData) => {
-        console.error("请求失败:", errorData);
-    });
+    console.error("请求失败:", errorData);
+  });
   window.addEventListener("drop", () => {
     document.body.style.userSelect = '';  // 恢复文本选择功能
     draggedSpliter = null;

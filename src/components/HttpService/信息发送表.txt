@@ -16,3 +16,4 @@ cnc2：d6da4cb3-b3cb-4690-bc62-3e5d7b2811f3
 上盖机：f1b2de58-d087-4725-aba4-6c481a0c1560
 上盒机：597fba84-63dd-42d3-918d-3efec79543ce
 下盒机：4c1c583d-6ee1-460b-a6d7-73e5a7eac7bd
+console.log(global.physicalIDMap[2475].rb())
