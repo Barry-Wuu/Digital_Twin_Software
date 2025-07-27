@@ -1,0 +1,22 @@
+{
+    "productName": "Digital Twin System",
+    "appId": "com.company.digitaltwin",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true
+    },
+    "extraResources": [
+      "public/textures/**",
+      "public/models/**"
+    ]
+  }
+  

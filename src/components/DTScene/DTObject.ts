@@ -148,25 +148,33 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     copyFrom(obj, clearDTObjects = false) {  // 将读取的普通对象变回DT对象
         if (clearDTObjects) global.DTObjects.value = [];  // 清理旧的场景
         global.DTObjects.value.push(this);
-        for (let prop in obj) {
-            if (prop == "children") {
-                this.children = [];
-                for (let child of obj.children) {
-                    let childDT = new DTObject();
-                    childDT.copyFrom(child);
-                    this.children.push(childDT);
-                }
-            }
-            else this[prop] = obj[prop];
-        }
-        if (obj.prop?.code) {  // 现在code在prop内
-            this.code = {
+        if (obj.prop && obj.prop.code) {
+            this.code = {  // 将 code 从 prop 提取到顶级属性中
                 update: obj.prop.code.update || "",
                 onCollision: obj.prop.code.onCollision || "",
                 onCollisionStart: obj.prop.code.onCollisionStart || "",
                 onCollisionEnd: obj.prop.code.onCollisionEnd || "",
             };
-            delete obj.prop.code; // 删除冗余数据
+            delete obj.prop.code;  //防止后续赋值覆盖
+        }
+        for (let prop in obj) {
+            if (prop === "children") {
+                this.children = [];
+                for (const child of obj.children) {
+                    const childDT = new DTObject();
+                    childDT.copyFrom(child);
+                    this.children.push(childDT);
+                }
+            }
+            else if (prop === "prop") {  // 🚨 特殊处理prop中的其他属性
+                for (const propKey in obj.prop) {
+                    // this[propKey] = obj.prop[propKey];  //  若prop下其他属性需要映射到DTObject顶级字段
+                    this[propKey] = obj.prop[propKey];  // 依需调整
+                }
+            } 
+            else {
+                this[prop] = obj[prop];  // 常规属性赋值
+            }
         }
     }
     createRigidBody(target = this.mesh, scaleX = 1, scaleY = 1) {  // 添加刚体
@@ -705,36 +713,47 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         this.traverse(DT => {
             if (DT.type != "Group") return;
             const [wireframe, box, boxMesh] = DT.layers.wireframe;
-            if (!wireframe.parent) DT.mesh.add(wireframe);
-            box.makeEmpty();  // 更新线框 
-            for (let child of DT.children) box.expandByObject(
-                child.mesh
-            );
-            box.getCenter(boxMesh.position);
-            let localCenter = DT.mesh.worldToLocal(boxMesh.position)
-            boxMesh.position.copy(localCenter);
-            if (DT.label == "importedModel" && !DT.basename?.toLowerCase().includes("dae")) {
-                boxMesh.scale.set(
-                    (box.max.x - box.min.x) / DT.mesh.scale.x,
-                    (box.max.z - box.min.z) / DT.mesh.scale.z,
-                    (box.max.y - box.min.y) / DT.mesh.scale.y
+            if(wireframe.visible) {
+                if(!wireframe.parent) DT.mesh.add(wireframe);
+                box.makeEmpty();  // 更新线框
+                for (let child of DT.children){
+                    if(child.mesh.type == "BoxHelper") continue;
+                    box.expandByObject(child.mesh);
+                }            
+                const tempMatrix = new THREE.Matrix4(); // 创建临时矩阵存储wireframe当前世界变换
+                wireframe.updateWorldMatrix(true,false);
+                tempMatrix.copy(wireframe.matrixWorld);
+                const position = new THREE.Vector3(); // 提取并重置旋转分量（保留位置和缩放）
+                const quaternion = new THREE.Quaternion();
+                const scale = new THREE.Vector3();
+                tempMatrix.decompose(position, quaternion, scale);
+                quaternion.identity();
+                const newWorldMatrix = new THREE.Matrix4(); // 构建无旋转的世界矩阵
+                newWorldMatrix.compose(position, quaternion, scale);
+                const inverseParentMatrix = new THREE.Matrix4(); // 应用DT逆变换得到新的本地矩阵
+                DT.mesh.updateWorldMatrix(true, false);
+                inverseParentMatrix.copy(DT.mesh.matrixWorld).invert();
+                const newLocalMatrix = new THREE.Matrix4();
+                newLocalMatrix.multiplyMatrices(inverseParentMatrix, newWorldMatrix);
+                wireframe.matrix.copy(newLocalMatrix); // 更新wireframe本地变换
+                wireframe.matrix.decompose(
+                    wireframe.position,
+                    wireframe.quaternion,
+                    wireframe.scale
                 );
-            }
-            else if (DT.label == "importedModel" && DT.basename?.toLowerCase().includes("dae")) {
+                wireframe.matrixWorldNeedsUpdate = true; // 更新标记
+                const worldCenter = box.getCenter(new THREE.Vector3()); // 更新位置
+                let localCenter = DT.mesh.worldToLocal(worldCenter);
+                wireframe.position.copy(localCenter);
+                const DTScale = DT.mesh.getWorldScale(new THREE.Vector3()).x; // 更新scale
                 boxMesh.scale.set(
-                    (box.max.x - box.min.x) / DT.mesh.scale.x,
-                    (box.max.y - box.min.y) / DT.mesh.scale.z,
-                    (box.max.z - box.min.z) / DT.mesh.scale.y
+                    (box.max.x - box.min.x)/DTScale,
+                    (box.max.y - box.min.y)/DTScale,
+                    (box.max.z - box.min.z)/DTScale 
                 );
+                wireframe.updateMatrix();
+                wireframe.update();
             }
-            else {
-                boxMesh.scale.set(
-                    (box.max.x - box.min.x),
-                    (box.max.y - box.min.y),
-                    (box.max.z - box.min.z)
-                );
-            }
-            wireframe.update();
         })
     }
     updatePhysicalIDMap() {  // 更新物理实体ID到物体的映射关系

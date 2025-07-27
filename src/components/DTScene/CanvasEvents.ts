@@ -36,6 +36,8 @@ var parent;
 var pointLast_XYZ;
 var pointNew_XYZ;
 var resizeObserver;
+var rotatePoint; // 框选后围绕旋转的点
+var rotatePointFlag; // 标识框选后围绕旋转的点
 var selectionBox;
 var selectionHelper; // 框选辅助
 var style;
@@ -54,6 +56,7 @@ const MOVE = THREE.MOUSE.PAN;
 const ROTATE = THREE.MOUSE.ROTATE;
 const ZOOM = THREE.MOUSE.DOLLY;
 const RIGHT = new THREE.Vector3(1, 0, 0);  // x轴朝右
+const BACK = new THREE.Vector3(0, 1, 0); // y轴朝后
 const UP = new THREE.Vector3(0, 0, 1);  // z轴朝上
 
 export default defineComponent({
@@ -573,6 +576,7 @@ export default defineComponent({
           tempModel.removeFromParent();
         }
         dragModel = tempModel = null;
+        this.scene.orbitControl.enableZoom = true;
       }
 
       // 设置可见性
@@ -593,10 +597,12 @@ export default defineComponent({
     onKeydown(k) {
       if (k.code == "Delete") global.emit("deleteChoices");
       else keys[k.code] = true;  // 记录按下的按键
+      if(k.shiftKey && isSelected) this.scene.orbitControl.enableZoom = false;
       pointLast_XYZ = pointNew_XYZ = null;
     },
     onKeyup(k) {
       keys[k.code] = false;  // 删除按下的按键
+      if(k.shiftKey) this.scene.orbitControl.enableZoom = true;
     },
     onMousedown(e) {
       mouseType[e.button] = true;
@@ -615,12 +621,14 @@ export default defineComponent({
               choice = choice.parent;
             }
             if (choice?.DT && !choice.userData.ground && !choice.isLight) {
-              if (selectionBox.collection.includes(choice.parent.id)) {  // 点击Group中的模型
-                if (keys.ShiftLeft) {  // shift，选中模型
-                  global.emit("clickModel", { id: choice.parent.id, shift: keys.ShiftLeft });
-                  selectionBox.collection = selectionBox.collection.filter(v => v != choice.parent.id);
-                  global.emit("clickModel", { id: choice.id, shift: keys.ShiftLeft });
-                  selectionBox.collection.push(choice.id);
+              if (selectionBox.collection.value.includes(choice.parent.id)) {  // 点击Group中的模型
+                if (e.shiftKey) {  // shift，选中模型
+                  global.emit("clickModel", { id: choice.parent.id, shift: e.shiftKey });
+                  selectionBox.collection.value = selectionBox.collection.value.filter(v => v != choice.parent.id);
+                  selectionBox.collectionMesh.value = selectionBox.collectionMesh.value.filter(v => v.id != choice.parent.id);
+                  global.emit("clickModel", { id: choice.id, shift: e.shiftKey });
+                  selectionBox.collection.value.push(choice.id);
+                  selectionBox.collectionMesh.value.push(choice);
                 } else {  // 选中Group，附着控制器
                   global.emit("controlStart", choice.parent.id);
                   global.SCENE.DT.updateGroupWireframes();
@@ -628,16 +636,20 @@ export default defineComponent({
                   delta.sub(result.point);
                   dragModel = choice.parent;
                   dragModelByXYZ = choice.parent;
+                  this.scene.orbitControl.enableZoom = false;
                   dragModel.isDrag = true;
                   tempModel = dragModel.clone();
                   tempOpacity = dragModel.material?.opacity;
                   isDrag = true;
+                  rotatePointFlag = false;
                   selectionBox.initialStatus(choice.parent);
                 }
-              } else if (selectionBox.collection.includes(choice.id)){  // 点击Group外的模型
-                if (keys.ShiftLeft) {  // shift，取消选中
-                  global.emit("clickModel", { id: choice.id, shift: keys.ShiftLeft });
-                  selectionBox.collection = selectionBox.collection.filter(v => v != choice.id);
+              } 
+              else if (selectionBox.collection.value.includes(choice.id)){  // 点击Group外的模型
+                if (e.shiftKey) {  // shift，取消选中
+                  global.emit("clickModel", { id: choice.id, shift: e.shiftKey });
+                  selectionBox.collection.value = selectionBox.collection.value.filter(v => v != choice.id);
+                  selectionBox.collectionMesh.value = selectionBox.collectionMesh.value.filter(v => v.id != choice.id);
                 } else {  // 选中模型，附着控制器
                   global.emit("controlStart", choice.id);
                   global.SCENE.DT.updateGroupWireframes();
@@ -645,28 +657,35 @@ export default defineComponent({
                   delta.sub(result.point);
                   dragModel = choice;
                   dragModelByXYZ = choice;
+                  this.scene.orbitControl.enableZoom = false;
                   dragModel.isDrag = true;
                   tempModel = dragModel.clone();
                   tempOpacity = dragModel.material.opacity;
                   isDrag = true;
+                  rotatePointFlag = false;
                   selectionBox.initialStatus(choice);
                 }                
-              } else {
-                if(keys.ShiftLeft && isSelected){
-                  global.emit("clickModel", { id: choice.id, shift: keys.ShiftLeft });
-                  selectionBox.collection.push(choice.id);
+              } 
+              else {
+                if(e.shiftKey && isSelected){
+                  global.emit("clickModel", { id: choice.id, shift: e.shiftKey });
+                  selectionBox.collection.value.push(choice.id);
+                  selectionBox.collectionMesh.value.push(choice);
                 } else {
                   global.emit("clickModel", { id: choice.id, shift: e.shiftKey });
                   result.mesh.getWorldPosition(delta);
                   delta.sub(result.point); // Δp = 选中物体的全局坐标 - 物体上点击处的坐标
                   dragModel = choice;
                   dragModelByXYZ = choice;
+                  this.scene.orbitControl.enableZoom = false; // 确保使用滚轮旋转mesh时不会强制缩放一次
                   dragModel.isDrag = true;
                   tempModel = dragModel.clone();
                   tempOpacity = dragModel.material.opacity;
                   isDrag = true;
                   isSelected = false;
-                  selectionBox.collection = [];
+                  rotatePointFlag = false;
+                  selectionBox.collection.value = [];
+                  selectionBox.collectionMesh.value = [];
                   selectionBox.reset();
                 }
               }
@@ -674,7 +693,9 @@ export default defineComponent({
             else if(e.target.localName == "div"){
               global.emit("deselect");  // 避免点击img时取消选择
               isSelected = false;
-              selectionBox.collection = [];
+              rotatePointFlag = false;
+              selectionBox.collection.value = [];
+              selectionBox.collectionMesh.value = [];
               selectionBox.reset();
               isSelecting = true;
               selectionHelper.onSelectStart(e);
@@ -700,10 +721,34 @@ export default defineComponent({
             delta.dx = P.x;
             delta.dy = P.y;
             dragModel = choice;
+            this.scene.orbitControl.enableZoom = false;
             isDrag = true;
             isSelected = false;
-            selectionBox.collection = [];
+            rotatePointFlag = false;
+            selectionBox.collection.value = [];
+            selectionBox.collectionMesh.value = [];
             selectionBox.reset();
+          }
+        } 
+        else if (global.mode == "view"){
+          if(e.target.localName == "div"){
+            let result = this.intersectObject(e);
+            let choice = result.mesh;
+            if (choice?.isTransformControls) return;
+            if (choice && !choice.DT && choice.parent.DT) {  // 点击指示箭头或吸附方块等
+              choice = choice.parent;
+            }
+            if (choice?.DT && !choice.userData.ground && !choice.isLight) {
+              global.emit("clickModel", { id: choice.id, shift: e.shiftKey });
+              global.emit("controlEnd");
+            } else {
+              global.emit("deselect");
+            }
+          } 
+          else if (e.target.localName == "img"){
+            let id = parseInt(e.target.id);
+            global.emit("clickModel", { id: id, shift: e.shiftKey });
+            global.emit("controlEnd");
           }
         }
       }
@@ -747,18 +792,27 @@ export default defineComponent({
         selectionHelper.onSelectMove(e);
         global.emit("deselect");
         selectionBox.endPoint.set(
-          (e.offsetX/e.target.clientWidth)*2-1, 
-          -(e.offsetY/e.target.clientHeight)*2+1,
+          (e.offsetX/e.target.clientWidth) * 2 - 1, 
+          -(e.offsetY/e.target.clientHeight) * 2 + 1,
           0.5
         );
-        selectionBox.collection = [];
+        selectionBox.collection.value = [];
+        selectionBox.collectionMesh.value = [];
         selectionBox.updateFrustum();
         selectionBox.searchChildInFrustum(global.SCENE);
-        for (let i = 0; i < selectionBox.collection.length; i++) {
-          global.emit("clickModel", {id: selectionBox.collection[i], shift: isSelecting});
+        for (let i = 0; i < selectionBox.collection.value.length; i++) {
+          global.emit("clickModel", {id: selectionBox.collection.value[i], shift: isSelecting});
         }
       }
       if (isDrag) this.onDragover(e);
+      if(rotatePointFlag){
+        this.castRay(e);
+        for(let intersect of ray.intersectObject(global.SCENE)){
+          if(!intersect.object.DT) continue;
+          rotatePoint = intersect.point;
+          break;
+        }
+      }
     },
     onMouseup(e) {
       if(this.scene.controller?.object?.DT?.label == "conveyor" 
@@ -773,7 +827,7 @@ export default defineComponent({
       }
       global.emit("updateProp", {action:"mouseup"});
       if(isSelecting){
-        isSelected = true;
+        if(selectionBox.collection.value.length > 0) isSelected = true;
         isSelecting = false;
         selectionHelper.onSelectOver();
       }
@@ -787,15 +841,75 @@ export default defineComponent({
       }
     },
     onWheel(e) {  // 滚轮事件
-      this.scene.orbitControl.enableZoom = !dragModel;
-      if (dragModel) {  // 拖动物体+滚轮=旋转物体，向前滚动为顺时针旋转，向后滚动为逆时针旋转
+      this.scene.orbitControl.enableZoom = !dragModel && !(e.shiftKey && isSelected);
+      if(e.shiftKey && isSelected){
+        let sign = e.deltaY > 0 ? 1 : -1;
+        this.scene.orbitControl.mouseButtons.MIDDLE = -1;
+        if(!rotatePointFlag) {
+          this.castRay(e);
+          for(let intersect of ray.intersectObject(global.SCENE)){
+            if(!intersect.object.DT) continue;
+            rotatePoint = intersect.point;
+            break;
+          }
+          rotatePointFlag = true;
+        }     
+        for(let i = 0; i < selectionBox.collectionMesh.value.length; i++){
+          const mesh = selectionBox.collectionMesh.value[i];
+          const vectorDiff = new THREE.Vector3();
+          mesh.getWorldPosition(vectorDiff);
+          vectorDiff.sub(rotatePoint);
+          let parent = mesh.parent;
+          const axis = new THREE.Vector3(0, 0, 1);
+          if(parent != null){
+            while(!parent.isScene){
+              axis.applyAxisAngle(UP,-parent.rotation.z);
+              axis.applyAxisAngle(BACK,-parent.rotation.y);
+              axis.applyAxisAngle(RIGHT,-parent.rotation.x);
+              parent = parent.parent;
+            }
+          }
+          axis.x = Math.abs(axis.x) == 1 ? axis.x : 0;
+          axis.y = Math.abs(axis.y) == 1 ? axis.y : 0;
+          axis.z = Math.abs(axis.z) == 1 ? axis.z : 0;
+          axis.normalize();
+          mesh.rotateOnWorldAxis(axis, sign * delta_angle * Math.PI / 180);
+          vectorDiff.set(
+            cos_theta * vectorDiff.x - sign * sin_theta * vectorDiff.y,
+            sign * sin_theta * vectorDiff.x + cos_theta * vectorDiff.y,
+            vectorDiff.z
+          );
+          let result = rotatePoint.clone();
+          result.add(vectorDiff);
+          result = mesh.parent.worldToLocal(result);
+          mesh.position.copy(result);
+          mesh.updateMatrixWorld();
+        }
+        global.SCENE.DT.updateGroupWireframes();
+        if(selectionBox.collection.value.length == 1){
+          global.emit("controlStart", selectionBox.collection.value[0]);
+          global.emit("updateProp", { action: "wheel", mesh: selectionBox.collectionMesh.value[0] });
+        }
+      } 
+      else if (dragModel) {  // 拖动物体+滚轮=旋转物体，向前滚动为顺时针旋转，向后滚动为逆时针旋转
         let sign = e.deltaY > 0 ? 1 : -1;  // 由滚轮旋转方向获取角度变化量的符号
         this.scene.orbitControl.mouseButtons.MIDDLE = -1;
         // 设置被旋转物体的旋转角
         let parent = dragModel.parent;  // 将被旋转物体暂时与父物体断开关系
-        global.SCENE.attach(dragModel);
-        dragModel.rotateOnWorldAxis(UP, sign * delta_angle * Math.PI / 180);  // 绕z轴正方向旋转
-        parent.attach(dragModel);  // 将被旋转物体加回原来的父物体
+        const axis = new THREE.Vector3(0, 0, 1);
+        if(parent != null){ // 计算局部坐标轴下当前朝上的轴
+          while(!parent.isScene){
+            axis.applyAxisAngle(UP,-parent.rotation.z);
+            axis.applyAxisAngle(BACK,-parent.rotation.y);
+            axis.applyAxisAngle(RIGHT,-parent.rotation.x);
+            parent = parent.parent;
+          }
+        }
+        axis.x = Math.abs(axis.x) == 1 ? axis.x : 0; // 清零
+        axis.y = Math.abs(axis.y) == 1 ? axis.y : 0;
+        axis.z = Math.abs(axis.z) == 1 ? axis.z : 0;
+        axis.normalize();
+        dragModel.rotateOnWorldAxis(axis, sign * delta_angle * Math.PI / 180);
         // 设置被旋转物体的位移
         delta.set(  // 用滚轮旋转物体时保持物体沿过dragPoint且向上的轴移动
           cos_theta * delta.x - sign * sin_theta * delta.y,
@@ -808,7 +922,8 @@ export default defineComponent({
         dragModel.position.copy(result);
         global.emit("controlStart", dragModel.id);
         global.emit("updateProp", { action: "wheel", mesh: dragModel });
-      } else {  // 滚轮放缩镜头
+      } 
+      else {  // 滚轮放缩镜头
         this.scene.orbitControl.enableZoom = true;
       }
     },
