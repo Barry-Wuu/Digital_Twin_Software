@@ -134,6 +134,16 @@ export default defineComponent({
             global.emit("changeSpeed", marks[speed.value]);
             BottomSpeed.textContent = marks[speed.value];
         },
+            changeLabelVisible(object,flag){
+                if(object.isCSS2DObject){
+                    object.visible = flag;
+                    return;
+                }
+                if(!object.DT) return;
+                for(let child of object.children){
+                    this.changeLabelVisible(child,flag);
+                }
+            },
         changeLayers(e) {  // 更改各类物体的显隐性
             let layer = e.target.value;  // 更改的图层中文名
             let layers = layersActive.value;  // 显示的图层，其用中文名表示
@@ -327,6 +337,7 @@ export default defineComponent({
         setMode(newMode) {  // 切换编辑/浏览模式
             global.mode = newMode;
             mode.value = newMode;
+                this.changeLabelVisible(global.SCENE, mode.value == 'edit' ? false : true);
         },
         viewAdd() {  // 新建视角
             customViews.value.push({
@@ -665,16 +676,18 @@ export default defineComponent({
                 </div>
 
                 <!-- 工作流部署 -->
-                <div class="logo marginLR10 top16" @click="global.emit('popup', { title: '工作流部署', content: '该功能暂未实现' })"
+                <div class="logo marginLR10 top16" @click="global.emit('popup', { title: '仿真-控制', content: '该功能暂未实现' })"
                     @mousedown.prevent @mouseenter="lightON" @mouseleave="lightOFF">
                     <AppstoreAddOutlined class="logoBig" />
-                    <br>工作流部署
+                    <br>仿真-控制
                 </div>
             </span>
             <div class="bottomBorder">控制模式</div>
         </div>
         <vr class="splitV" /><!--分隔符-->
     </span>
+
+
 
     <!--可视化-->
     <span v-if="tab == '可视化'" class="toptab" @click="global.emit('deselect')">

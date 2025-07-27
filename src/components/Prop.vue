@@ -86,9 +86,13 @@
               return this.format(P.x);
             }
             else if(this.prop == "world_rotation"){  // 更新绝对旋转
-              let Q = mesh.getWorldQuaternion(new THREE.Quaternion());
-              let R = new THREE.Euler().setFromQuaternion(Q);
-              return this.format(R.x);
+              let parent = mesh.parent;
+              let r = mesh.rotation.x;
+              while(parent != null) {
+                r += parent.rotation.x;
+                parent = parent.parent;
+              }
+              return this.format(r);
             }
           }
           else if(result?.isVector3 || result?.isEuler){  // 编辑向量
@@ -104,23 +108,7 @@
         set(value){
           let result = eval("DT.value." + this.prop);
           let mesh = DT.value.mesh;
-          if(!result && mesh){
-            if(this.prop == "world_position"){  // 改变绝对位移
-              let parent = mesh.parent;
-              mesh.removeFromParent();
-              mesh.position.x = value;
-              parent.attach(mesh);
-              input_value.value = value;
-            }
-            else if(this.prop == "world_rotation"){  // 改变绝对旋转
-              let parent = mesh.parent;
-              mesh.removeFromParent();
-              mesh.rotation.x = value;
-              parent.attach(mesh);
-              input_value.value = value;
-            }
-          }
-          else if(result?.isVector3 || result?.isEuler){  // 编辑向量
+          if(result?.isVector3 || result?.isEuler){  // 编辑向量
             if(chosenProp.value == this.prop + '.x') input_value.value = value;  // 编辑中
           }
           else if(result?.isColor){  // 编辑向量
@@ -139,9 +127,13 @@
               return this.format(P.y);
             }
             else if(this.prop == "world_rotation"){  // 更新绝对旋转
-              let Q = mesh.getWorldQuaternion(new THREE.Quaternion());
-              let R = new THREE.Euler().setFromQuaternion(Q);
-              return this.format(R.y);
+              let parent = mesh.parent;
+              let r = mesh.rotation.y;
+              while(parent != null){
+                r += parent.rotation.y;
+                parent = parent.parent;
+              }
+              return this.format(r);
             }
           }
           else if(result?.isVector3 || result?.isEuler){  // 编辑向量
@@ -157,23 +149,7 @@
         set(value){
           let result = eval("DT.value." + this.prop);
           let mesh = DT.value.mesh;
-          if(!result && mesh){
-            if(this.prop == "world_position"){  // 改变绝对位移
-              let parent = mesh.parent;
-              mesh.removeFromParent();
-              mesh.position.y = value;
-              parent.attach(mesh);
-              input_value.value = value;
-            }
-            else if(this.prop == "world_rotation"){  // 改变绝对旋转
-              let parent = mesh.parent;
-              mesh.removeFromParent();
-              mesh.rotation.y = value;
-              parent.attach(mesh);
-              input_value.value = value;
-            }
-          }
-          else if(result?.isVector3 || result?.isEuler){  // 编辑向量
+          if(result?.isVector3 || result?.isEuler){  // 编辑向量
             if(chosenProp.value == this.prop + '.y') input_value.value = value;  // 编辑中
           }
           else if(result?.isColor){  // 编辑向量
@@ -192,9 +168,13 @@
               return this.format(P.z);
             }
             else if(this.prop == "world_rotation"){  // 更新绝对旋转
-              let Q = mesh.getWorldQuaternion(new THREE.Quaternion());
-              let R = new THREE.Euler().setFromQuaternion(Q);
-              return this.format(R.z);
+              let parent = mesh.parent;
+              let r = mesh.rotation.z;
+              while(parent != null){
+                r += parent.rotation.z;
+                parent = parent.parent;
+              }
+              return this.format(r);
             }
           }
           else if(result?.isVector3 || result?.isEuler){  // 编辑向量
@@ -210,26 +190,9 @@
         set(value){
           let result = eval("DT.value." + this.prop);
           let mesh = DT.value.mesh;
-          if(!result && mesh){
-            if(this.prop == "world_position"){  // 改变绝对位移
-              let parent = mesh.parent;
-              mesh.removeFromParent();
-              mesh.position.z = value;
-              parent.attach(mesh);
-              input_value.value = value;
-            }
-            else if(this.prop == "world_rotation"){  // 改变绝对旋转
-              let parent = mesh.parent;
-              mesh.removeFromParent();
-              mesh.rotation.z = value;
-              parent.attach(mesh);
-              input_value.value = value;
-            }
-          }
-          else if(result?.isVector3 || result?.isEuler){  // 编辑向量
+          if(result?.isVector3 || result?.isEuler){  // 编辑向量
             if(chosenProp.value == this.prop + '.z') input_value.value = value;  // 编辑中
-          }
-          else if(result?.isColor){  // 编辑向量
+          } else if(result?.isColor){  // 编辑向量
             if(chosenProp.value == this.prop + '.b') input_value.value = value;  // 编辑中
           }
         }
@@ -263,6 +226,7 @@
         input_value.value = e.target.value;
         let blur = e.type == "blur";
         let enter = e.type == "keydown" && e.key == "Enter";
+        let flag = false; // 标识输入值是否与属性值一致
         let mesh = DT.value.mesh;
         let wheel = e.type == "wheel";
         if(!(blur || enter || wheel)) return;
@@ -274,14 +238,20 @@
           if(typeof min == "number" && result < min) result = min;
           if(typeof max == "number" && result > max) result = max;
           if(typeof fixed == "number") result = result.toFixed(fixed);
+          if(this.prop.startsWith("world_")){
+            if(this.computedX === result || this.computedY === result || this.computedZ === result) flag = true;
+          }
           if(unit) result *= unit;
           input_value.value = result;
         }
         if(this.prop == "world_position"){  // 改变绝对位移
           let parent = mesh.parent;
-          mesh.removeFromParent();
-          mesh.position[item] = result;
-          parent.attach(mesh);
+          const pos = new THREE.Vector3();
+          mesh.getWorldPosition(pos)
+          pos[item] = parseFloat(result);
+          let localPos = parent.worldToLocal(pos);
+          mesh.position.copy(localPos);
+          if(flag) this.$forceUpdate(); // 重新渲染
           this.$emit("change");
           chosenProp.value = null;  // 结束编辑
           this.confirm(e, true);  // 修改属性之后让元素自动失焦
@@ -289,16 +259,23 @@
         }
         else if(this.prop == "world_rotation"){  // 改变绝对旋转
           let parent = mesh.parent;
-          mesh.removeFromParent();
-          mesh.rotation[item] = result;
-          parent.attach(mesh);
+          while(parent != null){
+            result -= parent.rotation[item];
+            parent = parent.parent;
+          }
+          let localRot = new THREE.Euler();
+          localRot.copy(mesh.rotation);
+          localRot[item] = result;
+          mesh.rotation.copy(localRot);
+          mesh.updateMatrix();
+          mesh.updateMatrixWorld(true);
+          if(flag) this.$forceUpdate();
           this.$emit("change");
           chosenProp.value = null;  // 结束编辑
           this.confirm(e, true);  // 修改属性之后让元素自动失焦
+          global.SCENE.DT.updateGroupWireframes();
+          global.emit("controlStart", mesh.id);
           return;
-        }
-        else if(this.prop == "scale") {  // 改变导入模型的比例
-          mesh.scale.setScalar(result);
         }
 
         let prop = "DT.value." + this.prop + (item ? '.' + item : '');  // 结束编辑时更改属性值
@@ -322,8 +299,12 @@
           const confirm = this.options.confirm ? () => {  // 确认修改
             this.options.confirm(JSON.parse(e.target.value));
             eval(`${prop} = ${result}`);
+            if(this.prop == "scale") mesh.scale.setScalar(parseFloat(result));
             global.emit("updateProp", {action: "mouseup"});
-          } : ()=>eval(`${prop} = ${result}`);
+          } : ()=>{
+            eval(`${prop} = ${result}`);
+            if(this.prop == "scale") mesh.scale.setScalar(parseFloat(result));
+          }
           if(JSON.parse(e.target.value) > this.options.max_warn){
             global.emit("popup", {  // 弹窗确认修改
               title: `确认修改${this.title}`,
@@ -341,6 +322,12 @@
         this.$emit("change");
         chosenProp.value = null;  // 结束编辑
         this.confirm(e, true);  // 修改属性之后让元素自动失焦
+
+        if(this.prop == "mesh.rotation"){
+          mesh.updateMatrixWorld();
+          global.SCENE.DT.updateGroupWireframes();
+          global.emit("controlStart", mesh.id);
+        }
       },   
       confirm(e=null, force=false){  // 按回车键确认并失焦
         if(force || e?.type == "keydown" && e?.key == "Enter") {
@@ -539,7 +526,6 @@
           this.propActive = data.mesh.scale.x;
         }
       });
-      global.emit("updateProp", DT.value);
     },
   }
 </script>

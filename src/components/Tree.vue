@@ -179,6 +179,7 @@
           if(!targetDT.children.includes(sourceDT)){
             targetDT.mesh.attach(sourceDT.mesh);  // attach方法改变父子关系，同时不改变物体的绝对坐标
             //sourceDT.mesh.scale.setScalar(1, 1, 1);
+            sourceDT.scale = sourceDT.mesh.scale.x;
             global.SCENE.DT.updateChildren();
             if(!expanded.value.includes(targetDT.key)) expanded.value.push(targetDT.key);
             this.updateTree();
