@@ -4,6 +4,8 @@ const electron = require("electron");
 const fs = require("fs");
 const JSZip = require("jszip");  // 用于压缩解压文件的库
 const path = require("path");
+import { ipcRenderer } from "electron";
+const { shell } = require('electron');  // 用于打开外部链接
 import { defineComponent, ref } from "vue";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
@@ -314,6 +316,30 @@ export default defineComponent({
         saveLog() {
             global.emit("saveLog"); // 触发 SceneBuilder 中的日志保存逻辑
         },
+        startExternalApp() {
+        try {
+            const appPath = 'C:\\camunda-modeler-5.37.0-win-x64\\Camunda Modeler.exe';
+            // 使用 Electron 的 shell API 打开外部应用
+            shell.openExternal(`file:///${appPath}`).then(() => {
+                this.message('仿真控制软件启动成功');
+            }).catch(err => {
+                console.error('无法启动外部应用:', err);
+                this.message('启动失败: ' + (err.message || '未知错误'));
+                global.emit('popup', { 
+                    type: 'alert', 
+                    title: '启动失败', 
+                    content: '无法启动模拟控制软件: ' + (err.message || '未知错误')
+                });
+            });
+        } catch (e) {
+            console.error('发生意外错误:', e);
+            global.emit('popup', { 
+                type: 'alert', 
+                title: '系统错误', 
+                content: '初始化仿真控制环境失败: ' + (e.message || '未知错误')
+            });
+        }
+    },
         sendData() {  // 设置发送数据
             global.emit("popup", { type: "sendData", title: "数据发送设置" });
         },
@@ -676,7 +702,7 @@ export default defineComponent({
                 </div>
 
                 <!-- 工作流部署 -->
-                <div class="logo marginLR10 top16" @click="global.emit('popup', { title: '仿真-控制', content: '该功能暂未实现' })"
+                <div class="logo marginLR10 top16" @click="startExternalApp"
                     @mousedown.prevent @mouseenter="lightON" @mouseleave="lightOFF">
                     <AppstoreAddOutlined class="logoBig" />
                     <br>仿真-控制

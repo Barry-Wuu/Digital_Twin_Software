@@ -81,7 +81,8 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
     }
     type: string  // 物体的网格类型
     v0: number  // 传送带中轴线速度
-    constructor(mesh = null, addToScene = false, asset = null) {
+    originOffset: THREE.Vector3;  // 原始偏移量，用于调整碰撞体偏移误差
+        constructor(mesh = null, addToScene = false, asset = null) {
         if (mesh) {
             this.id = this.key = this.physicalID = mesh.id;
             this.mesh = mesh;
@@ -171,13 +172,14 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
                     // this[propKey] = obj.prop[propKey];  //  若prop下其他属性需要映射到DTObject顶级字段
                     this[propKey] = obj.prop[propKey];  // 依需调整
                 }
-            } 
+            }
             else {
                 this[prop] = obj[prop];  // 常规属性赋值
             }
         }
     }
     createRigidBody(target = this.mesh, scaleX = 1, scaleY = 1) {  // 添加刚体
+        if (!this.originOffset) this.computeOriginOffset();//计算碰撞体偏移量
         if (!this.rigidShape) return;
         let mass = this.mass;
         let P = this.mesh.position;
@@ -193,6 +195,31 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
                 box.multiplyScalar(root.DT.scale);
             };
             shape = RAPIER.ColliderDesc.cuboid(box.x / 2, box.y / 2, box.z / 2);
+            const center = this.getWorldCenterPosition(); // 获取模型的中心点位置
+            const rbDesc = mass == 0
+                ? RAPIER.RigidBodyDesc.fixed()
+                : RAPIER.RigidBodyDesc.dynamic();
+            rbDesc.mass = mass;
+            rbDesc.setTranslation(center.x, center.y, center.z);  // 使用包围盒中心作为刚体位置
+                        // 获取模型世界旋转
+            const worldQuaternion = new THREE.Quaternion().setFromRotationMatrix(
+                new THREE.Matrix4().extractRotation(this.mesh.matrixWorld)
+            );
+            rbDesc.setRotation(
+                new RAPIER.Quaternion(
+                    worldQuaternion.x,
+                    worldQuaternion.y,
+                    worldQuaternion.z,
+                    worldQuaternion.w
+                )
+            );
+            const rb = global.physicsWorld.createRigidBody(rbDesc);
+            shape.setFriction(this.friction0);
+            shape.isSensor = this.isSensor;
+            global.physicsWorld.createCollider(shape, rb);
+            global.mesh2rb[this.mesh.uuid] = rb;
+            global.rb2mesh[rb.handle] = this.mesh;
+            return;//防止过度创建
         }
         else if (this.rigidShape == "convex") {  // 将自定义几何体的凸集作为刚体形状
             shape = this.createRigidShape({ geom: this.geometry, scaleX: scaleX, scaleY: scaleY });
@@ -316,7 +343,19 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         newIndexes = geom.index?.array ?? newIndexes;
         return RAPIER.ColliderDesc.trimesh(newVertices, newIndexes);
     }
-    addConstraint(constraint: ConstraintData) {
+    computeOriginOffset() { //计算物体中心与物体原点误差
+        this.originOffset = new THREE.Vector3();
+        const boundingBox = new THREE.Box3().setFromObject(this.mesh);
+        boundingBox.getCenter(this.originOffset);
+        return this.originOffset;
+    }
+    getWorldCenterPosition(): THREE.Vector3 {
+                    const box = new THREE.Box3().setFromObject(this.mesh);
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+            return center;
+        }
+            addConstraint(constraint: ConstraintData) {
         this.constraints.push(constraint);
     }
     getJointsByType(type: JointType): JointData[] {
@@ -346,39 +385,6 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             params.setLocalAnchor2(
                 childRb.translation().sub(anchorVec)
             );
-            // // 计算本地坐标系锚点
-            // const worldAnchor = new THREE.Vector3().copy(joint.anchor!);
-            // const parentPos = parentRb.translation();
-            // const childPos = childRb.translation();
-            // // 创建基础关节描述符
-            // let jointDesc: RAPIER.RevoluteJointDesc | RAPIER.PrismaticJointDesc;
-            // if (joint.type === 'revolute') {
-            //     jointDesc = RAPIER.RevoluteJointDesc.new()
-            //         .setLocalAxis1(
-            //             new RAPIER.Vector3(...joint.axis!.toArray())
-            //         );
-            // } else {
-            //     jointDesc = RAPIER.PrismaticJointDesc.new()
-            //         .setLocalAxis1(
-            //             new RAPIER.Vector3(...joint.axis!.toArray())
-            //         );
-            // }
-            // // 设置锚点
-            // jointDesc
-            //     .setLocalAnchor1(
-            //         new RAPIER.Vector3(
-            //             worldAnchor.x - parentPos.x,
-            //             worldAnchor.y - parentPos.y,
-            //             worldAnchor.z - parentPos.z
-            //         )
-            //     )
-            //     .setLocalAnchor2(
-            //         new RAPIER.Vector3(
-            //             worldAnchor.x - childPos.x,
-            //             worldAnchor.y - childPos.y,
-            //             worldAnchor.z - childPos.z
-            //         )
-            //     );
             // 设置关节类型（旋转关节）
             if (joint.type === 'revolute') {
                 const axis = new RAPIER.Vector3(
@@ -401,29 +407,6 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             joint.handle = world.createImpulseJoint(params, parentRb, childRb, true);
             console.log('Created joint:', joint.handle);
         });
-        //   // 设置限制
-        //   if (joint.limits) {
-        //     if (joint.type === 'revolute') {
-        //       (jointDesc as RAPIER.RevoluteJointDesc).limits([
-        //         THREE.MathUtils.degToRad(joint.limits.min),
-        //         THREE.MathUtils.degToRad(joint.limits.max)
-        //       ]);
-        //     } else {
-        //       (jointDesc as RAPIER.PrismaticJointDesc).limits([
-        //         joint.limits.min, 
-        //         joint.limits.max
-        //       ]);
-        //     }
-        //   }
-        //   // 创建物理关节
-        //   const jointHandle = world.createImpulseJoint(
-        //     jointDesc,
-        //     parentRb,
-        //     childRb,
-        //     true
-        //   );
-        //   joint.handle = jointHandle;
-        // });
     }
     destroy() {  // 清除自身及其网格和刚体
         if (this.label == "protected") return;  // 不能删除场景和地面
@@ -472,7 +455,17 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         global.emit("init");
     }
     rb() {
-        return global.mesh2rb[this.mesh.uuid];
+        // return global.mesh2rb[this.mesh.uuid];
+        try {
+            const rb = global.mesh2rb[this.mesh.uuid];
+            if (!rb) {
+                console.warn(`找不到刚体 [${this.id}:${this.name || 'unnamed'}]`, this.mesh);
+            }
+            return rb;
+        } catch (e) {
+            console.error('获取刚体时出错:', e, this);
+            return null;
+        }
     }
     resizeRigidBody() {  // 改变物体尺寸的同时改变刚体尺寸 
         this.traverse(() => {  // 对该物体及其所有子物体
@@ -713,15 +706,15 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         this.traverse(DT => {
             if (DT.type != "Group") return;
             const [wireframe, box, boxMesh] = DT.layers.wireframe;
-            if(wireframe.visible) {
-                if(!wireframe.parent) DT.mesh.add(wireframe);
+            if (wireframe.visible) {
+                if (!wireframe.parent) DT.mesh.add(wireframe);
                 box.makeEmpty();  // 更新线框
-                for (let child of DT.children){
-                    if(child.mesh.type == "BoxHelper") continue;
+                for (let child of DT.children) {
+                    if (child.mesh.type == "BoxHelper") continue;
                     box.expandByObject(child.mesh);
-                }            
+                }
                 const tempMatrix = new THREE.Matrix4(); // 创建临时矩阵存储wireframe当前世界变换
-                wireframe.updateWorldMatrix(true,false);
+                wireframe.updateWorldMatrix(true, false);
                 tempMatrix.copy(wireframe.matrixWorld);
                 const position = new THREE.Vector3(); // 提取并重置旋转分量（保留位置和缩放）
                 const quaternion = new THREE.Quaternion();
@@ -747,9 +740,9 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
                 wireframe.position.copy(localCenter);
                 const DTScale = DT.mesh.getWorldScale(new THREE.Vector3()).x; // 更新scale
                 boxMesh.scale.set(
-                    (box.max.x - box.min.x)/DTScale,
-                    (box.max.y - box.min.y)/DTScale,
-                    (box.max.z - box.min.z)/DTScale 
+                    (box.max.x - box.min.x) / DTScale,
+                    (box.max.y - box.min.y) / DTScale,
+                    (box.max.z - box.min.z) / DTScale
                 );
                 wireframe.updateMatrix();
                 wireframe.update();
@@ -762,7 +755,7 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
             if (DT && DT.physicalID) global.physicalIDMap[DT.physicalID] = DT;
         });
     }
-    updateRigidbodyTransform() {  // 强制更新刚体位姿
+   updateRigidbodyTransform() {  // 强制更新刚体位姿
         let mesh = this.mesh;
         let rb = global.mesh2rb[mesh.DT ? mesh.uuid : mesh.parent.uuid];
         if (!rb) return;
@@ -770,21 +763,32 @@ export default class DTObject {  // 用DTObject类包裹场景中的对象
         rb.setLinvel(new RAPIER.Vector3(0, 0, 0));
         rb.setAngvel(new RAPIER.Vector3(0, 0, 0));
         // 根据物体位姿强制设置其刚体位姿
+        const worldScale = new THREE.Vector3();
         const worldPosition = new THREE.Vector3();
         const worldQuaternion = new THREE.Quaternion();
-        mesh.getWorldPosition(worldPosition);
-        mesh.getWorldQuaternion(worldQuaternion);
-        // let P = mesh.position, Q = mesh.quaternion;  // P为位移，Q为四元数旋转
-        // rb.setTranslation(new RAPIER.Vector3(P.x, P.y, P.z));
-        // rb.setRotation(new RAPIER.Quaternion(Q.x, Q.y, Q.z, Q.w));
-        rb.setTranslation(new RAPIER.Vector3(worldPosition.x, worldPosition.y, worldPosition.z));
+        const center = this.getWorldCenterPosition();
+        this.mesh.matrixWorld.decompose(
+            worldPosition,
+            worldQuaternion,
+            worldScale
+        );
+        if (this.mesh.DT.label == "importedModel") {
+            rb.setTranslation(new RAPIER.Vector3(center.x, center.y, center.z));
+        }
+        else {
+            rb.setTranslation(new RAPIER.Vector3(worldPosition.x, worldPosition.y, worldPosition.z));
+        }
         rb.setRotation(new RAPIER.Quaternion(
             worldQuaternion.x,
             worldQuaternion.y,
             worldQuaternion.z,
             worldQuaternion.w
         ));
-    }
+        // console.log(`更新刚体位姿 ID:${this.id}`);
+        // console.log('包围盒中心位置:', center);
+        // console.log('当前模型位置:', this.mesh.position);
+        // console.log('当前刚体位置:', rb.translation());
+        }
     setWorldPosition(worldPos: THREE.Vector3): void {        // 将全局坐标逆向转换到本地坐标系
         if (!this.mesh.parent) return;
         const localPos = new THREE.Vector3();
