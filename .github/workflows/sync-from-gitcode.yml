@@ -1,0 +1,25 @@
+name: Sync from GitCode
+
+# 自动从 GitCode 仓库拉取并镜像到本 GitHub 仓库。
+# 本地机器只推送 GitCode，GitHub 不接收本机直推，统一由本工作流同步。
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mirror GitCode -> GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          rm -rf /tmp/dts-mirror
+          git clone --bare https://gitcode.com/Barry_Wu_/Digital_Twin_Software.git /tmp/dts-mirror
+          cd /tmp/dts-mirror
+          git push --mirror "https://x-access-token:${GH_TOKEN}@github.com/Barry-Wuu/Digital_Twin_Software.git"
