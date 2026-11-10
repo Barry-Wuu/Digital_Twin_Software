@@ -7,8 +7,7 @@ on:
     - cron: '*/15 * * * *'
   workflow_dispatch:
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   mirror:
@@ -16,10 +15,10 @@ jobs:
     steps:
       - name: Mirror GitCode -> GitHub
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MIRROR_PAT: ${{ secrets.MIRROR_PAT }}
         run: |
           set -e
           rm -rf /tmp/dts-mirror
           git clone --bare https://gitcode.com/Barry_Wu_/Digital_Twin_Software.git /tmp/dts-mirror
           cd /tmp/dts-mirror
-          git push --mirror "https://x-access-token:${GH_TOKEN}@github.com/Barry-Wuu/Digital_Twin_Software.git"
+          git push --mirror "https://x-access-token:${MIRROR_PAT}@github.com/Barry-Wuu/Digital_Twin_Software.git"
