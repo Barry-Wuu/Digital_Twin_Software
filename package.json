@@ -60,7 +60,7 @@
     "ant-design-vue": "^4.0.0-rc.6",
     "antd": "^4.24.15",
     "axios": "^1.7.2",
-    "cross-env": "^7.0.3",
+    "cross-env": "^10.1.0",
     "electron-installer-common": "^0.10.3",
     "electron-packager": "^17.1.2",
     "electron-squirrel-startup": "^1.0.0",
