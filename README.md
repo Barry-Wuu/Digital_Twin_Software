@@ -76,9 +76,17 @@
 
 <div align="center">
 
-![说明文档](./docs/说明文档.svg)
+![图2-5 整体架构设计](./docs/图2-5-整体架构设计.png)
 
-*系统说明文档图 / System documentation diagram*
+*面向离散制造车间的数字孪生工业软件整体架构设计 / Overall architecture of the digital-twin industrial software*
+
+</div>
+
+<div align="center">
+
+![图2-6 功能模块结构](./docs/图2-6-功能模块结构.png)
+
+*数字孪生工业软件的功能模块结构关系 / Functional-module structure of the digital-twin software*
 
 </div>
 

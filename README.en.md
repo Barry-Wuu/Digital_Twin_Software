@@ -76,9 +76,17 @@ This project is a **digital-twin industrial software for discrete manufacturing 
 
 <div align="center">
 
-![Docs](./docs/说明文档.svg)
+![Fig. 2-5 Overall architecture](./docs/图2-5-整体架构设计.png)
 
-*System documentation diagram*
+*Overall architecture of the digital-twin industrial software*
+
+</div>
+
+<div align="center">
+
+![Fig. 2-6 Functional modules](./docs/图2-6-功能模块结构.png)
+
+*Functional-module structure of the digital-twin software*
 
 </div>
 
