@@ -24,8 +24,7 @@ release
 *.sln
 *.sw?
 
-# lockfile
-package-lock.json
+# lockfile（pnpm/yarn 锁文件仍忽略；npm 的 package-lock.json 入版本控制以保证可复现构建）
 pnpm-lock.yaml
 yarn.lock
 out/
@@ -34,5 +33,3 @@ out/
 src/recentOpened.txt
 src/temp
 
-# 大体积模型资源（暂时不纳入版本控制）
-src/assets/models/
