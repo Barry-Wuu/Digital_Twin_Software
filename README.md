@@ -1,10 +1,4 @@
-<div align="center">
-
 [🇨🇳 中文](README.md) · [🇬🇧 English](README.en.md)
-
-</div>
-
-<div align="center">
 
 # 离散制造车间数字孪生软件
 
@@ -15,8 +9,6 @@
 [![Vue](https://img.shields.io/badge/frontend-Vue%203-42b883.svg)](https://vuejs.org)
 [![Three.js](https://img.shields.io/badge/3D-Three.js-black.svg)](https://threejs.org)
 [![Electron](https://img.shields.io/badge/desktop-Electron-47848f.svg)](https://www.electronjs.org)
-
-</div>
 
 ---
 
