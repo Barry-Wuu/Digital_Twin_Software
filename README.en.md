@@ -55,40 +55,26 @@ This project is a **digital-twin industrial software for discrete manufacturing 
 
 **Built-in digital-twin objects (sample models):**
 
-<div align="center">
+<p align="center">
+  <img src="./docs/models/cnc-carving.jpg" width="30%" alt="CNC engraving machine" />
+  <img src="./docs/models/denso-6axis-robot.jpg" width="30%" alt="Denso 6-axis robot" />
+  <img src="./docs/models/dual-arm-7axis-robot.jpg" width="30%" alt="Dual-arm 7-axis robot" />
+</p>
+<p align="center">
+  <img src="./docs/models/pallet.jpg" width="30%" alt="Pallet" />
+  <img src="./docs/models/sensor.jpg" width="30%" alt="Sensor" />
+  <img src="./docs/models/photo-gate.jpg" width="30%" alt="Photo-gate" />
+</p>
+<p align="center"><sub>Built-in digital-twin objects</sub></p>
 
-| | | |
-| --- | --- | --- |
-| ![CNC](./src/assets/icons/CNC精雕机.jpg) | ![Denso robot](./src/assets/icons/Denso六轴机器人.jpg) | ![Dual-arm robot](./src/assets/icons/双臂七轴机器人.jpg) |
-| ![Tray](./src/assets/icons/托盘.jpg) | ![Sensor](./src/assets/icons/传感器.jpg) | ![Photo-gate](./src/assets/icons/光电门.jpg) |
+<p align="center"><img src="./docs/line-layout.png" width="78%" alt="Production line layout" /></p>
+<p align="center"><sub>Discrete-manufacturing conveyor-line layout with dimensions</sub></p>
 
-*Built-in digital-twin objects*
+<p align="center"><img src="./docs/architecture.png" width="62%" alt="Overall architecture" /></p>
+<p align="center"><sub>Overall architecture of the digital-twin industrial software</sub></p>
 
-</div>
-
-<div align="center">
-
-![Line layout (CAD)](./docs/产线尺寸.png)
-
-*Discrete-manufacturing conveyor-line layout with dimensions*
-
-</div>
-
-<div align="center">
-
-![Fig. 2-5 Overall architecture](./docs/图2-5-整体架构设计.png)
-
-*Overall architecture of the digital-twin industrial software*
-
-</div>
-
-<div align="center">
-
-![Fig. 2-6 Functional modules](./docs/图2-6-功能模块结构.png)
-
-*Functional-module structure of the digital-twin software*
-
-</div>
+<p align="center"><img src="./docs/functional-modules.png" width="72%" alt="Functional module structure" /></p>
+<p align="center"><sub>Functional-module structure of the digital-twin software</sub></p>
 
 ## 📂 Project Structure
 

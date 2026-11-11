@@ -55,40 +55,26 @@
 
 **数字孪生对象库（部分内置模型）：**
 
-<div align="center">
+<p align="center">
+  <img src="./docs/models/cnc-carving.jpg" width="30%" alt="CNC 精雕机" />
+  <img src="./docs/models/denso-6axis-robot.jpg" width="30%" alt="Denso 六轴机器人" />
+  <img src="./docs/models/dual-arm-7axis-robot.jpg" width="30%" alt="双臂七轴机器人" />
+</p>
+<p align="center">
+  <img src="./docs/models/pallet.jpg" width="30%" alt="托盘" />
+  <img src="./docs/models/sensor.jpg" width="30%" alt="传感器" />
+  <img src="./docs/models/photo-gate.jpg" width="30%" alt="光电门" />
+</p>
+<p align="center"><sub>内置数字孪生对象</sub></p>
 
-| | | |
-| --- | --- | --- |
-| ![CNC精雕机](./src/assets/icons/CNC精雕机.jpg) | ![Denso六轴机器人](./src/assets/icons/Denso六轴机器人.jpg) | ![双臂七轴机器人](./src/assets/icons/双臂七轴机器人.jpg) |
-| ![托盘](./src/assets/icons/托盘.jpg) | ![传感器](./src/assets/icons/传感器.jpg) | ![光电门](./src/assets/icons/光电门.jpg) |
+<p align="center"><img src="./docs/line-layout.png" width="78%" alt="离散制造产线输送线布局图" /></p>
+<p align="center"><sub>离散制造产线输送线布局图（含尺寸标注）</sub></p>
 
-*内置数字孪生对象 / Built-in digital-twin objects*
+<p align="center"><img src="./docs/architecture.png" width="62%" alt="数字孪生工业软件整体架构" /></p>
+<p align="center"><sub>面向离散制造车间的数字孪生工业软件整体架构</sub></p>
 
-</div>
-
-<div align="center">
-
-![产线布局（CAD）](./docs/产线尺寸.png)
-
-*离散制造产线输送线布局图（含尺寸标注）/ Production-line conveyor layout with dimensions*
-
-</div>
-
-<div align="center">
-
-![图2-5 整体架构设计](./docs/图2-5-整体架构设计.png)
-
-*面向离散制造车间的数字孪生工业软件整体架构设计 / Overall architecture of the digital-twin industrial software*
-
-</div>
-
-<div align="center">
-
-![图2-6 功能模块结构](./docs/图2-6-功能模块结构.png)
-
-*数字孪生工业软件的功能模块结构关系 / Functional-module structure of the digital-twin software*
-
-</div>
+<p align="center"><img src="./docs/functional-modules.png" width="72%" alt="数字孪生工业软件功能模块结构" /></p>
+<p align="center"><sub>数字孪生工业软件的功能模块结构关系</sub></p>
 
 ## 📂 项目结构
 
