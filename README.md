@@ -165,11 +165,50 @@ npm run dist
 
 ## 📚 延伸阅读
 
-作者在 B 站「科技」文集撰写了与本软件对应的系列专栏（理论 + 设计），可作为深入文档：
+作者在 B 站「科技」文集撰写了与本软件对应的系列专栏（理论 + 设计），可作为深入文档。以下按主题分组，并精选部分专栏封面：
 
+<div align="center">
+
+[<img src="./docs/col-cover/cv45061740.png" width="140" alt="绪论">](https://www.bilibili.com/read/cv45061740)
+[<img src="./docs/col-cover/cv45286314.png" width="140" alt="需求与架构">](https://www.bilibili.com/read/cv45286314)
+[<img src="./docs/col-cover/cv45286887.png" width="140" alt="虚实通信">](https://www.bilibili.com/read/cv45286887)
+[<img src="./docs/col-cover/cv45061763.png" width="140" alt="数据存储">](https://www.bilibili.com/read/cv45061763)
+[<img src="./docs/col-cover/cv45061771.png" width="140" alt="前端交互">](https://www.bilibili.com/read/cv45061771)
+[<img src="./docs/col-cover/cv45284376.png" width="140" alt="实现验证">](https://www.bilibili.com/read/cv45284376)
+[<img src="./docs/col-cover/cv45090723.png" width="140" alt="实验平台">](https://www.bilibili.com/read/cv45090723)
+[<img src="./docs/col-cover/cv44922912.png" width="140" alt="论文插图">](https://www.bilibili.com/read/cv44922912)
+[<img src="./docs/col-cover/cv45193573.jpg" width="140" alt="答辩PPT">](https://www.bilibili.com/read/cv45193573)
+[<img src="./docs/col-cover/cv44340160.jpg" width="140" alt="学位论文">](https://www.bilibili.com/read/cv44340160)
+
+</div>
+
+### 开篇与综述
+- [《面向离散制造的数字孪生三维场景管理与仿真系统绪论》](https://www.bilibili.com/read/cv45061740)
 - [《离散制造车间数字孪生工业软件国内外研究现状》](https://www.bilibili.com/read/cv45285990)
+- [《数字孪生工业软件：论文插图》](https://www.bilibili.com/read/cv44922912)
+
+### 需求分析与架构设计
+- [《数字孪生工业软件需求分析与架构设计》](https://www.bilibili.com/read/cv45061756)
 - [《离散制造车间数字孪生软件需求分析与架构设计》](https://www.bilibili.com/read/cv45286314)
+
+### 模型构建与三维场景
+- [《离散制造车间数字孪生软件的模型构建与展现》](https://www.bilibili.com/read/cv45288771)
+- [《一种面向离散制造的数字孪生三维场景管理与仿真方法》](https://www.bilibili.com/read/cv45321425)
+
+### 虚实通信与数据存储
+- [《离散制造车间数字孪生软件的虚实通信服务实现》](https://www.bilibili.com/read/cv45286887)
 - [《数字孪生系统数据存储框架设计与仿真功能实现》](https://www.bilibili.com/read/cv45061763)
+
+### 前端交互界面
+- [《数字孪生系统前端交互界面设计与实现》](https://www.bilibili.com/read/cv45061771)
+
+### 实现、验证与实验平台
+- [《离散制造车间数字孪生工业软件实现与验证》](https://www.bilibili.com/read/cv45284376)
+- [《数字孪生实验平台搭建与功能评估》](https://www.bilibili.com/read/cv45090723)
+
+### 学位论文相关
+- [《工业机器人数字孪生工具软件的设计与实现》](https://www.bilibili.com/read/cv44340160)
+- [《数字孪生工业软件：分委会意见回复与学位论文答辩PPT》](https://www.bilibili.com/read/cv45193573)
 
 ## 📄 许可证
 
@@ -295,11 +334,50 @@ Two batch scripts at the repo root mirror the above flow:
 
 ## 📚 Further Reading
 
-The author's Bilibili "Tech" column series corresponds to this software (theory + design) and serves as in-depth documentation:
+The author's Bilibili "Tech" column series corresponds to this software (theory + design) and serves as in-depth documentation. Grouped by topic below, with selected cover images:
 
-- [Research Status of Digital-Twin Software for Discrete Manufacturing Workshops (Domestic & Abroad)](https://www.bilibili.com/read/cv45285990)
-- [Requirement Analysis & Architecture Design](https://www.bilibili.com/read/cv45286314)
-- [Data Storage Framework & Simulation Implementation](https://www.bilibili.com/read/cv45061763)
+<div align="center">
+
+[<img src="./docs/col-cover/cv45061740.png" width="140" alt="Introduction">](https://www.bilibili.com/read/cv45061740)
+[<img src="./docs/col-cover/cv45286314.png" width="140" alt="Requirements & Architecture">](https://www.bilibili.com/read/cv45286314)
+[<img src="./docs/col-cover/cv45286887.png" width="140" alt="Comm. Service">](https://www.bilibili.com/read/cv45286887)
+[<img src="./docs/col-cover/cv45061763.png" width="140" alt="Data Storage">](https://www.bilibili.com/read/cv45061763)
+[<img src="./docs/col-cover/cv45061771.png" width="140" alt="Front-end UI">](https://www.bilibili.com/read/cv45061771)
+[<img src="./docs/col-cover/cv45284376.png" width="140" alt="Impl. & Verification">](https://www.bilibili.com/read/cv45284376)
+[<img src="./docs/col-cover/cv45090723.png" width="140" alt="Experiment Platform">](https://www.bilibili.com/read/cv45090723)
+[<img src="./docs/col-cover/cv44922912.png" width="140" alt="Thesis Figures">](https://www.bilibili.com/read/cv44922912)
+[<img src="./docs/col-cover/cv45193573.jpg" width="140" alt="Defense PPT">](https://www.bilibili.com/read/cv45193573)
+[<img src="./docs/col-cover/cv44340160.jpg" width="140" alt="Thesis">](https://www.bilibili.com/read/cv44340160)
+
+</div>
+
+### Overview & Introduction
+- [Introduction to a Discrete-Manufacturing-Oriented Digital-Twin 3D Scene Management & Simulation System](https://www.bilibili.com/read/cv45061740)
+- [Research Status of Discrete-Manufacturing-Workshop Digital-Twin Industrial Software (Domestic & Abroad)](https://www.bilibili.com/read/cv45285990)
+- [Digital-Twin Industrial Software: Thesis Figures](https://www.bilibili.com/read/cv44922912)
+
+### Requirement Analysis & Architecture
+- [Requirement Analysis & Architecture Design of Digital-Twin Industrial Software](https://www.bilibili.com/read/cv45061756)
+- [Requirement Analysis & Architecture Design of Discrete-Manufacturing-Workshop Digital-Twin Software](https://www.bilibili.com/read/cv45286314)
+
+### Model Construction & 3D Scenes
+- [Model Construction & Rendering of Discrete-Manufacturing-Workshop Digital-Twin Software](https://www.bilibili.com/read/cv45288771)
+- [A Discrete-Manufacturing-Oriented 3D Scene Management & Simulation Method for Digital Twins](https://www.bilibili.com/read/cv45321425)
+
+### Physical–Virtual Communication & Data Storage
+- [Physical–Virtual Communication Service Implementation of Discrete-Manufacturing-Workshop Digital-Twin Software](https://www.bilibili.com/read/cv45286887)
+- [Data Storage Framework & Simulation Implementation of the Digital-Twin System](https://www.bilibili.com/read/cv45061763)
+
+### Front-end Interaction UI
+- [Front-end Interaction UI Design & Implementation of the Digital-Twin System](https://www.bilibili.com/read/cv45061771)
+
+### Implementation, Verification & Experiment Platform
+- [Implementation & Verification of Discrete-Manufacturing-Workshop Digital-Twin Industrial Software](https://www.bilibili.com/read/cv45284376)
+- [Digital-Twin Experiment Platform Setup & Functional Evaluation](https://www.bilibili.com/read/cv45090723)
+
+### Thesis-related
+- [Design and Implementation of an Industrial-Robot Digital-Twin Tool Software](https://www.bilibili.com/read/cv44340160)
+- [Digital-Twin Industrial Software: Sub-committee Response & Thesis Defense PPT](https://www.bilibili.com/read/cv45193573)
 
 ## 📄 License
 
