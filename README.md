@@ -55,26 +55,27 @@
 
 **数字孪生对象库（部分内置模型）：**
 
-<p align="center">
-  <img src="./docs/models/cnc-carving.jpg" width="30%" alt="CNC 精雕机" />
-  <img src="./docs/models/denso-6axis-robot.jpg" width="30%" alt="Denso 六轴机器人" />
-  <img src="./docs/models/dual-arm-7axis-robot.jpg" width="30%" alt="双臂七轴机器人" />
-</p>
-<p align="center">
-  <img src="./docs/models/pallet.jpg" width="30%" alt="托盘" />
-  <img src="./docs/models/sensor.jpg" width="30%" alt="传感器" />
-  <img src="./docs/models/photo-gate.jpg" width="30%" alt="光电门" />
-</p>
-<p align="center"><sub>内置数字孪生对象</sub></p>
+<img src="./docs/models/cnc-carving.jpg" width="30%" alt="CNC 精雕机" />
+<img src="./docs/models/denso-6axis-robot.jpg" width="30%" alt="Denso 六轴机器人" />
+<img src="./docs/models/dual-arm-7axis-robot.jpg" width="30%" alt="双臂七轴机器人" />
 
-<p align="center"><img src="./docs/line-layout.png" width="78%" alt="离散制造产线输送线布局图" /></p>
-<p align="center"><sub>离散制造产线输送线布局图（含尺寸标注）</sub></p>
+<img src="./docs/models/pallet.jpg" width="30%" alt="托盘" />
+<img src="./docs/models/sensor.jpg" width="30%" alt="传感器" />
+<img src="./docs/models/photo-gate.jpg" width="30%" alt="光电门" />
 
-<p align="center"><img src="./docs/architecture.png" width="62%" alt="数字孪生工业软件整体架构" /></p>
-<p align="center"><sub>面向离散制造车间的数字孪生工业软件整体架构</sub></p>
+*内置数字孪生对象*
 
-<p align="center"><img src="./docs/functional-modules.png" width="72%" alt="数字孪生工业软件功能模块结构" /></p>
-<p align="center"><sub>数字孪生工业软件的功能模块结构关系</sub></p>
+<img src="./docs/line-layout.png" width="78%" alt="离散制造产线输送线布局图" />
+
+*离散制造产线输送线布局图（含尺寸标注）*
+
+<img src="./docs/architecture.png" width="62%" alt="数字孪生工业软件整体架构" />
+
+*面向离散制造车间的数字孪生工业软件整体架构*
+
+<img src="./docs/functional-modules.png" width="72%" alt="数字孪生工业软件功能模块结构" />
+
+*数字孪生工业软件的功能模块结构关系*
 
 ## 📂 项目结构
 
